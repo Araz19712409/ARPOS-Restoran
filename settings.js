@@ -41,8 +41,17 @@ function defaults() {
     branchName: '',
     sms: emptySms(),
     update: emptyUpdate(),
-    backupGithub: emptyBackupGithub()
+    backupGithub: emptyBackupGithub(),
+    orderCardScale: 2
   };
+}
+
+function clampScale(value) {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n)) {
+    return 2;
+  }
+  return Math.min(5, Math.max(1, n));
 }
 
 function emptySms() {
@@ -200,7 +209,8 @@ function normalize(raw, prev) {
     branchName: cleanBranch(raw && raw.branchName),
     sms: cleanSms(raw, prev || raw),
     update: cleanUpdate(raw, prev || raw),
-    backupGithub: cleanBackupGithub(raw, prev || raw)
+    backupGithub: cleanBackupGithub(raw, prev || raw),
+    orderCardScale: clampScale(raw && raw.orderCardScale != null ? raw.orderCardScale : 2)
   };
 }
 
@@ -224,7 +234,8 @@ function writeSettings(data) {
     branchName: data.branchName !== undefined ? data.branchName : prev.branchName,
     sms: data.sms !== undefined ? data.sms : prev.sms,
     update: data.update !== undefined ? data.update : prev.update,
-    backupGithub: data.backupGithub !== undefined ? data.backupGithub : prev.backupGithub
+    backupGithub: data.backupGithub !== undefined ? data.backupGithub : prev.backupGithub,
+    orderCardScale: data.orderCardScale !== undefined ? data.orderCardScale : prev.orderCardScale
   }, prev);
   if (next.backupFolder !== prev.backupFolder) {
     try {

@@ -146,10 +146,11 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 113. [x] 1.1.4 — Setup görünür; ikinci Quraşdır Failed to fetch izahı
 114. [x] 1.1.5 — Ayarlarda repo və token görünmür
 115. [x] 1.1.6 — Ayar düymələri qısa, panel səliqəli
+116. [x] 1.1.7 — Sifariş kart ölçüsü brauzer + kassa yaddaşı
 
 ## Bitdi (əvvəlki)
 - Ehtiyat nüsxə, terminallar, endirim, çap, PIN, növbə, anbar, alış, menyu bölgüsü (zal / ofis)
 - Ofisiantı dəyiş, əməliyyat jurnalı
 
 ## Qiymət
-İşlək restoran kassası. 1–110 bağlandı.
+İşlək restoran kassası. 1–116 bağlandı.

@@ -1420,7 +1420,22 @@ app.put('/api/settings', function (req, res) {
       branchName: body.branchName,
       sms: body.sms,
       update: body.update,
-      backupGithub: body.backupGithub
+      backupGithub: body.backupGithub,
+      orderCardScale: body.orderCardScale
+    });
+  });
+});
+
+app.put('/api/prefs', function (req, res) {
+  const body = req.body || {};
+  const staff = users.canUser(Number(body.waiterId));
+  if (!staff || !staff.user) {
+    res.status(403).json({ success: false, message: 'PIN ilə daxil olun.' });
+    return;
+  }
+  lockedWrite(res, function () {
+    return settings.writeSettings({
+      orderCardScale: body.orderCardScale
     });
   });
 });

@@ -178,6 +178,13 @@ test('sms şablon doldurulur', function () {
   assert.strictEqual(sms.fillTpl('Rezerv: {name}, {table}', { name: 'Ali', table: '5' }), 'Rezerv: Ali, 5');
 });
 
+test('sifariş kart ölçüsü 1–5 saxlanır', function () {
+  const prev = settings.readSettings();
+  const saved = settings.writeSettings({ orderCardScale: 4 });
+  assert.strictEqual(saved.orderCardScale, 4);
+  settings.writeSettings({ orderCardScale: prev.orderCardScale });
+});
+
 test('ayarlarda filial və sms sahəsi var', function () {
   const cfg = settings.readSettings();
   assert.strictEqual(typeof cfg.branchName, 'string');

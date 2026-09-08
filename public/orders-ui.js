@@ -45,17 +45,28 @@
   var pinBuffer = '';
   var pingTimer = 0;
   var switching = false;
-  var cardScale = readCardScale();
-
-  function readCardScale() {
+  function storedScale() {
     try {
-      var saved = Number(window.localStorage.getItem('orderCardScale'));
+      var raw = window.localStorage.getItem('orderCardScale');
+      if (raw == null || raw === '') {
+        return null;
+      }
+      var saved = Number(raw);
       if (Number.isFinite(saved) && saved >= 1 && saved <= 5) {
         return Math.round(saved);
       }
     } catch (error) {}
-    return 2;
+    return null;
   }
+
+  function readCardScale() {
+    var saved = storedScale();
+    return saved != null ? saved : 2;
+  }
+
+  var cardScale = readCardScale();
+  var scaleTimer = 0;
+  var scaleHydrated = false;
 
   function api(url, options) {
     return fetch(url, options).then(function (res) {
@@ -416,6 +427,16 @@
       seatedWait = (parts[3] && parts[3].data && parts[3].data.seated) || [];
       if (window.PosNav && settings.opsMode) {
         window.PosNav.rememberOps(settings.opsMode);
+      }
+      if (!scaleHydrated) {
+        scaleHydrated = true;
+        var localScale = storedScale();
+        if (localScale != null) {
+          applyScale(localScale, false);
+          persistScale();
+        } else if (settings.orderCardScale != null) {
+          applyScale(settings.orderCardScale, false);
+        }
       }
       if (!floorId && floors[0]) {
         floorId = floors[0].id;
@@ -2516,7 +2537,7 @@
   if (savedFloorW) {
     setFloorWidth(savedFloorW, false);
   }
-  applyScale(cardScale);
+  applyScale(cardScale, false);
 
   var resizer = document.getElementById('floor-resizer');
   resizer.addEventListener('mousedown', function (event) {
@@ -2550,10 +2571,33 @@
   });
   window.addEventListener('pos-pin-changed', function () {
     if (waiter) {
+      persistScale();
       load();
     }
   });
-  function applyScale(value) {
+  function persistScale() {
+    try {
+      window.localStorage.setItem('orderCardScale', String(cardScale));
+    } catch (error) {}
+    if (!waiter) {
+      return;
+    }
+    if (scaleTimer) {
+      window.clearTimeout(scaleTimer);
+    }
+    scaleTimer = window.setTimeout(function () {
+      api('/api/prefs', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          waiterId: waiter.user.id,
+          orderCardScale: cardScale
+        })
+      }).catch(function () {});
+    }, 400);
+  }
+
+  function applyScale(value, persist) {
     var next = Number(value);
     if (!Number.isFinite(next)) {
       next = readCardScale();
@@ -2567,9 +2611,13 @@
     if (grid) {
       grid.setAttribute('data-scale', String(cardScale));
     }
-    try {
-      window.localStorage.setItem('orderCardScale', String(cardScale));
-    } catch (error) {}
+    if (persist !== false) {
+      persistScale();
+    } else {
+      try {
+        window.localStorage.setItem('orderCardScale', String(cardScale));
+      } catch (error) {}
+    }
   }
 
   document.getElementById('order-card-scale').addEventListener('input', function (event) {
