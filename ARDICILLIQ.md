@@ -143,6 +143,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 110. [x] EXE+versiya məcburi; avtobackup/GitHub; avtoyeniləmə; lisenziya açarı gizlidir
 111. [x] 1.1.2 — kəsr nöqtə/vergül, xammal saysız, masa pingi, EXE ikon
 112. [x] 1.1.3 — GitHub-dan yeniləmə işlək qovluğa yazılır
+113. [x] 1.1.4 — Setup görünür; ikinci Quraşdır Failed to fetch izahı
 
 ## Bitdi (əvvəlki)
 - Ehtiyat nüsxə, terminallar, endirim, çap, PIN, növbə, anbar, alış, menyu bölgüsü (zal / ofis)

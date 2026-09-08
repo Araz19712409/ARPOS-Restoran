@@ -18,6 +18,7 @@
     return box ? box.value.trim() : '';
   }
   var editingId = 0;
+  var updateBusy = false;
 
   function api(url, options) {
     return fetch(url, options).then(function (res) {
@@ -27,6 +28,12 @@
         }
         return body;
       });
+    }).catch(function (error) {
+      var msg = error && error.message ? error.message : '';
+      if (msg === 'Failed to fetch' || msg === 'NetworkError when attempting to fetch resource.') {
+        throw new Error('Server cavab vermir. Yeniləmə pəncərəsini gözləyin və ya data\\updates içində Setup-u açın.');
+      }
+      throw error;
     });
   }
 
@@ -241,7 +248,7 @@
     document.getElementById('update-token').value = upd.token || '';
     var box = document.getElementById('update-ver');
     if (box) {
-      box.textContent = 'İndi: ' + (ver || '1.1.3');
+      box.textContent = 'İndi: ' + (ver || '1.1.4');
     }
   }
 
@@ -298,16 +305,31 @@
       say('PIN ilə daxil olun.', 'err');
       return;
     }
+    if (updateBusy) {
+      say('Yeniləmə artıq gedir. Pəncərəyə baxın.', 'warn');
+      return;
+    }
     window.askYes('Yeniləmə', 'GitHub-dan yeni fayllar yazılacaq. data qalır. Davam?').then(function (ok) {
       if (!ok) {
         return;
+      }
+      updateBusy = true;
+      var btn = document.getElementById('update-apply');
+      if (btn) {
+        btn.disabled = true;
       }
       return api('/api/update/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ waiterId: waiter.user.id })
       }).then(function (body) {
-        say((body.data && body.data.message) || 'Yeniləndi. Serveri yeniləyin.');
+        say((body.data && body.data.message) || 'Yeniləmə pəncərəsi açıldı. «Yenilə» düyməsinə basın.', 'ok');
+      }).catch(function (error) {
+        updateBusy = false;
+        if (btn) {
+          btn.disabled = false;
+        }
+        throw error;
       });
     }).catch(function (error) {
       say(error.message, 'err');

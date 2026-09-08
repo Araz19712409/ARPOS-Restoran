@@ -34,7 +34,9 @@ internal sealed class ArposSetup : Form
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = silent ? new Size(420, 140) : new Size(460, 340);
+        TopMost = silent;
+        ShowInTaskbar = true;
+        ClientSize = silent ? new Size(460, 200) : new Size(460, 340);
         BackColor = Color.FromArgb(36, 30, 24);
         ForeColor = Color.FromArgb(246, 239, 228);
         Font = new Font("Segoe UI", 9F);
@@ -48,18 +50,30 @@ internal sealed class ArposSetup : Form
 
         if (silent)
         {
-            Controls.Add(MakeLabel("Arpos Restoran " + ArposVersion.Text + " yazılır…", 16, 16, 388, 22, true));
-            bar = new ProgressBar { Left = 16, Top = 52, Width = 388, Height = 16, Style = ProgressBarStyle.Continuous };
+            Controls.Add(MakeLabel("Arpos Restoran " + ArposVersion.Text, 16, 16, 428, 22, true));
+            Controls.Add(MakeLabel("Yeniləmə bu qovluğa yazılır. data qalır.", 16, 42, 428, 18, false));
+            bar = new ProgressBar { Left = 16, Top = 72, Width = 428, Height = 16, Style = ProgressBarStyle.Continuous };
             Controls.Add(bar);
-            status = MakeLabel("Proqram bağlanır, fayllar yenilənir. data qalır.", 16, 80, 388, 36, false);
+            status = MakeLabel(dest, 16, 96, 428, 36, false);
             Controls.Add(status);
-            installBtn = null;
+            installBtn = new Button
+            {
+                Left = 250,
+                Top = 148,
+                Width = 194,
+                Height = 36,
+                Text = "Yenilə",
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(201, 132, 42),
+                ForeColor = Color.White
+            };
+            installBtn.Click += delegate { BeginSilent(); };
+            Controls.Add(installBtn);
             pathBox = null;
             deskBox = null;
             startBox = null;
             runBox = null;
             autoBox = null;
-            Shown += delegate { BeginSilent(); };
             return;
         }
 
@@ -118,19 +132,29 @@ internal sealed class ArposSetup : Form
 
     private void BeginSilent()
     {
+        if (installBtn != null)
+        {
+            installBtn.Enabled = false;
+        }
         try
         {
+            status.Text = "Yenilənir. Pəncərəni bağlamayın.";
+            Application.DoEvents();
             Apply(silentDest, false, false, false, true);
             status.Text = "Yeniləndi. Proqram açılır.";
             bar.Value = 100;
             Application.DoEvents();
-            Thread.Sleep(400);
+            Thread.Sleep(800);
             Close();
         }
         catch (Exception ex)
         {
+            if (installBtn != null)
+            {
+                installBtn.Enabled = true;
+            }
             status.Text = "Xəta.";
-            MessageBox.Show(ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -431,29 +455,51 @@ internal sealed class ArposSetup : Form
             File.Exists(Path.Combine(dest, "ArposRestoran.exe"));
     }
 
+    private static bool AskOnTop(string text, string title)
+    {
+        using (var owner = new Form())
+        {
+            owner.TopMost = true;
+            owner.ShowInTaskbar = false;
+            owner.StartPosition = FormStartPosition.Manual;
+            owner.Location = new Point(-32000, -32000);
+            owner.Size = new Size(1, 1);
+            owner.Show();
+            owner.BringToFront();
+            return MessageBox.Show(owner, text, title, MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes;
+        }
+    }
+
     [STAThread]
     private static void Main(string[] args)
     {
         Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
         string dest = null;
-        var silent = false;
+        var fromFlag = false;
         for (var i = 0; i < args.Length; i++)
         {
             if (string.Equals(args[i], "/update", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
             {
                 dest = args[++i];
-                silent = true;
+                fromFlag = true;
             }
         }
-        if (!silent && TryGithubDrop(out dest))
+        if (string.IsNullOrEmpty(dest))
         {
-            silent = true;
+            TryGithubDrop(out dest);
         }
-        if (silent && !string.IsNullOrEmpty(dest))
+        if (!string.IsNullOrEmpty(dest))
         {
+            if (!fromFlag && !AskOnTop(
+                "Yeni versiya: Arpos Restoran " + ArposVersion.Text + "\n\nİşlək proqram yenilənsin? Satış və anbar qalır.",
+                "Arpos Restoran — Yeniləmə"))
+            {
+                return;
+            }
             Application.Run(new ArposSetup(dest, true));
             return;
         }
-        Application.Run(new ArposSetup(dest, false));
+        Application.Run(new ArposSetup(null, false));
     }
 }

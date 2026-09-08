@@ -1,4 +1,4 @@
 internal static class ArposVersion
 {
-    public const string Text = "1.1.3";
+    public const string Text = "1.1.4";
 }

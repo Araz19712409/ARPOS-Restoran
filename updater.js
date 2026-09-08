@@ -175,8 +175,12 @@ function apply() {
           /* Windows blokunu açmaq mümkün olmasa da davam */
         }
         fs.writeFileSync(path.join(UPD_DIR, 'install-dir.txt'), ROOT, 'utf8');
-        const cmd = 'start "" "' + exe.replace(/"/g, '') + '" /update "' + ROOT.replace(/"/g, '') + '"';
-        execFile('cmd.exe', ['/c', cmd], {
+        const bat = path.join(UPD_DIR, 'start-update.cmd');
+        fs.writeFileSync(bat,
+          '@echo off\r\n' +
+          'timeout /t 1 /nobreak >nul\r\n' +
+          'start "" "' + exe.replace(/"/g, '') + '"\r\n');
+        execFile('cmd.exe', ['/c', 'start', '', bat], {
           detached: true,
           stdio: 'ignore',
           windowsHide: true
@@ -187,7 +191,8 @@ function apply() {
           ok: true,
           local: info.local,
           remote: info.remote,
-          message: 'Yeniləmə başladı. Proqram bağlanacaq və yenidən açılacaq.'
+          setupPath: exe,
+          message: 'Yeniləmə pəncərəsi açılır. «Bəli» / «Yenilə» basın. Açılmasa: ' + exe
         };
       });
     }
