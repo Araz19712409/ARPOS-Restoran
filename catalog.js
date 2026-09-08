@@ -103,7 +103,7 @@ function parseChoiceList(list, max) {
     if (!name) {
       return;
     }
-    const price = Number(row.price);
+    const price = stock.parseDec(row.price);
     out.push({
       id: out.length + 1,
       name: name,

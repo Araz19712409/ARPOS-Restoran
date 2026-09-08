@@ -127,11 +127,19 @@ function check() {
   return httpsJson(url, cfg.token).then(function (json) {
     const tag = json.tag_name || json.name || '';
     const zip = json.zipball_url || '';
+    let setup = '';
+    (json.assets || []).forEach(function (asset) {
+      const n = String(asset.name || '').toLowerCase();
+      if (n.indexOf('setup') >= 0 && n.slice(-4) === '.exe' && asset.browser_download_url) {
+        setup = asset.browser_download_url;
+      }
+    });
     return {
       local: local,
       remote: stripV(tag),
       tag: tag,
       zip: zip,
+      setup: setup,
       newer: newer(tag, local),
       name: json.name || tag
     };
@@ -140,10 +148,27 @@ function check() {
 
 function apply() {
   return check().then(function (info) {
-    if (!info.newer || !info.zip) {
+    if (!info.newer) {
       return { ok: false, message: info.message || 'Yeni versiya yoxdur.' };
     }
     const cfg = settings.readSettings().update || {};
+    if (info.setup) {
+      const exe = path.join(UPD_DIR, 'ArposRestoran-Setup.exe');
+      return download(info.setup, exe, cfg.token).then(function () {
+        execFile(exe, [], { detached: true, stdio: 'ignore' }).unref();
+        const ver = require('./version');
+        ver.record('update', 'GitHub Setup ' + info.remote);
+        return {
+          ok: true,
+          local: info.local,
+          remote: info.remote,
+          message: 'Setup açıldı: ' + info.remote
+        };
+      });
+    }
+    if (!info.zip) {
+      return { ok: false, message: 'Release-də Setup.exe yoxdur.' };
+    }
     const zip = path.join(UPD_DIR, 'latest.zip');
     const extract = path.join(UPD_DIR, 'extract');
     fs.rmSync(extract, { recursive: true, force: true });
@@ -166,6 +191,11 @@ function apply() {
         const to = path.join(ROOT, name);
         fs.cpSync(from, to, { recursive: true, force: true });
       });
+      if (!fs.existsSync(path.join(ROOT, 'keys', 'arpos-private.pem'))) {
+        ['make-license.js', 'license-owner.js'].forEach(function (name) {
+          try { fs.unlinkSync(path.join(ROOT, 'scripts', name)); } catch (error) { /* keç */ }
+        });
+      }
       const ver = require('./version');
       ver.record('update', 'GitHub ' + info.remote);
       return {

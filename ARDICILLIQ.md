@@ -140,10 +140,12 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 107. [x] Ad: Arpos Restoran; hər yeniləmədə versiya
 108. [x] EXE quraşdırıcı
 109. [x] GitHub: ARPOS Restoran
+110. [x] EXE+versiya məcburi; avtobackup/GitHub; avtoyeniləmə; lisenziya açarı gizlidir
+111. [x] 1.1.2 — kəsr nöqtə/vergül, xammal saysız, masa pingi, EXE ikon
 
 ## Bitdi (əvvəlki)
 - Ehtiyat nüsxə, terminallar, endirim, çap, PIN, növbə, anbar, alış, menyu bölgüsü (zal / ofis)
 - Ofisiantı dəyiş, əməliyyat jurnalı
 
 ## Qiymət
-İşlək restoran kassası. 1–109 bağlandı.
+İşlək restoran kassası. 1–110 bağlandı.

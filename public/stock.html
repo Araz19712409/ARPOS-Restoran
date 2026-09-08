@@ -131,7 +131,7 @@
   <div id="stock-add-modal" class="modal hidden">
     <form id="stock-add-form" class="modal-card">
       <h3>Yeni xammal</h3>
-      <p class="hint">Alış — 1 vahidin qiyməti. Cəm — bu miqdara verilən pul (20 kq-a 20 AZN → alış 1 AZN/kq).</p>
+      <p class="hint">Yalnız ad və vahid. Miqdar Alış tabında yazılır.</p>
       <label>Ad
         <input id="stock-name" type="text" maxlength="40" required>
       </label>
@@ -144,17 +144,11 @@
           <option value="ml">ml</option>
         </select>
       </label>
-      <label>Miqdar
-        <input id="stock-qty" type="number" min="0" step="0.001" value="0">
-      </label>
       <label>Min qalıq
-        <input id="stock-min" type="number" min="0" step="0.001" value="0">
+        <input id="stock-min" type="text" inputmode="decimal" autocomplete="off" value="0">
       </label>
-      <label>Alış, 1 vahid
-        <input id="stock-buy" type="number" min="0" step="0.01" value="0">
-      </label>
-      <label>Cəm, AZN
-        <input id="stock-total" type="number" min="0" step="0.01" value="0">
+      <label>Alış, 1 vahid (istəyə görə)
+        <input id="stock-buy" type="text" inputmode="decimal" autocomplete="off" value="0">
       </label>
       <div class="modal-actions">
         <button id="cancel-stock-add" type="button">Bağla</button>
@@ -181,13 +175,13 @@
       </label>
       <p id="stock-edit-unit-hint" class="hint hidden">Vahid dəyişmir: qalıq və ya hərəkət var.</p>
       <label>Min qalıq
-        <input id="stock-edit-min" type="number" min="0" step="0.001">
+        <input id="stock-edit-min" type="text" inputmode="decimal" autocomplete="off">
       </label>
       <label>Alış, 1 vahid
-        <input id="stock-edit-buy" type="number" min="0" step="0.01">
+        <input id="stock-edit-buy" type="text" inputmode="decimal" autocomplete="off">
       </label>
       <label>Cəm, AZN
-        <input id="stock-edit-total" type="number" min="0" step="0.01">
+        <input id="stock-edit-total" type="text" inputmode="decimal" autocomplete="off">
       </label>
       <div class="modal-actions">
         <button id="cancel-stock-edit" type="button">Bağla</button>
@@ -218,7 +212,7 @@
         </select>
       </label>
       <label>Miqdar
-        <input id="stock-move-qty" type="number" min="0.001" step="0.001" required>
+        <input id="stock-move-qty" type="text" inputmode="decimal" autocomplete="off" required>
       </label>
       <label>Qeyd
         <input id="stock-move-note" type="text" maxlength="80">

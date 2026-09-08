@@ -11,6 +11,12 @@
   var editingGroupId = 0;
   var pickedIcon = '';
 
+  function dec(value) {
+    return window.PosNav && window.PosNav.parseDec
+      ? window.PosNav.parseDec(value)
+      : Number(String(value == null ? '' : value).replace(',', '.'));
+  }
+
   // API-yə sorğu göndəririk
   function api(url, options) {
     return fetch(url, options).then(function (res) {
@@ -76,9 +82,10 @@
         item.name + ' (' + item.unit + ')</option>';
     }).join('');
     var qtyInput = document.createElement('input');
-    qtyInput.type = 'number';
-    qtyInput.min = '0.001';
-    qtyInput.step = '0.001';
+    qtyInput.type = 'text';
+    qtyInput.setAttribute('inputmode', 'decimal');
+    qtyInput.autocomplete = 'off';
+    qtyInput.className = 'recipe-qty dec';
     qtyInput.value = qty ? String(qty) : '';
     qtyInput.placeholder = 'Miqdar';
     var unitSelect = document.createElement('select');
@@ -189,7 +196,7 @@
     var out = [];
     for (var i = 0; i < rows.length; i++) {
       var itemId = Number(rows[i].querySelector('.recipe-item').value);
-      var qty = Number(rows[i].querySelector('input[type="number"]').value);
+      var qty = dec(rows[i].querySelector('.recipe-qty').value);
       var unit = rows[i].querySelector('.recipe-unit').value;
       if (!itemId || !(qty > 0)) {
         continue;
@@ -215,9 +222,10 @@
     nameInput.placeholder = boxId === 'portion-rows' ? 'məs. Böyük' : 'məs. Göbələk sousu';
     nameInput.value = name || '';
     var priceInput = document.createElement('input');
-    priceInput.type = 'number';
-    priceInput.min = '0';
-    priceInput.step = '0.01';
+    priceInput.type = 'text';
+    priceInput.setAttribute('inputmode', 'decimal');
+    priceInput.autocomplete = 'off';
+    priceInput.className = 'mod-price dec';
     priceInput.placeholder = '+ AZN';
     priceInput.value = price != null ? String(price) : '0';
     var del = document.createElement('button');
@@ -246,14 +254,14 @@
     var out = [];
     document.querySelectorAll('#' + boxId + ' .mod-block').forEach(function (block) {
       var name = block.querySelector('.mod-row input[type="text"]').value.trim();
-      var price = Number(block.querySelector('.mod-row input[type="number"]').value);
+      var price = dec(block.querySelector('.mod-row .mod-price').value);
       if (!name) {
         return;
       }
       var ingredients = [];
       block.querySelectorAll('.mod-stock .recipe-row').forEach(function (ingRow) {
         var itemId = Number(ingRow.querySelector('.recipe-item').value);
-        var qty = Number(ingRow.querySelector('input[type="number"]').value);
+        var qty = dec(ingRow.querySelector('.recipe-qty').value);
         var unit = ingRow.querySelector('.recipe-unit').value;
         if (!itemId || !(qty > 0)) {
           return;
@@ -896,7 +904,7 @@
       extras: mods.extras
     };
     if (canCost()) {
-      payload.buyPrice = Number(document.getElementById('product-buy').value);
+      payload.buyPrice = dec(document.getElementById('product-buy').value);
       try {
         payload.ingredients = collectRecipe();
       } catch (error) {

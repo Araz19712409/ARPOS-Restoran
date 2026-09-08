@@ -12,6 +12,12 @@
   var lowOnly = false;
   var stockTab = 'qty';
 
+  function dec(value) {
+    return window.PosNav && window.PosNav.parseDec
+      ? window.PosNav.parseDec(value)
+      : Number(String(value == null ? '' : value).replace(',', '.'));
+  }
+
   function api(url, options) {
     return fetch(url, options).then(function (res) {
       return res.text().then(function (text) {
@@ -238,8 +244,8 @@
   }
 
   function buyLineTotal(row) {
-    var qty = Number(row.querySelector('.buy-qty').value) || 0;
-    var price = Number(row.querySelector('.buy-price').value) || 0;
+    var qty = dec(row.querySelector('.buy-qty').value) || 0;
+    var price = dec(row.querySelector('.buy-price').value) || 0;
     return qty * price;
   }
 
@@ -261,9 +267,9 @@
     row.className = 'buy-line';
     row.innerHTML =
       '<label>Xammal<select class="buy-item"></select></label>' +
-      '<label>Miqdar<input class="buy-qty" type="number" min="0.001" step="0.001"></label>' +
-      '<label>Alış, 1 vahid<input class="buy-price" type="number" min="0" step="0.01"></label>' +
-      '<label>Cəm<input class="buy-sum" type="number" min="0" step="0.01"></label>' +
+      '<label>Miqdar<input class="buy-qty" type="text" inputmode="decimal" autocomplete="off"></label>' +
+      '<label>Alış, 1 vahid<input class="buy-price" type="text" inputmode="decimal" autocomplete="off"></label>' +
+      '<label>Cəm<input class="buy-sum" type="text" inputmode="decimal" autocomplete="off"></label>' +
       '<button class="buy-del" type="button">Sil</button>';
     var select = row.querySelector('.buy-item');
     fillItemSelect(select, itemId);
@@ -286,8 +292,8 @@
     row.querySelector('.buy-qty').addEventListener('input', updateBuyTotal);
     row.querySelector('.buy-price').addEventListener('input', updateBuyTotal);
     row.querySelector('.buy-sum').addEventListener('input', function () {
-      var qty = Number(row.querySelector('.buy-qty').value) || 0;
-      var total = Number(row.querySelector('.buy-sum').value) || 0;
+      var qty = dec(row.querySelector('.buy-qty').value) || 0;
+      var total = dec(row.querySelector('.buy-sum').value) || 0;
       if (qty > 0) {
         row.querySelector('.buy-price').value = (total / qty).toFixed(2);
       }
@@ -312,8 +318,8 @@
     var lines = [];
     document.querySelectorAll('#buy-lines .buy-line').forEach(function (row) {
       var itemId = Number(row.querySelector('.buy-item').value);
-      var qty = Number(row.querySelector('.buy-qty').value);
-      var buyPrice = Number(row.querySelector('.buy-price').value);
+      var qty = dec(row.querySelector('.buy-qty').value);
+      var buyPrice = dec(row.querySelector('.buy-price').value);
       if (!itemId || !qty || qty <= 0) {
         return;
       }
@@ -442,29 +448,6 @@
     });
   }
 
-  function newItemQty() {
-    return Number(document.getElementById('stock-qty').value) || 0;
-  }
-
-  function syncNewItem(from) {
-    var qty = newItemQty();
-    var buyBox = document.getElementById('stock-buy');
-    var totalBox = document.getElementById('stock-total');
-    var buy = Number(buyBox.value) || 0;
-    var total = Number(totalBox.value) || 0;
-    if (from === 'total' && qty > 0) {
-      buyBox.value = (total / qty).toFixed(2);
-      return;
-    }
-    if (from === 'qty' && qty > 0 && buy <= 0 && total > 0) {
-      buyBox.value = (total / qty).toFixed(2);
-      return;
-    }
-    if ((from === 'buy' || from === 'qty') && qty >= 0) {
-      totalBox.value = (qty * buy).toFixed(2);
-    }
-  }
-
   document.querySelectorAll('.stock-tabs [data-tab]').forEach(function (btn) {
     btn.addEventListener('click', function () {
       showTab(btn.getAttribute('data-tab'));
@@ -489,16 +472,6 @@
     document.getElementById('stock-add-modal').classList.add('hidden');
   });
 
-  document.getElementById('stock-qty').addEventListener('input', function () {
-    syncNewItem('qty');
-  });
-  document.getElementById('stock-buy').addEventListener('input', function () {
-    syncNewItem('buy');
-  });
-  document.getElementById('stock-total').addEventListener('input', function () {
-    syncNewItem('total');
-  });
-
   document.getElementById('stock-add-form').addEventListener('submit', function (event) {
     event.preventDefault();
     if (!can('stock.edit')) {
@@ -510,29 +483,18 @@
       body: JSON.stringify({
         name: document.getElementById('stock-name').value,
         unit: document.getElementById('stock-unit').value,
-        qty: Number(document.getElementById('stock-qty').value),
-        minQty: Number(document.getElementById('stock-min').value),
-        buyPrice: (function () {
-          var qty = Number(document.getElementById('stock-qty').value) || 0;
-          var buy = Number(document.getElementById('stock-buy').value) || 0;
-          var total = Number(document.getElementById('stock-total').value) || 0;
-          if (qty > 0 && total > 0 && buy <= 0) {
-            return total / qty;
-          }
-          return buy;
-        }())
+        qty: 0,
+        minQty: dec(document.getElementById('stock-min').value) || 0,
+        buyPrice: dec(document.getElementById('stock-buy').value) || 0
       })
     }).then(function (body) {
       document.getElementById('stock-name').value = '';
-      document.getElementById('stock-qty').value = '0';
       document.getElementById('stock-min').value = '0';
-      document.getElementById('stock-total').value = '0';
       document.getElementById('stock-buy').value = '0';
       document.getElementById('stock-add-modal').classList.add('hidden');
       showTab('qty');
       var row = body.data || {};
-      say('Yeni mal yarandı: ' + row.name + '. Qalıq ' + row.qty + ' ' + row.unit +
-        ', alış ' + Number(row.buyPrice).toFixed(2) + ' AZN/' + row.unit);
+      say('Yeni xammal: ' + row.name + '. Miqdar Alış tabında yazılır.');
       return load();
     }).catch(function (error) {
       say(error.message, 'err');
@@ -582,8 +544,8 @@
   function syncEdit(from) {
     var buyBox = document.getElementById('stock-edit-buy');
     var totalBox = document.getElementById('stock-edit-total');
-    var buy = Number(buyBox.value) || 0;
-    var total = Number(totalBox.value) || 0;
+    var buy = dec(buyBox.value) || 0;
+    var total = dec(totalBox.value) || 0;
     if (from === 'total' && editQty > 0) {
       buyBox.value = (total / editQty).toFixed(2);
       return;
@@ -604,8 +566,8 @@
       return;
     }
     var row = items.find(function (item) { return item.id === editId; });
-    var buy = Number(document.getElementById('stock-edit-buy').value) || 0;
-    var total = Number(document.getElementById('stock-edit-total').value) || 0;
+    var buy = dec(document.getElementById('stock-edit-buy').value) || 0;
+    var total = dec(document.getElementById('stock-edit-total').value) || 0;
     if (editQty > 0 && total > 0 && buy <= 0) {
       buy = total / editQty;
     }
@@ -617,7 +579,7 @@
         unit: document.getElementById('stock-edit-unit').disabled
           ? (row ? row.unit : document.getElementById('stock-edit-unit').value)
           : document.getElementById('stock-edit-unit').value,
-        minQty: Number(document.getElementById('stock-edit-min').value),
+        minQty: dec(document.getElementById('stock-edit-min').value) || 0,
         buyPrice: buy
       })
     }).then(function (body) {
@@ -658,7 +620,7 @@
       body: JSON.stringify({
         itemId: moveId,
         type: type,
-        qty: Number(document.getElementById('stock-move-qty').value),
+        qty: dec(document.getElementById('stock-move-qty').value),
         note: note
       })
     }).then(function () {

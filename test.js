@@ -8,7 +8,11 @@ const shifts = require('./shifts');
 const orders = require('./orders');
 const sms = require('./sms');
 const license = require('./license');
+const licenseOwner = require('./scripts/license-owner');
 const version = require('./version');
+const store = require('./store');
+const terminals = require('./terminals');
+const path = require('path');
 
 function test(name, fn) {
   fn();
@@ -182,18 +186,40 @@ test('ayarlarda filial və sms sahəsi var', function () {
 });
 
 test('lisenziya imzası saxta kodu keçirmir', function () {
-  license.initKeys();
+  licenseOwner.initKeys();
   const bad = license.decodeToken('ARPOS.v1.abc.def');
   assert.ok(bad.error);
-  const made = license.issue({ name: 'Test Kafe', machine: license.machineId() });
+  const made = licenseOwner.issue({ name: 'Test Kafe', machine: license.machineId() });
   assert.ok(made.token);
   const ok = license.decodeToken(made.token);
   assert.strictEqual(ok.data.n, 'Test Kafe');
   assert.strictEqual(ok.data.p, 'ARPOS');
+  assert.strictEqual(typeof license.issue, 'undefined');
+});
+
+test('boş data faylı xəta vermir', function () {
+  const missing = path.join(__dirname, 'data', 'no-such-file-' + Date.now() + '.json');
+  const raw = store.readJson(missing);
+  assert.deepStrictEqual(raw, {});
 });
 
 test('versiya oxunur', function () {
   assert.ok(/^\d+\.\d+\.\d+$/.test(version.current()));
+});
+
+test('kəsr nöqtə və vergülü qəbul edir', function () {
+  assert.strictEqual(stock.parseDec('1,90'), 1.9);
+  assert.strictEqual(stock.parseDec('1.90'), 1.9);
+  assert.strictEqual(settings.money('1,90'), 1.9);
+});
+
+test('ping kilidsiz masanı yenidən götürür', function () {
+  const term = terminals.listAll()[0];
+  assert.ok(term);
+  const out = terminals.touch(99, term.id);
+  assert.ok(out.ok);
+  assert.strictEqual(terminals.lockOf(99).terminalId, term.id);
+  terminals.release(99, term.id);
 });
 
 test('qəbulda quoted happy hour saxlanır', function () {

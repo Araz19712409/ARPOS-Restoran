@@ -1,9 +1,32 @@
-# Qadağalar və Davranış Tələbləri:
+# Qadağalar və Davranış Tələbləri
 - Mən icazə vermədən heç bir faylı birbaşa dəyişmə və ya yaratma.
 - Yalnız mən qeyd etdiyim fayllara və funksiyalara fokuslan.
 - Layihənin digər fayllarını avtonom şəkildə araşdırıb redaktə etmə.
 - Terminalda əmr icra etmədən əvvəl həmişə məndən təsdiq istə.
 - Cavablarda əvvəlcə planı izah et, yalnız təsdiq etdikdən sonra kodu yaz.
-Hər dəfə yeni server yaratmağa ehtiyac yoxdur. Lazımsız serverlər söndürülür. Cəmi 1 serverlə iş görürrük. Kompüter yüklənməsin
-Əyər ayarlara aid nəsə yaratırsansa yadda saxla düyməsini unutma.
-Həmişə ekran ölçülərini nəzərə al. Yaratdığın bloklar çox vaxt ekrana yerləşmir.
+- Hər dəfə yeni server yaratma. Lazımsız serverlər söndürülür. Cəmi 1 server (port 3004).
+- Ayarlara aid nəsə yaradırsansa Yadda saxla düyməsini unutma.
+- Ekran ölçülərini nəzərə al (1366×768). Bloklar ekrana sığmalıdır.
+
+# EXE — məcburi
+- Müştəriyə gedən hər dəyişiklik `dist/ArposRestoran-Setup.exe` içində olmalıdır.
+- Kod dəyişəndən sonra `scripts/build-setup.ps1` işlədilir. Köhnə Setup göndərilməz.
+- `package.json` versiyası dəyişəndə: VERSIONS.md, Setup pəncərəsi, launcher, GitHub release tag eyni nömrədir.
+- Versiya yazılmadan EXE buraxılmaz.
+
+# Ehtiyat
+- Avtobackup (günlük yerli nüsxə) sönməz.
+- GitHub backup yalnız özəl repo + token. İctimai repo-ya satış/PIN/lisenziya getməz.
+- `keys/`, `arpos-private.pem`, `make-license.js` ehtiyata və GitHub-a düşməz.
+
+# Avtoyeniləmə
+- Yeniləmə GitHub release-dən gəlir (Setup.exe aktivdən).
+- Ayarlarda Yoxla / Quraşdır + `node scripts/auto-update.js`.
+- Yeniləmə `data/` və `keys/` üzərinə yazmaz.
+
+# Lisenziya — heç kimin əlinə düşməsin
+- Özəl açar yalnız sahibin maşınında: `keys/arpos-private.pem`. Git, EXE, Setup, müştəri qovluğu, backup — QADAĞAN.
+- Lisenziya yazmaq yalnız `scripts/make-license.js` + özəl açar. Bu skript EXE-yə QOYULMAZ.
+- `/api/license/issue` və ya uzaqdan kod yazan API YARADILMAZ.
+- `license.js` içində imzalama/açar yaratma müştəri nüsxəsində olmaz.
+- Agent özəl açarı oxumaz, çap etməz, commit etməz, başqa yerə köçürməz.

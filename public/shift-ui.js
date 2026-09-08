@@ -4,6 +4,12 @@
   var terminalId = 0;
   var switching = false;
 
+  function dec(value) {
+    return window.PosNav && window.PosNav.parseDec
+      ? window.PosNav.parseDec(value)
+      : Number(String(value == null ? '' : value).replace(',', '.'));
+  }
+
   function api(url, options) {
     return fetch(url, options).then(function (res) {
       return res.json().then(function (body) {
@@ -360,7 +366,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         terminalId: terminalId,
-        startingCash: Number(document.getElementById('shift-start').value)
+        startingCash: dec(document.getElementById('shift-start').value)
       })
     }).then(function () {
       say('Növbə açıldı.');
@@ -397,7 +403,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         terminalId: terminalId,
-        amount: Number(document.getElementById('shift-drop-amt').value),
+        amount: dec(document.getElementById('shift-drop-amt').value),
         note: document.getElementById('shift-drop-note').value
       })
     }).then(function () {
@@ -416,7 +422,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         code: document.getElementById('gift-code').value,
-        amount: Number(document.getElementById('gift-amt').value)
+        amount: dec(document.getElementById('gift-amt').value)
       })
     }).then(function (body) {
       document.getElementById('gift-form').reset();
@@ -447,7 +453,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         terminalId: terminalId,
-        countedCash: Number(document.getElementById('shift-counted').value),
+        countedCash: dec(document.getElementById('shift-counted').value),
         note: document.getElementById('shift-note').value
       })
     }).then(function (body) {

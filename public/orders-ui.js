@@ -13,6 +13,12 @@
   var tableQuery = '';
   var tableFilter = 'all';
   var payLock = false;
+
+  function dec(value) {
+    return window.PosNav && window.PosNav.parseDec
+      ? window.PosNav.parseDec(value)
+      : Number(String(value == null ? '' : value).replace(',', '.'));
+  }
   var payMode = 'order';
   var payDue = 0;
   var payMethod = 'cash';
@@ -1649,8 +1655,8 @@
     var total = payDue;
     var cashInput = document.getElementById('pay-cash-amt');
     var cardInput = document.getElementById('pay-card-amt');
-    var cash = Number(cashInput.value);
-    var card = Number(cardInput.value);
+    var cash = dec(cashInput.value);
+    var card = dec(cardInput.value);
     var changeEl = document.getElementById('pay-change');
     if (!Number.isFinite(cash)) {
       cash = 0;
@@ -1669,7 +1675,7 @@
     cardInput.value = card.toFixed(2);
     document.getElementById('tender-wrap').style.display = cash > 0 ? '' : 'none';
     if (cash > 0) {
-      var given = Number(document.getElementById('pay-tendered').value);
+      var given = dec(document.getElementById('pay-tendered').value);
       if (!Number.isFinite(given) || given < cash) {
         document.getElementById('pay-tendered').value = cash.toFixed(2);
         given = cash;
@@ -1710,7 +1716,7 @@
     } else if (document.getElementById('pay-modal').classList.contains('hidden')) {
       tipBox.value = Number(order.tipAmount || 0).toFixed(2);
     }
-    order.tipAmount = Number(tipBox.value) || 0;
+    order.tipAmount = dec(tipBox.value) || 0;
     document.getElementById('pay-voen').value = order.buyerVoen || '';
     document.getElementById('pay-buyer').value = order.buyerName || '';
     var parts = billAfter(order);
@@ -1781,7 +1787,7 @@
     if (payMode !== 'reserve') {
       return;
     }
-    var amt = Number(document.getElementById('pay-prepay-amt').value);
+    var amt = dec(document.getElementById('pay-prepay-amt').value);
     payDue = Number.isFinite(amt) && amt > 0 ? Number(amt.toFixed(2)) : 0;
     setPayDueView();
     setPayMethod(payMethod);
@@ -1942,7 +1948,7 @@
         waiterId: waiter.user.id,
         terminalId: terminal ? terminal.id : 0,
         type: document.getElementById('discount-type').value,
-        value: Number(document.getElementById('discount-value').value),
+        value: dec(document.getElementById('discount-value').value),
         reason: document.getElementById('discount-reason').value
       })
     }).then(function () {
@@ -2018,9 +2024,9 @@
     if (!waiter) {
       return;
     }
-    var cashAmount = Number(document.getElementById('pay-cash-amt').value);
-    var cardAmount = Number(document.getElementById('pay-card-amt').value);
-    var tendered = Number(document.getElementById('pay-tendered').value);
+    var cashAmount = dec(document.getElementById('pay-cash-amt').value);
+    var cardAmount = dec(document.getElementById('pay-card-amt').value);
+    var tendered = dec(document.getElementById('pay-tendered').value);
     if (payMode === 'reserve') {
       var booked = bookingFor(tableId);
       if (!booked) {
@@ -2089,7 +2095,7 @@
         waiterId: waiter.user.id,
         terminalId: terminal ? terminal.id : 0,
         splitCount: Number(document.getElementById('pay-split').value) || 1,
-        tipAmount: Number(document.getElementById('pay-tip').value) || 0,
+        tipAmount: dec(document.getElementById('pay-tip').value) || 0,
         buyerVoen: document.getElementById('pay-voen').value,
         buyerName: document.getElementById('pay-buyer').value,
         giftCode: giftCode,

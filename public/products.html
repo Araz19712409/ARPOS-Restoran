@@ -95,11 +95,11 @@
         <div class="product-price-row">
           <div id="cost-buy-wrap" class="hidden">
             <label>Alış (istehsal), AZN
-              <input id="product-buy" type="number" min="0" step="0.01">
+              <input id="product-buy" type="text" inputmode="decimal" autocomplete="off">
             </label>
           </div>
           <label>Satış, AZN
-            <input id="product-price" type="number" min="0" max="10000" step="0.01" required>
+            <input id="product-price" type="text" inputmode="decimal" autocomplete="off" required>
           </label>
         </div>
         <div id="cost-wrap" class="hidden">
@@ -130,7 +130,7 @@
         </label>
         <div class="product-price-row">
           <label>Happy hour, AZN
-            <input id="product-happy" type="number" min="0" max="10000" step="0.01">
+            <input id="product-happy" type="text" inputmode="decimal" autocomplete="off">
           </label>
           <label>Saatdan
             <input id="product-happy-from" type="number" min="0" max="24" step="0.5" placeholder="17">
@@ -173,6 +173,6 @@
   <script src="confirm.js"></script>
   <script src="nav.js"></script>
   <script src="group-icons.js?v=3"></script>
-  <script src="products.js?v=3"></script>
+  <script src="products.js?v=4"></script>
 </body>
 </html>

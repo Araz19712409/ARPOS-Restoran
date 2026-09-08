@@ -10,6 +10,9 @@ function readJson(file) {
     if (fs.existsSync(bak)) {
       return JSON.parse(fs.readFileSync(bak, 'utf8'));
     }
+    if (error && error.code === 'ENOENT') {
+      return {};
+    }
     throw error;
   }
 }

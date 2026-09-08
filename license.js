@@ -7,7 +7,6 @@ const version = require('./version');
 
 const FILE = path.join(__dirname, 'data', 'license.json');
 const PUB_FILE = path.join(__dirname, 'license-public.pem');
-const PRIV_FILE = path.join(__dirname, 'keys', 'arpos-private.pem');
 
 function publicKeyPem() {
   if (fs.existsSync(PUB_FILE)) {
@@ -146,61 +145,11 @@ function activate(raw) {
   return { ok: true, status: status() };
 }
 
-function signPayload(data, privatePem) {
-  const payload = Buffer.from(JSON.stringify(data), 'utf8');
-  const sig = crypto.sign(null, payload, privatePem);
-  return 'ARPOS.v1.' + payload.toString('base64url') + '.' + sig.toString('base64url');
-}
-
-function issue(opts) {
-  if (!fs.existsSync(PRIV_FILE)) {
-    return { error: 'Özəl açar yoxdur: keys/arpos-private.pem' };
-  }
-  const name = String((opts && opts.name) || '').replace(/<[^>]*>/g, '').trim().slice(0, 40);
-  if (!name) {
-    return { error: 'Müştəri adını yazın.' };
-  }
-  let exp = 0;
-  const days = Number(opts && opts.days);
-  if (Number.isFinite(days) && days > 0) {
-    exp = Math.floor(Date.now() / 1000) + Math.round(days) * 86400;
-  }
-  let machine = String((opts && opts.machine) || '').replace(/-/g, '').toLowerCase();
-  if (machine && !/^[a-f0-9]{16}$/.test(machine)) {
-    return { error: 'Maşın kodu 16 simvol olmalıdır.' };
-  }
-  const token = signPayload({
-    p: 'ARPOS',
-    n: name,
-    e: exp,
-    m: machine || ''
-  }, fs.readFileSync(PRIV_FILE, 'utf8'));
-  return { token: token, name: name, expires: exp, machine: machine || '' };
-}
-
-function initKeys() {
-  fs.mkdirSync(path.dirname(PRIV_FILE), { recursive: true });
-  if (fs.existsSync(PRIV_FILE) && fs.existsSync(PUB_FILE)) {
-    return { ok: true, existed: true };
-  }
-  const pair = crypto.generateKeyPairSync('ed25519');
-  fs.writeFileSync(PRIV_FILE, pair.privateKey.export({ type: 'pkcs8', format: 'pem' }));
-  fs.writeFileSync(PUB_FILE, pair.publicKey.export({ type: 'spki', format: 'pem' }));
-  try {
-    fs.chmodSync(PRIV_FILE, 0o600);
-  } catch (error) {
-    // Windows-da chmod olmaya bilər
-  }
-  return { ok: true, existed: false, private: PRIV_FILE, public: PUB_FILE };
-}
-
 module.exports = {
   machineId: machineId,
   machineText: machineText,
   status: status,
   isLicensed: isLicensed,
   activate: activate,
-  issue: issue,
-  initKeys: initKeys,
   decodeToken: decodeToken
 };

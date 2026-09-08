@@ -497,7 +497,7 @@
   align-items: center;
 }
 
-.mod-row input[type="number"] {
+.mod-row input.dec {
   min-width: 0;
   padding: 6px;
 }

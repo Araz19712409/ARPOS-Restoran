@@ -14,19 +14,26 @@ Açılışda lisenziya kodu istənilir. Maşın kodunu bizə göndərin, kodu `s
 
 ## Quraşdırıcı
 
+Pəncərəli Setup: qovluq seçimi, qısayol, daxilində Node.
+
 ```
 powershell -File scripts/build-setup.ps1
 ```
 
-`dist/ArposRestoran-Setup.exe`
+`dist/ArposRestoran-Setup.exe` — quraşdırandan sonra `ArposRestoran.exe` açılır.
 
 ## Lisenziya (yalnız sahibi)
 
-Özəl açar: `keys/arpos-private.pem` — GitHub-a qoyulmur.
+Özəl açar heç vaxt EXE/GitHub/müştəriyə getməz.
 
 ```
-node scripts/make-license.js --init
 node scripts/make-license.js --name "Kafe Adi" --machine ABCD-EF01-2345-6789
+```
+
+## Yeniləmə
+
+```
+npm run update
 ```
 
 ## Versiya

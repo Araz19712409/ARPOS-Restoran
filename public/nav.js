@@ -578,6 +578,18 @@
     }
   }
 
+  function parseDec(value) {
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : NaN;
+    }
+    var raw = String(value == null ? '' : value).trim().replace(/\s/g, '').replace(',', '.');
+    if (!raw || raw === '.' || raw === '-' || raw === '-.') {
+      return NaN;
+    }
+    var n = Number(raw);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
   global.PosNav = {
     session: session,
     can: can,
@@ -591,7 +603,8 @@
     rememberOps: rememberOps,
     homePath: homePath,
     banner: banner,
-    hideBanner: hideBanner
+    hideBanner: hideBanner,
+    parseDec: parseDec
   };
 
   if (document.readyState === 'loading') {
@@ -622,10 +635,7 @@
 
   function isZeroNumber(el) {
     var raw = String(el.value == null ? '' : el.value).trim().replace(',', '.');
-    if (raw === '' || raw === '0' || raw === '0.0' || raw === '0.00') {
-      return true;
-    }
-    return raw.indexOf('.') === -1 && Number(raw) === 0;
+    return raw === '' || raw === '0' || raw === '0.0' || raw === '0.00';
   }
 
   function bindKeyboard() {
@@ -650,7 +660,11 @@
       if (el.type === 'password') {
         return;
       }
-      if (el.type !== 'number' && el.getAttribute('inputmode') !== 'decimal') {
+      if (el.getAttribute('inputmode') !== 'decimal') {
+        return;
+      }
+      if ((event.key === '.' || event.key === ',') && /[.,]/.test(String(el.value || ''))) {
+        event.preventDefault();
         return;
       }
       if (!/^\d$/.test(event.key) || !isZeroNumber(el)) {

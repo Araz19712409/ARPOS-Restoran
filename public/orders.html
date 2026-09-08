@@ -215,7 +215,7 @@
       <p id="pay-share" class="pay-share"></p>
       <div class="pay-extra-row">
         <label id="pay-tip-wrap">Bəxşiş
-          <input id="pay-tip" type="number" min="0" step="0.01" value="0">
+          <input id="pay-tip" type="text" inputmode="decimal" autocomplete="off" value="0">
         </label>
         <label>VÖEN
           <input id="pay-voen" type="text" inputmode="numeric" maxlength="12" placeholder="Şirkət">
@@ -228,7 +228,7 @@
         </label>
       </div>
       <label id="prepay-amt-wrap" class="hidden">İlkin məbləğ
-        <input id="pay-prepay-amt" type="number" min="0.01" step="0.01">
+        <input id="pay-prepay-amt" type="text" inputmode="decimal" autocomplete="off">
       </label>
       <div class="pay-methods">
         <button id="pay-method-cash" type="button">Nağd</button>
@@ -237,15 +237,15 @@
       </div>
       <div id="pay-mix-fields" class="pay-mix hidden">
         <label>Nağd
-          <input id="pay-cash-amt" type="number" min="0" step="0.01">
+          <input id="pay-cash-amt" type="text" inputmode="decimal" autocomplete="off">
         </label>
         <label>Kart
-          <input id="pay-card-amt" type="number" min="0" step="0.01">
+          <input id="pay-card-amt" type="text" inputmode="decimal" autocomplete="off">
         </label>
       </div>
       <div id="tender-wrap" class="pay-tender">
         <label>Müştəri verdi
-          <input id="pay-tendered" type="number" min="0" step="0.01">
+          <input id="pay-tendered" type="text" inputmode="decimal" autocomplete="off">
         </label>
         <div id="pay-quick" class="pay-quick"></div>
       </div>
@@ -268,7 +268,7 @@
         </select>
       </label>
       <label>Dəyər
-        <input id="discount-value" type="number" min="0.01" step="0.01" required>
+        <input id="discount-value" type="text" inputmode="decimal" autocomplete="off" required>
       </label>
       <label>Səbəb
         <input id="discount-reason" type="text" maxlength="40" placeholder="Məsələn: daimi müştəri">
@@ -396,6 +396,6 @@
   <script src="receipt-view.js"></script>
   <script src="dates.js"></script>
   <script src="group-icons.js?v=3"></script>
-  <script src="orders-ui.js?v=6"></script>
+  <script src="orders-ui.js?v=7"></script>
 </body>
 </html>

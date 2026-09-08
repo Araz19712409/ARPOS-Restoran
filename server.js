@@ -763,7 +763,7 @@ app.post('/api/products', function (req, res) {
     if (!name) {
       reject(400, 'Məhsul adı vacibdir.');
     }
-    const salePrice = Number(body.salePrice);
+    const salePrice = stock.parseDec(body.salePrice);
     if (!Number.isFinite(salePrice) || salePrice < 0 || salePrice > 10000) {
       reject(400, 'Satış qiyməti düzgün deyil.');
     }
@@ -783,7 +783,7 @@ app.post('/api/products', function (req, res) {
       salePrice: Number(salePrice.toFixed(2)),
       stationId: stationId,
       image: '',
-      buyPrice: body.buyPrice != null ? Number(body.buyPrice) : extra.buyPrice,
+      buyPrice: body.buyPrice != null ? stock.parseDec(body.buyPrice) : extra.buyPrice,
       costPrice: extra.costPrice,
       ingredients: stock.parseRecipe(body.ingredients || extra.ingredients),
       portions: mods.portions,
@@ -791,9 +791,9 @@ app.post('/api/products', function (req, res) {
       blocked: false,
       soldOut: false,
       allergens: catalog.parseAllergens(body.allergens),
-      happyPrice: body.happyPrice === '' || body.happyPrice == null ? null : Number(body.happyPrice),
-      happyFrom: body.happyFrom === '' || body.happyFrom == null ? null : Number(body.happyFrom),
-      happyTo: body.happyTo === '' || body.happyTo == null ? null : Number(body.happyTo),
+      happyPrice: body.happyPrice === '' || body.happyPrice == null ? null : stock.parseDec(body.happyPrice),
+      happyFrom: body.happyFrom === '' || body.happyFrom == null ? null : stock.parseDec(body.happyFrom),
+      happyTo: body.happyTo === '' || body.happyTo == null ? null : stock.parseDec(body.happyTo),
       comboIds: catalog.parseComboIds(body.comboIds),
       course: catalog.courseOf({ course: body.course, stationId: stationId })
     };
@@ -853,7 +853,7 @@ app.put('/api/products/:id', function (req, res) {
       product.stationId = stationId;
     }
     if (body.salePrice != null) {
-      const salePrice = Number(body.salePrice);
+      const salePrice = stock.parseDec(body.salePrice);
       if (!Number.isFinite(salePrice) || salePrice < 0 || salePrice > 10000) {
         reject(400, 'Satış qiyməti düzgün deyil.');
       }
@@ -868,7 +868,7 @@ app.put('/api/products/:id', function (req, res) {
     }
     if (users.hasPermission(req.staff && req.staff.role, 'cost.edit')) {
       if (body.buyPrice != null) {
-        product.buyPrice = Number(body.buyPrice);
+        product.buyPrice = stock.parseDec(body.buyPrice);
       }
       if (body.ingredients) {
         product.ingredients = stock.parseRecipe(body.ingredients);
@@ -893,7 +893,7 @@ app.put('/api/products/:id', function (req, res) {
       product.soldOut = !!body.soldOut;
     }
     if (body.happyPrice != null) {
-      product.happyPrice = body.happyPrice === '' ? null : Number(body.happyPrice);
+      product.happyPrice = body.happyPrice === '' ? null : stock.parseDec(body.happyPrice);
     }
     if (body.happyFrom != null) {
       product.happyFrom = body.happyFrom === '' ? null : Number(body.happyFrom);
@@ -1419,7 +1419,8 @@ app.put('/api/settings', function (req, res) {
       listenLan: body.listenLan,
       branchName: body.branchName,
       sms: body.sms,
-      update: body.update
+      update: body.update,
+      backupGithub: body.backupGithub
     });
   });
 });
@@ -2499,7 +2500,7 @@ app.post('/api/orders/pay', function (req, res) {
     const prepaid = booking && booking.prepay ? Number(booking.prepay.total) : 0;
     const already = orders.paidTotal(order);
     if (body.tipAmount != null && !(order.payments && order.payments.length)) {
-      const tip = Number(body.tipAmount);
+      const tip = stock.parseDec(body.tipAmount);
       if (!Number.isFinite(tip) || tip < 0 || tip > 10000) {
         reject(400, 'Bəxşiş düzgün deyil.');
       }
@@ -2569,8 +2570,8 @@ app.post('/api/orders/pay', function (req, res) {
     if (giftCode && (!Number.isFinite(giftWanted) || giftWanted < 0)) {
       giftWanted = share;
     }
-    const cashAmount = Number(body.cashAmount);
-    const cardAmount = Number(body.cardAmount);
+    const cashAmount = stock.parseDec(body.cashAmount);
+    const cardAmount = stock.parseDec(body.cardAmount);
     if (!Number.isFinite(cashAmount) || !Number.isFinite(cardAmount) || cashAmount < 0 || cardAmount < 0) {
       reject(400, 'Nağd və kart məbləği düzgün deyil.');
     }
@@ -2837,8 +2838,8 @@ app.post('/api/reservations/:id/prepay', function (req, res) {
     if (!shifts.currentFor(shifts.readStore(), terminal.id)) {
       reject(400, 'Əvvəlcə növbə açın.');
     }
-    const cashAmount = Number(body.cashAmount);
-    const cardAmount = Number(body.cardAmount);
+    const cashAmount = stock.parseDec(body.cashAmount);
+    const cardAmount = stock.parseDec(body.cardAmount);
     if (!Number.isFinite(cashAmount) || !Number.isFinite(cardAmount) || cashAmount < 0 || cardAmount < 0) {
       reject(400, 'Nağd və kart məbləği düzgün deyil.');
     }
@@ -3766,7 +3767,7 @@ app.post('/api/shifts/drop', function (req, res) {
     if (!terminal) {
       reject(400, 'Terminal seçin.');
     }
-    const amount = Number(body.amount);
+    const amount = stock.parseDec(body.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
       reject(400, 'Məbləğ düzgün deyil.');
     }

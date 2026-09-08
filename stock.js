@@ -1,14 +1,17 @@
 const path = require('path');
 const store = require('./store');
+const num = require('./num');
 
 const FILE = path.join(__dirname, 'data', 'stock.json');
 
 function money(value) {
-  return Number((Number(value) || 0).toFixed(2));
+  const n = num.parseDec(value);
+  return Number(((Number.isFinite(n) ? n : 0)).toFixed(2));
 }
 
 function qtyOf(value) {
-  return Number((Number(value) || 0).toFixed(3));
+  const n = num.parseDec(value);
+  return Number(((Number.isFinite(n) ? n : 0)).toFixed(3));
 }
 
 const UNIT_BASE = {
@@ -263,7 +266,7 @@ function rememberSupplier(box, name) {
 }
 
 function createItem(body, who) {
-  const parsed = upsertItem(body, null);
+  const parsed = upsertItem(Object.assign({}, body || {}, { qty: 0 }), null);
   if (parsed.error) {
     return parsed;
   }
@@ -274,38 +277,6 @@ function createItem(body, who) {
   parsed.item.id = box.nextItemId;
   box.nextItemId += 1;
   box.items.push(parsed.item);
-  const qty = qtyOf(parsed.item.qty);
-  if (qty > 0) {
-    const at = new Date().toISOString();
-    parsed.item.touched = true;
-    box.moves.push({
-      id: box.nextMoveId,
-      itemId: parsed.item.id,
-      type: 'in',
-      qty: qty,
-      note: 'İlk qalıq',
-      at: at
-    });
-    box.nextMoveId += 1;
-    const lineTotal = money(qty * money(parsed.item.buyPrice));
-    box.purchases.push({
-      id: box.nextPurchaseId,
-      at: at,
-      supplier: 'İlk qalıq',
-      docNo: '',
-      total: lineTotal,
-      by: String(who || '').trim().slice(0, 40),
-      lines: [{
-        itemId: parsed.item.id,
-        name: parsed.item.name,
-        unit: parsed.item.unit,
-        qty: qty,
-        buyPrice: money(parsed.item.buyPrice),
-        total: lineTotal
-      }]
-    });
-    box.nextPurchaseId += 1;
-  }
   writeStock(box);
   return { item: publicItem(parsed.item) };
 }
@@ -604,6 +575,7 @@ function restockLines(catalogStore, lines, meta) {
 }
 
 module.exports = {
+  parseDec: num.parseDec,
   readStock: readStock,
   writeStock: writeStock,
   parseRecipe: parseRecipe,

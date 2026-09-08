@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const store = require('./store');
+const num = require('./num');
 
 const FILE = path.join(__dirname, 'data', 'settings.json');
 
@@ -39,7 +40,8 @@ function defaults() {
     listenLan: true,
     branchName: '',
     sms: emptySms(),
-    update: emptyUpdate()
+    update: emptyUpdate(),
+    backupGithub: emptyBackupGithub()
   };
 }
 
@@ -59,6 +61,23 @@ function emptyUpdate() {
   return {
     repo: 'Araz19712409/ARPOS-Restoran',
     token: ''
+  };
+}
+
+function emptyBackupGithub() {
+  return {
+    repo: '',
+    token: ''
+  };
+}
+
+function cleanBackupGithub(raw, prev) {
+  const src = raw && raw.backupGithub && typeof raw.backupGithub === 'object' ? raw.backupGithub : {};
+  const old = prev && prev.backupGithub ? prev.backupGithub : emptyBackupGithub();
+  const token = String(src.token || '');
+  return {
+    repo: String(src.repo || '').trim().slice(0, 80).replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, ''),
+    token: token ? token.slice(0, 120) : String(old.token || '')
   };
 }
 
@@ -151,11 +170,12 @@ function ensureBackupFolder(dir) {
 }
 
 function money(value) {
-  return Number((Number(value) || 0).toFixed(2));
+  const n = num.parseDec(value);
+  return Number(((Number.isFinite(n) ? n : 0)).toFixed(2));
 }
 
 function clampPercent(value) {
-  const n = Number(value);
+  const n = num.parseDec(value);
   if (!Number.isFinite(n)) {
     return 0;
   }
@@ -179,7 +199,8 @@ function normalize(raw, prev) {
       : true,
     branchName: cleanBranch(raw && raw.branchName),
     sms: cleanSms(raw, prev || raw),
-    update: cleanUpdate(raw, prev || raw)
+    update: cleanUpdate(raw, prev || raw),
+    backupGithub: cleanBackupGithub(raw, prev || raw)
   };
 }
 
@@ -202,7 +223,8 @@ function writeSettings(data) {
     listenLan: data.listenLan !== undefined ? data.listenLan : prev.listenLan,
     branchName: data.branchName !== undefined ? data.branchName : prev.branchName,
     sms: data.sms !== undefined ? data.sms : prev.sms,
-    update: data.update !== undefined ? data.update : prev.update
+    update: data.update !== undefined ? data.update : prev.update,
+    backupGithub: data.backupGithub !== undefined ? data.backupGithub : prev.backupGithub
   }, prev);
   if (next.backupFolder !== prev.backupFolder) {
     try {

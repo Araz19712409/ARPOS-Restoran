@@ -125,7 +125,110 @@ function createBackup(reason) {
   };
   fs.writeFileSync(path.join(dest, 'meta.json'), JSON.stringify(row, null, 2), 'utf8');
   prune();
+  pushGithub(dest, row).catch(function () { return null; });
   return row;
+}
+
+function pushGithub(dest, row) {
+  const cfg = settings.readSettings().backupGithub || {};
+  const repo = String(cfg.repo || '').trim();
+  const token = String(cfg.token || '').trim();
+  if (!repo || repo.indexOf('/') < 0 || !token) {
+    return Promise.resolve({ skipped: true });
+  }
+  const zip = dest + '.zip';
+  return new Promise(function (resolve, reject) {
+    execFile('powershell', [
+      '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
+      "Compress-Archive -Force -Path '" + dest.replace(/'/g, "''") + "\\*' -DestinationPath '" +
+        zip.replace(/'/g, "''") + "'"
+    ], { windowsHide: true }, function (error) {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve();
+    });
+  }).then(function () {
+    return githubJson('POST', '/repos/' + repo + '/releases', token, {
+      tag_name: 'backup-' + row.id,
+      name: 'Ehtiyat ' + row.id,
+      body: String(row.reason || 'backup')
+    });
+  }).then(function (rel) {
+    const upload = String(rel.upload_url || '').replace(/\{.*\}$/, '');
+    if (!upload) {
+      throw new Error('GitHub yükləmə ünvanı yoxdur.');
+    }
+    const body = fs.readFileSync(zip);
+    return githubUpload(upload + '?name=' + encodeURIComponent(row.id + '.zip'), token, body);
+  }).then(function () {
+    try { fs.unlinkSync(zip); } catch (error) { /* keç */ }
+    return { ok: true };
+  });
+}
+
+function githubJson(method, apiPath, token, payload) {
+  return new Promise(function (resolve, reject) {
+    const https = require('https');
+    const data = Buffer.from(JSON.stringify(payload || {}));
+    const req = https.request({
+      hostname: 'api.github.com',
+      path: apiPath,
+      method: method,
+      headers: {
+        'User-Agent': 'ArposRestoran',
+        Accept: 'application/vnd.github+json',
+        Authorization: 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'Content-Length': data.length
+      }
+    }, function (res) {
+      let buf = '';
+      res.on('data', function (chunk) { buf += chunk; });
+      res.on('end', function () {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          try { resolve(JSON.parse(buf || '{}')); } catch (error) { resolve({}); }
+          return;
+        }
+        reject(new Error('GitHub ' + res.statusCode));
+      });
+    });
+    req.on('error', reject);
+    req.write(data);
+    req.end();
+  });
+}
+
+function githubUpload(url, token, body) {
+  return new Promise(function (resolve, reject) {
+    const https = require('https');
+    const parsed = new URL(url);
+    const req = https.request({
+      hostname: parsed.hostname,
+      path: parsed.pathname + parsed.search,
+      method: 'POST',
+      headers: {
+        'User-Agent': 'ArposRestoran',
+        Accept: 'application/vnd.github+json',
+        Authorization: 'Bearer ' + token,
+        'Content-Type': 'application/zip',
+        'Content-Length': body.length
+      }
+    }, function (res) {
+      res.resume();
+      res.on('end', function () {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve();
+          return;
+        }
+        reject(new Error('GitHub yükləmə ' + res.statusCode));
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
 }
 
 function hasToday() {

@@ -7,6 +7,12 @@
   var terminalList = [];
   var lanInfo = { live: '127.0.0.1', urls: [] };
 
+  function dec(value) {
+    return window.PosNav && window.PosNav.parseDec
+      ? window.PosNav.parseDec(value)
+      : Number(String(value == null ? '' : value).replace(',', '.'));
+  }
+
   function backupFolderValue() {
     var box = document.getElementById('backup-folder');
     return box ? box.value.trim() : '';
@@ -207,6 +213,13 @@
     };
   }
 
+  function backupGithubPayload() {
+    return {
+      repo: (document.getElementById('backup-gh-repo') || {}).value || '',
+      token: (document.getElementById('backup-gh-token') || {}).value || ''
+    };
+  }
+
   function fillBranch() {
     document.getElementById('branch-name').value = current.branchName || '';
   }
@@ -228,7 +241,19 @@
     document.getElementById('update-token').value = upd.token || '';
     var box = document.getElementById('update-ver');
     if (box) {
-      box.textContent = 'İndi: ' + (ver || '1.0.0');
+      box.textContent = 'İndi: ' + (ver || '1.1.2');
+    }
+  }
+
+  function fillBackupGithub() {
+    var gh = current.backupGithub || {};
+    var repo = document.getElementById('backup-gh-repo');
+    var tok = document.getElementById('backup-gh-token');
+    if (repo) {
+      repo.value = gh.repo || '';
+    }
+    if (tok) {
+      tok.value = gh.token || '';
     }
   }
 
@@ -295,7 +320,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         waiterId: waiter.user.id,
-        serviceChargePercent: Number(document.getElementById('service-percent').value),
+        serviceChargePercent: dec(document.getElementById('service-percent').value),
         waiterBonuses: map,
         backupFolder: backupFolderValue(),
         ekassa: ekassaPayload(),
@@ -303,7 +328,8 @@
         listenLan: listenLanValue(),
         branchName: branchNameValue(),
         sms: smsPayload(),
-        update: updatePayload()
+        update: updatePayload(),
+        backupGithub: backupGithubPayload()
       })
     }).then(function (body) {
       current = body.data || current;
@@ -363,10 +389,9 @@
       nameTd.textContent = user.name + (roleName(user.roleId) ? ' • ' + roleName(user.roleId) : '');
       var inputTd = document.createElement('td');
       var input = document.createElement('input');
-      input.type = 'number';
-      input.min = '0';
-      input.max = '100';
-      input.step = '0.1';
+      input.type = 'text';
+      input.setAttribute('inputmode', 'decimal');
+      input.autocomplete = 'off';
       input.setAttribute('data-user', String(user.id));
       input.value = String(current.waiterBonuses[String(user.id)] || 0);
       input.disabled = !canEditSettings();
@@ -421,6 +446,7 @@
     fillSms();
     fillBranch();
     fillUpdate(body.data.version);
+    fillBackupGithub();
     if (window.PosNav) {
       window.PosNav.rememberOps(mode, waiter);
     }
@@ -565,7 +591,7 @@
   function collectBonuses() {
     var map = {};
     document.querySelectorAll('#bonus-body input[data-user]').forEach(function (input) {
-      map[input.getAttribute('data-user')] = Number(input.value) || 0;
+      map[input.getAttribute('data-user')] = dec(input.value) || 0;
     });
     return map;
   }
@@ -597,7 +623,7 @@
         body: JSON.stringify(payload)
       }).then(function () {
         var bonuses = collectBonuses();
-        bonuses[String(editingId)] = Number(document.getElementById('edit-bonus').value) || 0;
+        bonuses[String(editingId)] = dec(document.getElementById('edit-bonus').value) || 0;
         closeEdit();
         return saveBonuses(bonuses, name + ' yeniləndi.');
       });
@@ -632,6 +658,7 @@
   document.getElementById('save-branch').addEventListener('click', saveAll);
   document.getElementById('save-sms').addEventListener('click', saveAll);
   document.getElementById('save-update').addEventListener('click', saveAll);
+  document.getElementById('save-backup-gh').addEventListener('click', saveAll);
   document.getElementById('lan-on').addEventListener('change', fillLanHint);
   document.getElementById('lan-off').addEventListener('change', fillLanHint);
   document.getElementById('sms-test').addEventListener('click', sendSmsTest);

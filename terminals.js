@@ -166,8 +166,15 @@ function claim(tableId, terminal, waiterName, extraIds) {
 function touch(tableId, terminalId) {
   sweep();
   const cur = locks[String(tableId)];
-  if (!cur || cur.terminalId !== Number(terminalId)) {
-    return { error: 'Masa bu terminalda deyil.' };
+  if (cur && cur.terminalId !== Number(terminalId)) {
+    return { error: 'Bu masa ' + cur.terminalName + '-dədir.' };
+  }
+  if (!cur) {
+    const term = getById(terminalId);
+    if (!term) {
+      return { error: 'Terminal tapılmadı.' };
+    }
+    return claim(tableId, term, '');
   }
   const now = Date.now();
   Object.keys(locks).forEach(function (id) {

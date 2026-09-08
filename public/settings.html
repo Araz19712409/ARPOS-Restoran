@@ -54,7 +54,7 @@
       <h2>Xidmət haqqı</h2>
       <p class="hint">Satış cəminə əlavə olunur. 0 olsa, xidmət yoxdur.</p>
       <label>Faiz
-        <input id="service-percent" type="number" min="0" max="100" step="0.1" value="0">
+        <input id="service-percent" type="text" inputmode="decimal" autocomplete="off" value="0">
       </label>
       <button id="save-service" class="gold" type="button">Yadda saxla</button>
     </section>
@@ -113,7 +113,7 @@
     </section>
     <section>
       <h2>Yeniləmə</h2>
-      <p class="hint">GitHub release. Quraşdırıcı: scripts/install.ps1</p>
+      <p class="hint">GitHub release-dən Setup.exe. Əmr: npm run update</p>
       <p id="update-ver" class="hint"></p>
       <label>Repo
         <input id="update-repo" type="text" maxlength="80" placeholder="ad/ARPOS-Restoran">
@@ -203,6 +203,13 @@
       </span>
     </label>
     <p class="hint">Düyməyə basın, disk və ya papka seçin. Sonra Yadda saxla və ya İndi nüsxə al.</p>
+    <label>GitHub ehtiyat (özəl repo)
+      <input id="backup-gh-repo" type="text" maxlength="80" placeholder="ad/ehtiyat-ozel">
+    </label>
+    <label>GitHub token
+      <input id="backup-gh-token" type="password" maxlength="120">
+    </label>
+    <button id="save-backup-gh" class="gold" type="button">Yadda saxla</button>
     <button id="backup-now" class="gold" type="button">İndi nüsxə al</button>
     <div class="report-table-wrap">
       <table class="report-table">
@@ -246,7 +253,7 @@
         <select id="edit-role"></select>
       </label>
       <label>Bonus, %
-        <input id="edit-bonus" type="number" min="0" max="100" step="0.1" value="0">
+        <input id="edit-bonus" type="text" inputmode="decimal" autocomplete="off" value="0">
       </label>
       <div class="modal-actions">
         <button id="cancel-edit" type="button">Bağla</button>
@@ -268,6 +275,6 @@
   <script src="log-client.js"></script>
   <script src="confirm.js"></script>
   <script src="nav.js"></script>
-  <script src="settings-ui.js?v=3"></script>
+  <script src="settings-ui.js?v=5"></script>
 </body>
 </html>
