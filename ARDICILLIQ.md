@@ -145,6 +145,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 112. [x] 1.1.3 — GitHub-dan yeniləmə işlək qovluğa yazılır
 113. [x] 1.1.4 — Setup görünür; ikinci Quraşdır Failed to fetch izahı
 114. [x] 1.1.5 — Ayarlarda repo və token görünmür
+115. [x] 1.1.6 — Ayar düymələri qısa, panel səliqəli
 
 ## Bitdi (əvvəlki)
 - Ehtiyat nüsxə, terminallar, endirim, çap, PIN, növbə, anbar, alış, menyu bölgüsü (zal / ofis)

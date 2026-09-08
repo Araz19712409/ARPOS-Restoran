@@ -1,5 +1,6 @@
 # Arpos Restoran — versiyalar
 
+- **1.1.6** — 2026-09-08 — Ayarlarda qısa düymələr, səliqəli panel
 - **1.1.5** — 2026-09-08 — Ayarlarda repo/token gizlidir
 - **1.1.4** — 2026-09-08 — GitHub Setup görünən pəncərə + Yenilə düyməsi; Failed to fetch izahı
 - **1.1.3** — 2026-09-08 — GitHub yeniləmə eyni qovluğa yazılır, Setup bağlanıb itmir

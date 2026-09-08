@@ -48,7 +48,9 @@
         <input id="ops-full" name="ops-mode" type="radio" value="full">
         Satış + anbar
       </label>
-      <button id="save-ops" class="gold" type="button">Yadda saxla</button>
+      <div class="side-actions">
+        <button id="save-ops" class="gold" type="button">Yadda saxla</button>
+      </div>
     </section>
     <section>
       <h2>Xidmət haqqı</h2>
@@ -56,7 +58,9 @@
       <label>Faiz
         <input id="service-percent" type="text" inputmode="decimal" autocomplete="off" value="0">
       </label>
-      <button id="save-service" class="gold" type="button">Yadda saxla</button>
+      <div class="side-actions">
+        <button id="save-service" class="gold" type="button">Yadda saxla</button>
+      </div>
     </section>
     <section>
       <h2>Şəbəkə</h2>
@@ -70,7 +74,9 @@
         Şəbəkədə aç
       </label>
       <p id="lan-urls" class="hint"></p>
-      <button id="save-lan" class="gold" type="button">Yadda saxla</button>
+      <div class="side-actions">
+        <button id="save-lan" class="gold" type="button">Yadda saxla</button>
+      </div>
     </section>
     <section>
       <h2>Filial</h2>
@@ -78,7 +84,9 @@
       <label>Ad
         <input id="branch-name" type="text" maxlength="60" placeholder="Mərkəz">
       </label>
-      <button id="save-branch" class="gold" type="button">Yadda saxla</button>
+      <div class="side-actions">
+        <button id="save-branch" class="gold" type="button">Yadda saxla</button>
+      </div>
     </section>
     <section>
       <h2>SMS</h2>
@@ -108,8 +116,10 @@
       <label>Sınaq telefon
         <input id="sms-test-phone" type="tel" maxlength="20">
       </label>
-      <button id="save-sms" class="gold" type="button">Yadda saxla</button>
-      <button id="sms-test" type="button">Sınaq göndər</button>
+      <div class="side-actions">
+        <button id="save-sms" class="gold" type="button">Yadda saxla</button>
+        <button id="sms-test" type="button">Sınaq</button>
+      </div>
     </section>
     <section>
       <h2>Yeniləmə</h2>
@@ -121,9 +131,11 @@
       <label class="hidden">Token
         <input id="update-token" type="password" maxlength="120">
       </label>
-      <button id="save-update" class="gold hidden" type="button">Yadda saxla</button>
-      <button id="update-check" type="button">Yoxla</button>
-      <button id="update-apply" type="button">Quraşdır</button>
+      <div class="side-actions">
+        <button id="save-update" class="gold hidden" type="button">Yadda saxla</button>
+        <button id="update-check" type="button">Yoxla</button>
+        <button id="update-apply" class="gold" type="button">Quraşdır</button>
+      </div>
     </section>
     <section>
       <h2>E-kassa (hazırlıq)</h2>
@@ -143,14 +155,18 @@
       <label>Qeyd
         <input id="ekassa-note" type="text" maxlength="80">
       </label>
-      <button id="save-ekassa" class="gold" type="button">Yadda saxla</button>
+      <div class="side-actions">
+        <button id="save-ekassa" class="gold" type="button">Yadda saxla</button>
+      </div>
     </section>
     <section>
       <h2>Ofisiant</h2>
       <p class="hint">Yeni ofisiantı <a href="/users.html">İstifadəçilər</a> səhifəsindən əlavə edin. Burada yalnız bonus faizini yazıb Yadda saxla basın.</p>
     </section>
     <p id="message" class="message"></p>
-    <button id="save-settings" class="gold" type="button">Yadda saxla</button>
+    <div class="side-actions">
+      <button id="save-settings" class="gold" type="button">Yadda saxla</button>
+    </div>
   </aside>
 
   <main class="catalog-main">
