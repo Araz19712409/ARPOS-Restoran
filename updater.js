@@ -67,16 +67,22 @@ function httpsJson(url, token) {
 function download(url, dest, token) {
   return new Promise(function (resolve, reject) {
     fs.mkdirSync(path.dirname(dest), { recursive: true });
-    const opts = { headers: { 'User-Agent': 'pos-restoran' } };
-    if (token) {
-      opts.headers.Authorization = 'Bearer ' + token;
+    function headers() {
+      const h = {
+        'User-Agent': 'ArposRestoran',
+        Accept: 'application/octet-stream'
+      };
+      if (token) {
+        h.Authorization = 'Bearer ' + token;
+      }
+      return h;
     }
     function go(href, hops) {
       if (hops > 5) {
         reject(new Error('Çox yönləndirmə.'));
         return;
       }
-      https.get(href, opts, function (res) {
+      https.get(href, { headers: headers() }, function (res) {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           go(res.headers.location, hops + 1);
           return;
@@ -155,14 +161,33 @@ function apply() {
     if (info.setup) {
       const exe = path.join(UPD_DIR, 'ArposRestoran-Setup.exe');
       return download(info.setup, exe, cfg.token).then(function () {
-        execFile(exe, [], { detached: true, stdio: 'ignore' }).unref();
+        const st = fs.statSync(exe);
+        const fd = fs.openSync(exe, 'r');
+        const head = Buffer.alloc(2);
+        fs.readSync(fd, head, 0, 2, 0);
+        fs.closeSync(fd);
+        if (st.size < 1000000 || head[0] !== 0x4d || head[1] !== 0x5a) {
+          throw new Error('GitHub-dan Setup düzgün endirilmədi.');
+        }
+        try {
+          fs.unlinkSync(exe + ':Zone.Identifier');
+        } catch (error) {
+          /* Windows blokunu açmaq mümkün olmasa da davam */
+        }
+        fs.writeFileSync(path.join(UPD_DIR, 'install-dir.txt'), ROOT, 'utf8');
+        const cmd = 'start "" "' + exe.replace(/"/g, '') + '" /update "' + ROOT.replace(/"/g, '') + '"';
+        execFile('cmd.exe', ['/c', cmd], {
+          detached: true,
+          stdio: 'ignore',
+          windowsHide: true
+        }).unref();
         const ver = require('./version');
         ver.record('update', 'GitHub Setup ' + info.remote);
         return {
           ok: true,
           local: info.local,
           remote: info.remote,
-          message: 'Setup açıldı: ' + info.remote
+          message: 'Yeniləmə başladı. Proqram bağlanacaq və yenidən açılacaq.'
         };
       });
     }

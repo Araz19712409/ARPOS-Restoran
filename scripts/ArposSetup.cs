@@ -18,15 +18,23 @@ internal sealed class ArposSetup : Form
     private readonly Button installBtn;
     private readonly ProgressBar bar;
     private readonly Label status;
+    private readonly bool silentUpdate;
+    private readonly string silentDest;
 
-    public ArposSetup()
+    public ArposSetup() : this(null, false)
     {
-        Text = "Arpos Restoran — Quraşdırma";
+    }
+
+    public ArposSetup(string dest, bool silent)
+    {
+        silentUpdate = silent;
+        silentDest = dest;
+        Text = silent ? "Arpos Restoran — Yeniləmə" : "Arpos Restoran — Quraşdırma";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(460, 340);
+        ClientSize = silent ? new Size(420, 140) : new Size(460, 340);
         BackColor = Color.FromArgb(36, 30, 24);
         ForeColor = Color.FromArgb(246, 239, 228);
         Font = new Font("Segoe UI", 9F);
@@ -38,6 +46,23 @@ internal sealed class ArposSetup : Form
         {
         }
 
+        if (silent)
+        {
+            Controls.Add(MakeLabel("Arpos Restoran " + ArposVersion.Text + " yazılır…", 16, 16, 388, 22, true));
+            bar = new ProgressBar { Left = 16, Top = 52, Width = 388, Height = 16, Style = ProgressBarStyle.Continuous };
+            Controls.Add(bar);
+            status = MakeLabel("Proqram bağlanır, fayllar yenilənir. data qalır.", 16, 80, 388, 36, false);
+            Controls.Add(status);
+            installBtn = null;
+            pathBox = null;
+            deskBox = null;
+            startBox = null;
+            runBox = null;
+            autoBox = null;
+            Shown += delegate { BeginSilent(); };
+            return;
+        }
+
         Controls.Add(MakeLabel("Arpos Restoran " + ArposVersion.Text, 16, 14, 420, 22, true));
         Controls.Add(MakeLabel("Restoran kassası. Bir server, port 3004.", 16, 38, 420, 18, false));
         Controls.Add(MakeLabel("Quraşdırma yeri", 16, 68, 420, 16, false));
@@ -47,7 +72,9 @@ internal sealed class ArposSetup : Form
             Left = 16,
             Top = 88,
             Width = 330,
-            Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arpos Restoran")
+            Text = string.IsNullOrEmpty(dest)
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arpos Restoran")
+                : dest
         };
         Controls.Add(pathBox);
 
@@ -87,6 +114,24 @@ internal sealed class ArposSetup : Form
         var cancel = new Button { Left = 16, Top = 294, Width = 90, Height = 34, Text = "Bağla", FlatStyle = FlatStyle.Flat };
         cancel.Click += delegate { Close(); };
         Controls.Add(cancel);
+    }
+
+    private void BeginSilent()
+    {
+        try
+        {
+            Apply(silentDest, false, false, false, true);
+            status.Text = "Yeniləndi. Proqram açılır.";
+            bar.Value = 100;
+            Application.DoEvents();
+            Thread.Sleep(400);
+            Close();
+        }
+        catch (Exception ex)
+        {
+            status.Text = "Xəta.";
+            MessageBox.Show(ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private static Label MakeLabel(string text, int x, int y, int w, int h, bool title)
@@ -137,64 +182,9 @@ internal sealed class ArposSetup : Form
             return;
         }
         installBtn.Enabled = false;
-        bar.Value = 5;
-        status.Text = "Köhnə proses bağlanır...";
-        Application.DoEvents();
         try
         {
-            StopRunning(dest);
-            Directory.CreateDirectory(dest);
-            var zip = Path.Combine(Path.GetTempPath(), "arpos-payload.zip");
-            using (var src = Assembly.GetExecutingAssembly().GetManifestResourceStream("payload.zip"))
-            {
-                if (src == null)
-                {
-                    throw new Exception("Quraşdırma paketi tapılmadı.");
-                }
-                using (var fs = File.Create(zip))
-                {
-                    src.CopyTo(fs);
-                }
-            }
-            bar.Value = 40;
-            Application.DoEvents();
-            var tmp = Path.Combine(Path.GetTempPath(), "arpos-extract");
-            if (Directory.Exists(tmp))
-            {
-                Directory.Delete(tmp, true);
-            }
-            ZipFile.ExtractToDirectory(zip, tmp);
-            status.Text = "Fayllar yazılır...";
-            Application.DoEvents();
-            CopyTree(tmp, dest);
-            try { Directory.Delete(tmp, true); } catch { }
-            try { File.Delete(zip); } catch { }
-            bar.Value = 80;
-            var exe = Path.Combine(dest, "ArposRestoran.exe");
-            if (deskBox.Checked)
-            {
-                Shortcut(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), exe);
-            }
-            if (startBox.Checked)
-            {
-                Shortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs"), exe);
-            }
-            if (autoBox.Checked)
-            {
-                var run = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
-                if (run != null)
-                {
-                    run.SetValue("ArposRestoran", "\"" + exe + "\"");
-                    run.Close();
-                }
-            }
-            WriteUninstall(dest);
-            bar.Value = 100;
-            status.Text = "Quraşdırıldı.";
-            if (runBox.Checked && File.Exists(exe))
-            {
-                Process.Start(new ProcessStartInfo { FileName = exe, WorkingDirectory = dest, UseShellExecute = true });
-            }
+            Apply(dest, deskBox.Checked, startBox.Checked, autoBox.Checked, runBox.Checked);
             MessageBox.Show("Arpos Restoran quraşdırıldı.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
             Close();
         }
@@ -206,13 +196,82 @@ internal sealed class ArposSetup : Form
         }
     }
 
+    private void Apply(string dest, bool desk, bool startMenu, bool autoStart, bool runAfter)
+    {
+        dest = Path.GetFullPath(dest.Trim());
+        SetStatus("Köhnə proses bağlanır...", 5);
+        StopRunning(dest);
+        Directory.CreateDirectory(dest);
+        var zip = Path.Combine(Path.GetTempPath(), "arpos-payload-" + Guid.NewGuid().ToString("N").Substring(0, 8) + ".zip");
+        using (var src = Assembly.GetExecutingAssembly().GetManifestResourceStream("payload.zip"))
+        {
+            if (src == null)
+            {
+                throw new Exception("Quraşdırma paketi tapılmadı.");
+            }
+            using (var fs = File.Create(zip))
+            {
+                src.CopyTo(fs);
+            }
+        }
+        SetStatus("Fayllar açılır...", 40);
+        var tmp = Path.Combine(Path.GetTempPath(), "arpos-extract-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        if (Directory.Exists(tmp))
+        {
+            Directory.Delete(tmp, true);
+        }
+        ZipFile.ExtractToDirectory(zip, tmp);
+        SetStatus("Fayllar yazılır...", 55);
+        CopyTree(tmp, dest);
+        try { Directory.Delete(tmp, true); } catch { }
+        try { File.Delete(zip); } catch { }
+        SetStatus("Qısayol...", 80);
+        var exe = Path.Combine(dest, "ArposRestoran.exe");
+        if (desk)
+        {
+            Shortcut(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), exe);
+        }
+        if (startMenu)
+        {
+            Shortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs"), exe);
+        }
+        if (autoStart)
+        {
+            var run = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
+            if (run != null)
+            {
+                run.SetValue("ArposRestoran", "\"" + exe + "\"");
+                run.Close();
+            }
+        }
+        WriteUninstall(dest);
+        SetStatus("Quraşdırıldı.", 100);
+        if (runAfter && File.Exists(exe))
+        {
+            Process.Start(new ProcessStartInfo { FileName = exe, WorkingDirectory = dest, UseShellExecute = true });
+        }
+    }
+
+    private void SetStatus(string text, int value)
+    {
+        if (status != null)
+        {
+            status.Text = text;
+        }
+        if (bar != null)
+        {
+            bar.Value = Math.Max(0, Math.Min(100, value));
+        }
+        Application.DoEvents();
+    }
+
     private static void StopRunning(string dest)
     {
         var root = dest.TrimEnd('\\', '/') + Path.DirectorySeparatorChar;
         KillByNames(root, new[] { "ArposRestoran", "node" });
-        Thread.Sleep(800);
+        Thread.Sleep(1200);
         KillByNames(root, new[] { "ArposRestoran", "node" });
-        Thread.Sleep(400);
+        Thread.Sleep(600);
     }
 
     private static void KillByNames(string root, string[] names)
@@ -239,6 +298,12 @@ internal sealed class ArposSetup : Form
                         continue;
                     }
                     var full = Path.GetFullPath(path);
+                    var procName = "";
+                    try { procName = p.ProcessName; } catch { }
+                    if (procName.IndexOf("Setup", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        continue;
+                    }
                     if (full.StartsWith(root, StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(full, Path.Combine(root.TrimEnd('\\'), "runtime", "node.exe"), StringComparison.OrdinalIgnoreCase))
                     {
@@ -267,8 +332,9 @@ internal sealed class ArposSetup : Form
         foreach (var dir in Directory.GetDirectories(from))
         {
             var name = Path.GetFileName(dir);
-            if (string.Equals(name, "data", StringComparison.OrdinalIgnoreCase) &&
-                Directory.Exists(Path.Combine(to, "data")))
+            if ((string.Equals(name, "data", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(name, "keys", StringComparison.OrdinalIgnoreCase)) &&
+                Directory.Exists(Path.Combine(to, name)))
             {
                 continue;
             }
@@ -279,7 +345,7 @@ internal sealed class ArposSetup : Form
     private static void CopyRetry(string from, string to)
     {
         Exception last = null;
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < 16; i++)
         {
             try
             {
@@ -289,7 +355,7 @@ internal sealed class ArposSetup : Form
             catch (Exception ex)
             {
                 last = ex;
-                Thread.Sleep(300);
+                Thread.Sleep(400);
             }
         }
         throw last ?? new IOException(to);
@@ -332,10 +398,62 @@ internal sealed class ArposSetup : Form
             "rmdir /s /q \"" + dest + "\"\r\n");
     }
 
+    private static bool TryGithubDrop(out string dest)
+    {
+        dest = null;
+        var exeDir = Path.GetDirectoryName(Application.ExecutablePath);
+        if (string.IsNullOrEmpty(exeDir))
+        {
+            return false;
+        }
+        exeDir = Path.GetFullPath(exeDir);
+        var hint = Path.Combine(exeDir, "install-dir.txt");
+        if (File.Exists(hint))
+        {
+            var line = File.ReadAllText(hint).Trim();
+            if (line.Length > 2 && (File.Exists(Path.Combine(line, "server.js")) ||
+                File.Exists(Path.Combine(line, "ArposRestoran.exe"))))
+            {
+                dest = Path.GetFullPath(line);
+                return true;
+            }
+        }
+        var folder = Path.GetFileName(exeDir);
+        var parent = Path.GetDirectoryName(exeDir);
+        var parentName = string.IsNullOrEmpty(parent) ? "" : Path.GetFileName(parent);
+        if (!string.Equals(folder, "updates", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(parentName, "data", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+        dest = Path.GetFullPath(Path.Combine(parent, ".."));
+        return File.Exists(Path.Combine(dest, "server.js")) ||
+            File.Exists(Path.Combine(dest, "ArposRestoran.exe"));
+    }
+
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
         Application.EnableVisualStyles();
-        Application.Run(new ArposSetup());
+        string dest = null;
+        var silent = false;
+        for (var i = 0; i < args.Length; i++)
+        {
+            if (string.Equals(args[i], "/update", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+            {
+                dest = args[++i];
+                silent = true;
+            }
+        }
+        if (!silent && TryGithubDrop(out dest))
+        {
+            silent = true;
+        }
+        if (silent && !string.IsNullOrEmpty(dest))
+        {
+            Application.Run(new ArposSetup(dest, true));
+            return;
+        }
+        Application.Run(new ArposSetup(dest, false));
     }
 }
