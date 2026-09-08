@@ -113,15 +113,15 @@
     </section>
     <section>
       <h2>Yeniləmə</h2>
-      <p class="hint">GitHub release-dən Setup.exe. Əmr: npm run update</p>
+      <p class="hint">Yoxla — yeni versiya varmı. Quraşdır — yaz və yenidən aç. Satış qalır.</p>
       <p id="update-ver" class="hint"></p>
-      <label>Repo
-        <input id="update-repo" type="text" maxlength="80" placeholder="ad/ARPOS-Restoran">
+      <label class="hidden">Repo
+        <input id="update-repo" type="text" maxlength="80">
       </label>
-      <label>Token (özəl repo)
+      <label class="hidden">Token
         <input id="update-token" type="password" maxlength="120">
       </label>
-      <button id="save-update" class="gold" type="button">Yadda saxla</button>
+      <button id="save-update" class="gold hidden" type="button">Yadda saxla</button>
       <button id="update-check" type="button">Yoxla</button>
       <button id="update-apply" type="button">Quraşdır</button>
     </section>
@@ -203,13 +203,13 @@
       </span>
     </label>
     <p class="hint">Düyməyə basın, disk və ya papka seçin. Sonra Yadda saxla və ya İndi nüsxə al.</p>
-    <label>GitHub ehtiyat (özəl repo)
-      <input id="backup-gh-repo" type="text" maxlength="80" placeholder="ad/ehtiyat-ozel">
+    <label class="hidden">GitHub ehtiyat
+      <input id="backup-gh-repo" type="text" maxlength="80">
     </label>
-    <label>GitHub token
+    <label class="hidden">GitHub token
       <input id="backup-gh-token" type="password" maxlength="120">
     </label>
-    <button id="save-backup-gh" class="gold" type="button">Yadda saxla</button>
+    <button id="save-backup-gh" class="gold hidden" type="button">Yadda saxla</button>
     <button id="backup-now" class="gold" type="button">İndi nüsxə al</button>
     <div class="report-table-wrap">
       <table class="report-table">
@@ -275,6 +275,6 @@
   <script src="log-client.js"></script>
   <script src="confirm.js"></script>
   <script src="nav.js"></script>
-  <script src="settings-ui.js?v=6"></script>
+  <script src="settings-ui.js?v=7"></script>
 </body>
 </html>
