@@ -376,16 +376,14 @@ body.has-banner {
 }
 
 .blueprint {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  align-content: flex-start;
-  gap: 20px;
-  min-height: 640px;
-  padding: 20px;
+  position: relative;
+  display: block;
+  min-width: 1280px;
+  min-height: 768px;
+  padding: 0;
   background:
-    linear-gradient(#0000 31px, rgba(90, 70, 40, 0.08) 32px),
-    linear-gradient(90deg, #0000 31px, rgba(90, 70, 40, 0.08) 32px),
+    linear-gradient(#0000 31px, rgba(90, 70, 40, 0.14) 32px),
+    linear-gradient(90deg, #0000 31px, rgba(90, 70, 40, 0.14) 32px),
     #f3ead8;
   background-size: 32px 32px;
   border: 8px solid #8a6d3b;
@@ -393,43 +391,60 @@ body.has-banner {
 }
 
 .room {
-  position: relative;
-  background: rgba(255, 252, 246, 0.95);
-  border: 3px solid #5c4a2e;
+  position: absolute;
+  box-sizing: border-box;
+  background:
+    linear-gradient(#0000 31px, rgba(90, 70, 40, 0.16) 32px),
+    linear-gradient(90deg, #0000 31px, rgba(90, 70, 40, 0.16) 32px),
+    rgba(255, 252, 246, 0.72);
+  background-size: 32px 32px;
+  border: 2px solid #5c4a2e;
   box-shadow: 0 8px 18px rgba(60, 40, 10, 0.12);
-  flex: 0 0 auto;
 }
 
 .room-title {
-  padding: 6px 8px;
+  position: relative;
+  z-index: 2;
+  height: 32px;
+  padding: 0 8px;
   font-size: 0.8rem;
   font-weight: 800;
-  background: rgba(92, 74, 46, 0.12);
+  background: rgba(92, 74, 46, 0.22);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  cursor: grab;
 }
 
 .room-title span {
-  max-width: 140px;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.room-title .tiny {
+  flex: 0 0 auto;
 }
 
 .floor {
   position: absolute;
   left: 0;
   right: 0;
-  top: 34px;
+  top: 32px;
   bottom: 0;
+  background:
+    linear-gradient(#0000 31px, rgba(90, 70, 40, 0.16) 32px),
+    linear-gradient(90deg, #0000 31px, rgba(90, 70, 40, 0.16) 32px);
+  background-size: 32px 32px;
 }
 
 .room.empty .floor {
-  position: relative;
-  top: 0;
-  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .table {
@@ -490,6 +505,17 @@ body.has-banner {
   width: 12px;
   height: 12px;
   cursor: nwse-resize;
+}
+
+.room > .rz {
+  z-index: 3;
+}
+
+.room-title .name-input {
+  flex: 1;
+  width: auto;
+  min-height: 26px;
+  margin: 0;
 }
 
 .btn-rename {

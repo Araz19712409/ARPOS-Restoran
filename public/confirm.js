@@ -72,8 +72,64 @@
     return posAsk(title || 'Təsdiq', text, '', false);
   }
 
+  var pinResolve = null;
+
+  function finishPin(value) {
+    var wrap = document.getElementById('pos-ask-pin');
+    if (wrap) {
+      wrap.classList.add('hidden');
+    }
+    var fn = pinResolve;
+    pinResolve = null;
+    if (fn) {
+      fn(value);
+    }
+  }
+
+  function ensurePinAsk() {
+    var wrap = document.getElementById('pos-ask-pin');
+    if (wrap) {
+      return wrap;
+    }
+    wrap = document.createElement('div');
+    wrap.id = 'pos-ask-pin';
+    wrap.className = 'pos-ask hidden';
+    wrap.innerHTML =
+      '<form class="pos-ask-card" id="pos-ask-pin-form">' +
+      '<h3 id="pos-ask-pin-title"></h3>' +
+      '<p id="pos-ask-pin-text"></p>' +
+      '<label>PIN<input id="pos-ask-pin-input" type="password" inputmode="numeric" maxlength="8" autocomplete="off"></label>' +
+      '<div class="modal-actions">' +
+      '<button id="pos-ask-pin-no" type="button">Xeyr</button>' +
+      '<button class="gold" type="submit">Bəli</button>' +
+      '</div></form>';
+    document.body.appendChild(wrap);
+    document.getElementById('pos-ask-pin-no').addEventListener('click', function () {
+      finishPin('');
+    });
+    document.getElementById('pos-ask-pin-form').addEventListener('submit', function (event) {
+      event.preventDefault();
+      finishPin(document.getElementById('pos-ask-pin-input').value);
+    });
+    return wrap;
+  }
+
+  function askPin(title, text) {
+    return new Promise(function (resolve) {
+      pinResolve = resolve;
+      var wrap = ensurePinAsk();
+      document.getElementById('pos-ask-pin-title').textContent = title || 'PIN';
+      document.getElementById('pos-ask-pin-text').textContent = text || '';
+      document.getElementById('pos-ask-pin-input').value = '';
+      wrap.classList.add('pos-ask-danger');
+      wrap.classList.remove('hidden');
+      document.getElementById('pos-ask-pin-input').focus();
+    });
+  }
+
   global.askDelete = askDelete;
   global.askChange = askChange;
   global.askYes = askYes;
+  global.askPin = askPin;
   global.canDelete = canDelete;
 })(window);

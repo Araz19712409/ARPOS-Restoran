@@ -169,16 +169,21 @@ function writeLayout(data) {
   store.writeJson(DATA_FILE, data);
 }
 
+const GRID = 32;
+
+function snapGrid(value, min, max, fallback) {
+  const n = num(value, min, max, fallback);
+  const snapped = Math.round(n / GRID) * GRID;
+  return Math.min(max, Math.max(min, snapped));
+}
+
 // Otaqda növbəti boş masa yerini tapırıq
 function nextTableSlot(tables) {
-  const size = 88;
-  const gap = 16;
-  const startX = 12;
-  const startY = 12;
-  for (let row = 0; row < 12; row += 1) {
-    for (let col = 0; col < 8; col += 1) {
-      const x = startX + col * (size + gap);
-      const y = startY + row * (size + gap);
+  const size = GRID * 2;
+  for (let row = 0; row < 16; row += 1) {
+    for (let col = 0; col < 12; col += 1) {
+      const x = col * size;
+      const y = row * size;
       const busy = tables.some(function (table) {
         return Math.abs(Number(table.x || 0) - x) < size && Math.abs(Number(table.y || 0) - y) < size;
       });
@@ -187,7 +192,7 @@ function nextTableSlot(tables) {
       }
     }
   }
-  return { x: startX, y: startY };
+  return { x: 0, y: 0 };
 }
 
 // Rəqəmi icazəli intervalda saxlayırıq
@@ -197,6 +202,21 @@ function num(value, min, max, fallback) {
     return fallback;
   }
   return Math.min(max, Math.max(min, Math.round(n)));
+}
+
+function roomHasTables(store, roomId) {
+  return store.tables.some(function (table) {
+    return table.roomId === roomId;
+  });
+}
+
+function pinHasPerm(pin, key) {
+  const user = users.verifyPin(pin);
+  if (!user) {
+    return false;
+  }
+  const staff = users.findStaff(user.id);
+  return !!(staff && users.hasPermission(staff.role, key));
 }
 
 // Bütün çertyojı qaytarırıq
@@ -265,10 +285,10 @@ app.post('/api/rooms', function (req, res) {
       id: store.nextRoomId,
       floorId: floorId,
       name: name,
-      x: num(body.x, 0, 2000, 40),
-      y: num(body.y, 0, 2000, 40),
-      w: num(body.w, 160, 900, 400),
-      h: num(body.h, 140, 700, 280)
+      x: snapGrid(body.x, 0, 2400, 0),
+      y: snapGrid(body.y, 0, 1800, 0),
+      w: snapGrid(body.w, 160, 2400, 384),
+      h: snapGrid(body.h, 128, 1800, 256)
     };
     store.nextRoomId += 1;
     store.rooms.push(room);
@@ -294,16 +314,16 @@ app.put('/api/rooms/:id', function (req, res) {
       room.name = sanitize(body.name, 40);
     }
     if (body.x != null) {
-      room.x = num(body.x, 0, 2000, room.x);
+      room.x = snapGrid(body.x, 0, 2400, room.x);
     }
     if (body.y != null) {
-      room.y = num(body.y, 0, 2000, room.y);
+      room.y = snapGrid(body.y, 0, 1800, room.y);
     }
     if (body.w != null) {
-      room.w = num(body.w, 160, 900, room.w);
+      room.w = snapGrid(body.w, 160, 2400, room.w);
     }
     if (body.h != null) {
-      room.h = num(body.h, 140, 700, room.h);
+      room.h = snapGrid(body.h, 128, 1800, room.h);
     }
     writeLayout(store);
     return room;
@@ -312,11 +332,28 @@ app.put('/api/rooms/:id', function (req, res) {
 
 // Otağı silirik
 app.delete('/api/rooms/:id', function (req, res) {
-  if (!needAnyPerm(req, res, ['layout.delete', 'layout.edit'])) {
+  if (!req.staff) {
+    res.status(401).json({ success: false, message: 'PIN ilə daxil olun.' });
+    return;
+  }
+  const id = Number(req.params.id);
+  const preview = readLayout();
+  const occupied = roomHasTables(preview, id);
+  if (occupied) {
+    const own = users.hasPermission(req.staff.role, 'layout.delete');
+    const viaPin = pinHasPerm(req.body && req.body.confirmPin, 'layout.delete');
+    if (!own && !viaPin) {
+      res.status(403).json({
+        success: false,
+        message: 'Masalı otağı silmək üçün «Çertyoj → Sil» icazəsi və ya o PIN lazımdır.',
+        needDeletePin: true
+      });
+      return;
+    }
+  } else if (!needAnyPerm(req, res, ['layout.delete', 'layout.edit'])) {
     return;
   }
   lockedWrite(res, function () {
-    const id = Number(req.params.id);
     const store = readLayout();
     store.rooms = store.rooms.filter(function (room) { return room.id !== id; });
     store.tables = store.tables.filter(function (table) { return table.roomId !== id; });
@@ -362,10 +399,10 @@ app.post('/api/tables', function (req, res) {
       name: name,
       shape: body.shape === 'round' ? 'round' : 'square',
       capacity: num(body.capacity, 1, 20, 4),
-      x: num(body.x, 8, 1200, slot.x),
-      y: num(body.y, 8, 900, slot.y),
-      w: num(body.w, 48, 360, 80),
-      h: num(body.h, 48, 360, 80),
+      x: snapGrid(body.x, 0, 2400, slot.x),
+      y: snapGrid(body.y, 0, 1800, slot.y),
+      w: snapGrid(body.w, 64, 384, 64),
+      h: snapGrid(body.h, 64, 384, 64),
       status: 'boş'
     };
     store.nextTableId += 1;
@@ -392,16 +429,16 @@ app.put('/api/tables/:id', function (req, res) {
       table.name = sanitize(body.name, 40);
     }
     if (body.x != null) {
-      table.x = num(body.x, 0, 1200, table.x);
+      table.x = snapGrid(body.x, 0, 2400, table.x);
     }
     if (body.y != null) {
-      table.y = num(body.y, 0, 900, table.y);
+      table.y = snapGrid(body.y, 0, 1800, table.y);
     }
     if (body.w != null) {
-      table.w = num(body.w, 48, 360, table.w || 80);
+      table.w = snapGrid(body.w, 64, 384, table.w || 64);
     }
     if (body.h != null) {
-      table.h = num(body.h, 48, 360, table.h || 80);
+      table.h = snapGrid(body.h, 64, 384, table.h || 64);
     }
     writeLayout(store);
     return table;

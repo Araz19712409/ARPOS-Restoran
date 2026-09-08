@@ -5,6 +5,25 @@
   let layout = { floors: [], rooms: [], tables: [] };
   let floorId = null;
   let roomId = null;
+  const GRID = 32;
+
+  function snap(value, min, max) {
+    var n = Math.round(Number(value) / GRID) * GRID;
+    if (!Number.isFinite(n)) {
+      n = min || 0;
+    }
+    if (min != null) {
+      n = Math.max(min, n);
+    }
+    if (max != null) {
+      n = Math.min(max, n);
+    }
+    return n;
+  }
+
+  function canLayout(key) {
+    return window.PosNav && window.PosNav.can(key);
+  }
 
   function say(text, kind) {
     if (window.PosNav && window.PosNav.banner) {
@@ -85,40 +104,81 @@
     return Number(table.h) || 80;
   }
 
-  // Otağın çertyoj ölçüsünü masalara görə hesablayırıq
-  function roomBox(tables) {
-    const pad = 24;
-    let w = 168;
-    let h = 150;
+  function roomMinSize(tables) {
+    let w = GRID * 5;
+    let h = GRID * 5;
     tables.forEach(function (table) {
-      w = Math.max(w, Number(table.x || 12) + tableW(table) + pad);
-      h = Math.max(h, Number(table.y || 12) + tableH(table) + pad);
+      w = Math.max(w, Number(table.x || 0) + tableW(table) + GRID);
+      h = Math.max(h, GRID + Number(table.y || 0) + tableH(table) + GRID);
     });
-    if (tables.length >= 2) {
-      w = Math.max(w, 480);
-      h = Math.max(h, 340);
+    return { w: snap(w, GRID * 5), h: snap(h, GRID * 4) };
+  }
+
+  function roomBox(room, tables) {
+    const min = roomMinSize(tables);
+    return {
+      x: snap(room.x || 0, 0),
+      y: snap(room.y || 0, 0),
+      w: snap(Math.max(min.w, Number(room.w) || min.w), min.w),
+      h: snap(Math.max(min.h, Number(room.h) || min.h), min.h)
+    };
+  }
+
+  function nextRoomSlot() {
+    const rooms = roomsOnFloor();
+    for (let row = 0; row < 8; row += 1) {
+      for (let col = 0; col < 6; col += 1) {
+        const x = col * (GRID * 13);
+        const y = row * (GRID * 9);
+        const hit = rooms.some(function (room) {
+          return snap(room.x || 0) === x && snap(room.y || 0) === y;
+        });
+        if (!hit) {
+          return { x: x, y: y };
+        }
+      }
     }
-    return { w: w, h: h };
+    return { x: 0, y: 0 };
   }
 
   // Otaqda boş yer tapırıq ki, masalar üst-üstə düşməsin
   function nextSlot(tables) {
-    const size = 88;
-    const gap = 16;
-    for (let row = 0; row < 10; row += 1) {
-      for (let col = 0; col < 6; col += 1) {
-        const x = 12 + col * (size + gap);
-        const y = 12 + row * (size + gap);
+    const size = GRID * 2;
+    for (let row = 0; row < 12; row += 1) {
+      for (let col = 0; col < 10; col += 1) {
+        const x = col * size;
+        const y = row * size;
         const busy = tables.some(function (table) {
-          const need = Math.max(size, tableW(table), tableH(table));
-          return Math.abs(Number(table.x || 0) - x) < need && Math.abs(Number(table.y || 0) - y) < need;
+          return Math.abs(Number(table.x || 0) - x) < size && Math.abs(Number(table.y || 0) - y) < size;
         });
         if (!busy) {
           return { x: x, y: y };
         }
       }
     }
-    return { x: 12, y: 12 };
+    return { x: 0, y: 0 };
+  }
+
+  function spreadRooms(rooms) {
+    const seen = {};
+    rooms.forEach(function (room, index) {
+      let x = snap(room.x || 0, 0);
+      let y = snap(room.y || 0, 0);
+      let key = x + ',' + y;
+      if (seen[key]) {
+        x = (index % 4) * GRID * 13;
+        y = Math.floor(index / 4) * GRID * 9;
+        key = x + ',' + y;
+        room.x = x;
+        room.y = y;
+        api('/api/rooms/' + room.id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ x: x, y: y })
+        }).catch(function () {});
+      }
+      seen[key] = true;
+    });
   }
 
   // Ekranı çəkirik
@@ -145,15 +205,22 @@
       tableRoom.value = String(roomId);
     }
 
+    spreadRooms(rooms);
+    let mapW = 1280;
+    let mapH = 768;
     blueprint.innerHTML = rooms.map(function (room) {
       const list = tablesInRoom(room.id);
-      const box = roomBox(list);
+      const box = roomBox(room, list);
+      mapW = Math.max(mapW, box.x + box.w + GRID * 2);
+      mapH = Math.max(mapH, box.y + box.h + GRID * 2);
       const tables = list.map(function (table) {
         const title = table.name || ('Masa ' + table.number);
-        const w = tableW(table);
-        const h = tableH(table);
+        const w = snap(tableW(table), GRID * 2, GRID * 12);
+        const h = snap(tableH(table), GRID * 2, GRID * 12);
+        const left = snap(table.x || 0, 0);
+        const top = snap(table.y || 0, 0);
         return (
-          '<div class="table ' + table.shape + '" data-table="' + table.id + '" style="left:' + Number(table.x || 12) + 'px;top:' + Number(table.y || 12) + 'px;width:' + w + 'px;height:' + h + 'px">' +
+          '<div class="table ' + table.shape + '" data-table="' + table.id + '" style="left:' + left + 'px;top:' + top + 'px;width:' + w + 'px;height:' + h + 'px">' +
             '<button class="del" type="button" data-del-table="' + table.id + '">×</button>' +
             '<button class="btn-rename" type="button" data-rename="' + table.id + '">Ad</button>' +
             '<span class="tname">' + esc(title) + '</span>' +
@@ -166,17 +233,94 @@
       }).join('');
 
       return (
-        '<article class="room' + (list.length ? '' : ' empty') + '" data-room="' + room.id + '" style="width:' + box.w + 'px;height:' + box.h + 'px">' +
+        '<article class="room' + (list.length ? '' : ' empty') + '" data-room="' + room.id + '" style="left:' + box.x + 'px;top:' + box.y + 'px;width:' + box.w + 'px;height:' + box.h + 'px">' +
           '<div class="room-title">' +
-            '<span>' + esc(room.name) + '</span>' +
+            '<span class="rname">' + esc(room.name) + '</span>' +
+            '<button class="tiny" type="button" data-rename-room="' + room.id + '">Ad</button>' +
             '<button class="tiny" type="button" data-del-room="' + room.id + '">Sil</button>' +
           '</div>' +
           '<div class="floor">' + (tables || '<p class="hint">Boş</p>') + '</div>' +
+          '<i class="rz e" data-room-rz="e"></i>' +
+          '<i class="rz s" data-room-rz="s"></i>' +
+          '<i class="rz se" data-room-rz="se"></i>' +
         '</article>'
       );
     }).join('') || '<p class="hint">Bu mərtəbədə otaq yoxdur. Soldan otaq əlavə edin.</p>';
+    if (rooms.length) {
+      blueprint.style.width = snap(mapW, 1280) + 'px';
+      blueprint.style.height = snap(mapH, 768) + 'px';
+    }
 
     bindDrags();
+  }
+
+  function renameRoom(id) {
+    const room = layout.rooms.find(function (item) { return item.id === id; });
+    const card = blueprint.querySelector('[data-room="' + id + '"]');
+    if (!room || !card) {
+      return;
+    }
+    const label = card.querySelector('.rname');
+    if (!label || card.querySelector('.name-input')) {
+      return;
+    }
+    const input = document.createElement('input');
+    input.className = 'name-input';
+    input.type = 'text';
+    input.maxLength = 40;
+    input.value = room.name || '';
+    label.replaceWith(input);
+    input.focus();
+    input.select();
+
+    function finish(ok) {
+      const name = input.value.trim();
+      const oldName = room.name || '';
+      if (!ok || !name) {
+        render();
+        return;
+      }
+      function save() {
+        room.name = name;
+        api('/api/rooms/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name })
+        }).then(function () {
+          say('Otaq adı dəyişildi.', 'ok');
+          render();
+        }).catch(function (error) {
+          say(error.message, 'err');
+          render();
+        });
+      }
+      if (name !== oldName) {
+        window.askChange(oldName).then(function (yes) {
+          if (!yes) {
+            render();
+            return;
+          }
+          save();
+        });
+        return;
+      }
+      save();
+    }
+
+    input.addEventListener('mousedown', function (event) {
+      event.stopPropagation();
+    });
+    input.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        finish(true);
+      }
+      if (event.key === 'Escape') {
+        finish(false);
+      }
+    });
+    input.addEventListener('blur', function () {
+      finish(true);
+    });
   }
 
   // Masanın adını dəyişirik
@@ -257,15 +401,49 @@
     });
   }
 
+  function saveRoomBox(el) {
+    const id = Number(el.dataset.room);
+    const list = tablesInRoom(id);
+    const min = roomMinSize(list);
+    const payload = {
+      x: snap(el.offsetLeft, 0),
+      y: snap(el.offsetTop, 0),
+      w: snap(el.offsetWidth, min.w),
+      h: snap(el.offsetHeight, min.h)
+    };
+    el.style.left = payload.x + 'px';
+    el.style.top = payload.y + 'px';
+    el.style.width = payload.w + 'px';
+    el.style.height = payload.h + 'px';
+    const room = layout.rooms.find(function (item) { return item.id === id; });
+    if (room) {
+      room.x = payload.x;
+      room.y = payload.y;
+      room.w = payload.w;
+      room.h = payload.h;
+    }
+    api('/api/rooms/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
+  }
+
   // Masanın yerini və ölçüsünü saxlayırıq
   function saveTableBox(el) {
     const id = Number(el.dataset.table);
     const payload = {
-      x: el.offsetLeft,
-      y: el.offsetTop,
-      w: el.offsetWidth,
-      h: el.offsetHeight
+      x: snap(el.offsetLeft, 0),
+      y: snap(el.offsetTop, 0),
+      w: snap(el.offsetWidth, GRID * 2, GRID * 12),
+      h: snap(el.offsetHeight, GRID * 2, GRID * 12)
     };
+    el.style.left = payload.x + 'px';
+    el.style.top = payload.y + 'px';
+    el.style.width = payload.w + 'px';
+    el.style.height = payload.h + 'px';
     const table = layout.tables.find(function (item) { return item.id === id; });
     if (table) {
       table.x = payload.x;
@@ -284,12 +462,69 @@
 
   // Masaları sürükləyirik və ölçüsünü dəyişirik
   function bindDrags() {
+    blueprint.querySelectorAll('.room').forEach(function (el) {
+      const title = el.querySelector('.room-title');
+      function startRoom(event, mode) {
+        if (event.target.closest('button') || event.target.closest('input')) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const left = el.offsetLeft;
+        const top = el.offsetTop;
+        const startW = el.offsetWidth;
+        const startH = el.offsetHeight;
+        const min = roomMinSize(tablesInRoom(Number(el.dataset.room)));
+
+        function move(ev) {
+          const dx = ev.clientX - startX;
+          const dy = ev.clientY - startY;
+          if (mode === 'move') {
+            el.style.left = snap(Math.max(0, left + dx), 0) + 'px';
+            el.style.top = snap(Math.max(0, top + dy), 0) + 'px';
+            return;
+          }
+          let w = startW;
+          let h = startH;
+          if (mode === 'e' || mode === 'se') {
+            w = snap(startW + dx, min.w, GRID * 40);
+          }
+          if (mode === 's' || mode === 'se') {
+            h = snap(startH + dy, min.h, GRID * 30);
+          }
+          el.style.width = w + 'px';
+          el.style.height = h + 'px';
+        }
+
+        function stop() {
+          document.removeEventListener('mousemove', move);
+          document.removeEventListener('mouseup', stop);
+          saveRoomBox(el);
+        }
+
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', stop);
+      }
+      if (title) {
+        title.addEventListener('mousedown', function (event) {
+          startRoom(event, 'move');
+        });
+      }
+      el.querySelectorAll('[data-room-rz]').forEach(function (handle) {
+        handle.addEventListener('mousedown', function (event) {
+          startRoom(event, handle.dataset.roomRz);
+        });
+      });
+    });
     blueprint.querySelectorAll('.table').forEach(function (el) {
       el.addEventListener('mousedown', function (event) {
         if (event.target.closest('button')) {
           return;
         }
         event.preventDefault();
+        event.stopPropagation();
         const floor = el.parentElement;
         const startX = event.clientX;
         const startY = event.clientY;
@@ -305,17 +540,17 @@
           if (mode === 'move') {
             const maxX = Math.max(0, floor.clientWidth - el.offsetWidth);
             const maxY = Math.max(0, floor.clientHeight - el.offsetHeight);
-            el.style.left = Math.min(maxX, Math.max(0, left + dx)) + 'px';
-            el.style.top = Math.min(maxY, Math.max(0, top + dy)) + 'px';
+            el.style.left = snap(Math.min(maxX, Math.max(0, left + dx)), 0) + 'px';
+            el.style.top = snap(Math.min(maxY, Math.max(0, top + dy)), 0) + 'px';
             return;
           }
           let w = startW;
           let h = startH;
           if (mode === 'e' || mode === 'se') {
-            w = Math.min(360, Math.max(48, startW + dx));
+            w = snap(startW + dx, GRID * 2, GRID * 12);
           }
           if (mode === 's' || mode === 'se') {
-            h = Math.min(360, Math.max(48, startH + dy));
+            h = snap(startH + dy, GRID * 2, GRID * 12);
           }
           el.style.width = w + 'px';
           el.style.height = h + 'px';
@@ -355,12 +590,17 @@
       if (!floorId) {
         throw new Error('Əvvəlcə mərtəbə seçin.');
       }
+      const slot = nextRoomSlot();
       const created = await api('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           floorId: floorId,
-          name: document.getElementById('room-name').value
+          name: document.getElementById('room-name').value,
+          x: slot.x,
+          y: slot.y,
+          w: GRID * 12,
+          h: GRID * 8
         })
       });
       document.getElementById('room-name').value = '';
@@ -395,8 +635,8 @@
           capacity: Number(document.getElementById('table-capacity').value),
           x: slot.x,
           y: slot.y,
-          w: 80,
-          h: 80
+          w: GRID * 2,
+          h: GRID * 2
         })
       });
       document.getElementById('table-name').value = '';
@@ -439,8 +679,13 @@
   blueprint.addEventListener('click', async function (event) {
     try {
       const renameId = Number(event.target.dataset.rename);
+      const renameRoomId = Number(event.target.dataset.renameRoom);
       const delRoom = Number(event.target.dataset.delRoom);
       const delTable = Number(event.target.dataset.delTable);
+      if (renameRoomId) {
+        renameRoom(renameRoomId);
+        return;
+      }
       if (renameId) {
         renameTable(renameId);
         return;
@@ -452,7 +697,22 @@
         if (!(await window.askDelete(room ? room.name : 'Otaq', extra))) {
           return;
         }
-        await api('/api/rooms/' + delRoom, { method: 'DELETE' });
+        const payload = {};
+        if (count && !canLayout('layout.delete')) {
+          const pin = await window.askPin(
+            'Xüsusi icazə',
+            'Otaqda masa var. «Çertyoj → Sil» icazəsi olan PIN yazın.'
+          );
+          if (!pin) {
+            return;
+          }
+          payload.confirmPin = pin;
+        }
+        await api('/api/rooms/' + delRoom, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
         say((room ? room.name : 'Otaq') + ' silindi.', 'ok');
         await load();
       }

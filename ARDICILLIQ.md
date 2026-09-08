@@ -149,10 +149,11 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 116. [x] 1.1.7 — Sifariş kart ölçüsü brauzer + kassa yaddaşı
 117. [x] 1.1.8 — Kart ölçüsü proqram bağlananda da qalır
 118. [x] 1.1.9 — Kassa / hesabat / anbar / məhsul düymələri qısa
+119. [x] 1.1.10 — Çertyoj otaq ölçü/ad, xana, masalı silmə icazəsi
 
 ## Bitdi (əvvəlki)
 - Ehtiyat nüsxə, terminallar, endirim, çap, PIN, növbə, anbar, alış, menyu bölgüsü (zal / ofis)
 - Ofisiantı dəyiş, əməliyyat jurnalı
 
 ## Qiymət
-İşlək restoran kassası. 1–118 bağlandı.
+İşlək restoran kassası. 1–119 bağlandı.

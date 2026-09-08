@@ -248,7 +248,7 @@
     document.getElementById('update-token').value = upd.token || '';
     var box = document.getElementById('update-ver');
     if (box) {
-      box.textContent = 'İndi: ' + (ver || '1.1.9');
+      box.textContent = 'İndi: ' + (ver || '1.1.10');
     }
   }
 

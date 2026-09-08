@@ -1,5 +1,6 @@
 # Arpos Restoran — versiyalar
 
+- **1.1.10** — 2026-09-08 — Çertyoj: otaq ölçüsü/adı, xana, masalı otaq PIN
 - **1.1.9** — 2026-09-08 — Kassa və digər panellərdə qısa düymələr
 - **1.1.8** — 2026-09-08 — Kart ölçüsü proqram bağlananda da qalır
 - **1.1.7** — 2026-09-08 — Sifariş panelində məhsul kart ölçüsü yadda qalır
