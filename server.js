@@ -1428,10 +1428,16 @@ app.put('/api/settings', function (req, res) {
 
 app.put('/api/prefs', function (req, res) {
   const body = req.body || {};
-  const staff = users.canUser(Number(body.waiterId));
-  if (!staff || !staff.user) {
-    res.status(403).json({ success: false, message: 'PIN ilə daxil olun.' });
+  if (body.orderCardScale == null) {
+    res.status(400).json({ success: false, message: 'Ölçü göndərilmədi.' });
     return;
+  }
+  if (body.waiterId) {
+    const staff = users.canUser(Number(body.waiterId));
+    if (!staff || !staff.user) {
+      res.status(403).json({ success: false, message: 'PIN ilə daxil olun.' });
+      return;
+    }
   }
   lockedWrite(res, function () {
     return settings.writeSettings({

@@ -430,12 +430,13 @@
       }
       if (!scaleHydrated) {
         scaleHydrated = true;
-        var localScale = storedScale();
-        if (localScale != null) {
-          applyScale(localScale, false);
-          persistScale();
-        } else if (settings.orderCardScale != null) {
+        if (settings.orderCardScale != null) {
           applyScale(settings.orderCardScale, false);
+        } else {
+          var localScale = storedScale();
+          if (localScale != null) {
+            applyScale(localScale, false);
+          }
         }
       }
       if (!floorId && floors[0]) {
@@ -2537,8 +2538,6 @@
   if (savedFloorW) {
     setFloorWidth(savedFloorW, false);
   }
-  applyScale(cardScale, false);
-
   var resizer = document.getElementById('floor-resizer');
   resizer.addEventListener('mousedown', function (event) {
     event.preventDefault();
@@ -2571,30 +2570,51 @@
   });
   window.addEventListener('pos-pin-changed', function () {
     if (waiter) {
-      persistScale();
       load();
     }
   });
+  function scalePayload() {
+    var body = { orderCardScale: cardScale };
+    if (waiter && waiter.user) {
+      body.waiterId = waiter.user.id;
+    }
+    return JSON.stringify(body);
+  }
+
+  function sendScale(keepalive) {
+    var opts = {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: scalePayload()
+    };
+    if (keepalive) {
+      opts.keepalive = true;
+    }
+    return api('/api/prefs', opts).catch(function () {});
+  }
+
   function persistScale() {
     try {
       window.localStorage.setItem('orderCardScale', String(cardScale));
     } catch (error) {}
-    if (!waiter) {
-      return;
-    }
     if (scaleTimer) {
       window.clearTimeout(scaleTimer);
     }
     scaleTimer = window.setTimeout(function () {
-      api('/api/prefs', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          waiterId: waiter.user.id,
-          orderCardScale: cardScale
-        })
-      }).catch(function () {});
-    }, 400);
+      scaleTimer = 0;
+      sendScale(false);
+    }, 150);
+  }
+
+  function flushScale() {
+    if (scaleTimer) {
+      window.clearTimeout(scaleTimer);
+      scaleTimer = 0;
+    }
+    try {
+      window.localStorage.setItem('orderCardScale', String(cardScale));
+    } catch (error) {}
+    sendScale(true);
   }
 
   function applyScale(value, persist) {
@@ -2613,10 +2633,6 @@
     }
     if (persist !== false) {
       persistScale();
-    } else {
-      try {
-        window.localStorage.setItem('orderCardScale', String(cardScale));
-      } catch (error) {}
     }
   }
 
@@ -2628,6 +2644,12 @@
   });
   document.getElementById('scale-up').addEventListener('click', function () {
     applyScale(cardScale + 1);
+  });
+  window.addEventListener('pagehide', flushScale);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      flushScale();
+    }
   });
 
   window.setInterval(function () {
