@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mətbəx</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="products.css">
+  <link rel="stylesheet" href="orders.css">
+  <link rel="stylesheet" href="kitchen.css">
+</head>
+<body class="kitchen-page" data-need="kitchen.view">
+  <header class="top">
+    <div>
+      <h1>Mətbəx</h1>
+      <p id="waiter-line">Qəbul olunan sətirlər. Hazır olanda basın.</p>
+    </div>
+    <nav class="app-nav waiter-nav">
+      <a href="/orders.html" data-need="orders.create">Sifariş</a>
+      <a class="active" href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+      <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
+      <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
+      <details class="more-nav">
+        <summary>Ofis</summary>
+        <div class="more-nav-list">
+          <a href="/reports.html" data-need="reports.view">Hesabat</a>
+          <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
+          <a href="/" data-need="layout.edit">Çertyoj</a>
+          <a href="/products.html" data-need="products.edit">Məhsullar</a>
+          <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a href="/printers.html" data-need="printers.view">Printerlər</a>
+          <a href="/users.html" data-need="users.view">İstifadəçilər</a>
+          <a href="/settings.html" data-need="settings.view">Ayarlar</a>
+        </div>
+      </details>
+      <button id="logout" type="button">Çıxış</button>
+    </nav>
+  </header>
+
+  <div id="print-queue-box" class="print-queue-box hidden" data-queue="station"></div>
+
+  <main class="kitchen-main">
+    <div id="station-tabs" class="group-tabs"></div>
+    <p id="message" class="message"></p>
+    <div id="kitchen-board" class="kitchen-board"></div>
+  </main>
+
+  <div id="pin-lock" class="pin-lock">
+    <div class="pin-card">
+      <p class="eyebrow">Stansiya girişi</p>
+      <h2>PIN yazın</h2>
+      <p id="pin-dots" class="pin-dots"></p>
+      <p id="pin-error" class="message"></p>
+      <div id="pin-pad" class="pin-pad"></div>
+    </div>
+  </div>
+
+  <script src="log-client.js"></script>
+  <script src="nav.js"></script>
+  <script src="kitchen-ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Restoran çertyojı</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body data-need="layout.edit">
+  <header class="top">
+    <div>
+      <h1>Restoran çertyojı</h1>
+      <p>Mərtəbə → otaq → masa. Adı siz yazın, yeri çertyojda sürükləyin.</p>
+    </div>
+    <nav class="app-nav waiter-nav">
+      <a href="/orders.html">Sifariş</a>
+      <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+      <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
+      <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
+      <details class="more-nav">
+        <summary>Ofis</summary>
+        <div class="more-nav-list">
+          <a href="/reports.html" data-need="reports.view">Hesabat</a>
+          <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
+          <a class="active" href="/" data-need="layout.edit">Çertyoj</a>
+          <a href="/products.html" data-need="products.edit">Məhsullar</a>
+          <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a href="/printers.html" data-need="printers.view">Printerlər</a>
+          <a href="/users.html" data-need="users.view">İstifadəçilər</a>
+          <a href="/settings.html" data-need="settings.view">Ayarlar</a>
+        </div>
+      </details>
+      <button id="logout" type="button">Çıxış</button>
+    </nav>
+  </header>
+
+  <aside class="panel">
+    <section>
+      <h2>Mərtəbə</h2>
+      <div class="row">
+        <input id="floor-name" type="text" placeholder="məs. 1-ci mərtəbə" maxlength="40">
+        <button id="add-floor" type="button">Əlavə et</button>
+      </div>
+      <div id="floor-list" class="list"></div>
+    </section>
+
+    <section>
+      <h2>Otaq</h2>
+      <div class="row">
+        <input id="room-name" type="text" placeholder="məs. Zal, otaq 2" maxlength="40">
+        <button id="add-room" type="button">Əlavə et</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Yeni masa</h2>
+      <label>Otaq
+        <select id="table-room"></select>
+      </label>
+      <label>Masanın adı
+        <input id="table-name" type="text" maxlength="40" placeholder="məs. Pəncərə yanı">
+      </label>
+      <label>Forma
+        <select id="table-shape">
+          <option value="square">Düzbucaqlı masa</option>
+          <option value="round">Yumru masa</option>
+        </select>
+      </label>
+      <label>Tutum
+        <select id="table-capacity">
+          <option value="2">2 nəfər</option>
+          <option value="4" selected>4 nəfər</option>
+          <option value="6">6 nəfər</option>
+          <option value="8">8 nəfər</option>
+          <option value="10">10 nəfər</option>
+        </select>
+      </label>
+      <button id="add-table" class="primary" type="button">Masa yarat</button>
+    </section>
+
+    <p id="message" class="message"></p>
+    <p class="hint">Masanı sürükləyin. Ölçünü küncdən dəyişin. Ad üçün masanın üstündəki «Ad» düyməsinə basın.</p>
+  </aside>
+
+  <main class="blueprint-wrap">
+    <div class="blueprint" id="blueprint"></div>
+  </main>
+
+  <script src="log-client.js"></script>
+  <script src="confirm.js"></script>
+  <script src="nav.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

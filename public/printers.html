@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Printerlər</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="products.css">
+  <link rel="stylesheet" href="printers.css">
+</head>
+<body class="catalog-page" data-need="printers.view">
+  <header class="top">
+    <div>
+      <h1>Printerlər</h1>
+      <p>IP üzərindən mətbəx, manqal, bar və kassa. Qoşulmanı yoxlayın, test çapı göndərin.</p>
+    </div>
+    <nav class="app-nav waiter-nav">
+      <a href="/orders.html">Sifariş</a>
+      <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+      <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
+      <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
+      <details class="more-nav">
+        <summary>Ofis</summary>
+        <div class="more-nav-list">
+          <a href="/reports.html" data-need="reports.view">Hesabat</a>
+          <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
+          <a href="/" data-need="layout.edit">Çertyoj</a>
+          <a href="/products.html" data-need="products.edit">Məhsullar</a>
+          <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a class="active" href="/printers.html" data-need="printers.view">Printerlər</a>
+          <a href="/users.html" data-need="users.view">İstifadəçilər</a>
+          <a href="/settings.html" data-need="settings.view">Ayarlar</a>
+        </div>
+      </details>
+      <button id="logout" type="button">Çıxış</button>
+    </nav>
+  </header>
+
+  <aside class="panel catalog-side">
+    <section>
+      <h2>Necə işləyir</h2>
+      <p class="hint">Hər stansiyanın öz printeri olur. Əsas düşsə ehtiyat işə düşür. Getməsə növbəyə yazılır, avtomatik təkrarlanır.</p>
+    </section>
+    <section>
+      <h2>Şəbəkə</h2>
+      <p class="hint">Termal printerlərin əksəriyyəti <b>9100</b> portunda işləyir. Kompüter və printer eyni şəbəkədə olmalıdır.</p>
+    </section>
+    <p id="message" class="message"></p>
+    <button id="check-all" type="button">Hamısını yoxla</button>
+    <button id="flush-queue" type="button">Növbəni göndər</button>
+  </aside>
+
+  <main class="catalog-main">
+    <div class="catalog-toolbar">
+      <div>
+        <p class="eyebrow">Şəbəkə printerləri</p>
+        <h2>Stansiya və kassa</h2>
+      </div>
+      <button id="add-printer" class="gold" type="button">Yeni printer</button>
+    </div>
+    <div id="printer-grid" class="printer-grid"></div>
+    <h2 class="queue-title">Çap növbəsi</h2>
+    <p class="hint">Uğursuz çeklər 15 saniyədən bir, 8 dəfəyə qədər təkrarlanır.</p>
+    <div class="queue-wrap">
+      <table class="queue-table">
+        <thead>
+          <tr>
+            <th>Nə</th>
+            <th>Masa</th>
+            <th>Cəhd</th>
+            <th>Vəziyyət</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="queue-body"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <form id="printer-form" class="modal-card printer-form">
+      <h3 id="modal-title">Yeni printer</h3>
+      <div class="printer-fields">
+        <label>Ad
+          <input id="printer-name" type="text" maxlength="40" required placeholder="Mətbəx-1">
+        </label>
+        <label>IP
+          <input id="printer-host" type="text" maxlength="80" required placeholder="192.168.1.50">
+        </label>
+        <label>Port
+          <input id="printer-port" type="number" min="1" max="65535" value="9100" required>
+        </label>
+        <label>Rol
+          <select id="printer-role">
+            <option value="station">Stansiya</option>
+            <option value="receipt">Kassa</option>
+          </select>
+        </label>
+        <label id="station-wrap" class="span-2">Stansiya
+          <select id="printer-station"></select>
+        </label>
+        <label>Kağız
+          <select id="printer-paper">
+            <option value="80">80 mm</option>
+            <option value="58">58 mm</option>
+          </select>
+        </label>
+        <label>Nüsxə
+          <select id="printer-copies">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </label>
+        <label>Sətir
+          <select id="printer-chars">
+            <option value="32">32</option>
+            <option value="42">42</option>
+            <option value="48" selected>48</option>
+            <option value="64">64</option>
+          </select>
+        </label>
+        <label>Boşluq
+          <select id="printer-margin">
+            <option value="0" selected>0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="4">4</option>
+            <option value="8">8</option>
+          </select>
+        </label>
+        <label>Şrift
+          <select id="printer-font">
+            <option value="A" selected>Adi</option>
+            <option value="B">Kiçik</option>
+          </select>
+        </label>
+        <div class="printer-flags span-2">
+          <label class="check-line"><input id="printer-big-title" type="checkbox"> Böyük başlıq</label>
+          <label class="check-line"><input id="printer-backup" type="checkbox"> Ehtiyat</label>
+          <label class="check-line"><input id="printer-enabled" type="checkbox" checked> Aktiv</label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="cancel-modal" type="button">Bağla</button>
+        <button class="gold" type="submit">Yadda saxla</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="log-client.js"></script>
+  <script src="confirm.js"></script>
+  <script src="nav.js"></script>
+  <script src="printers-ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+.day-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.4rem;
+  color: #f6efe4;
+  margin: 4px 0 14px;
+}
+
+.report-table tfoot td {
+  font-weight: 800;
+  color: #e2b65a;
+  border-top: 1px solid #c9a56a;
+  background: #2a241c;
+}
+
+#rep-print {
+  background: #3d4f6b;
+  color: #e8f1ff;
+  border: 0;
+}
+
+@media print {
+  .top,
+  .pin-lock,
+  .report-toolbar,
+  .message,
+  #logout {
+    display: none !important;
+  }
+
+  body,
+  .catalog-page,
+  .report-page {
+    background: #fff;
+    color: #111;
+    display: block;
+  }
+
+  .report-main {
+    padding: 0;
+  }
+
+  .day-title,
+  .report-main h2,
+  .report-kpi span,
+  .report-kpi strong,
+  .report-table th,
+  .report-table td,
+  .report-table tfoot td {
+    color: #111;
+  }
+
+  .report-kpi,
+  .report-table-wrap,
+  .report-table th,
+  .report-table tfoot td {
+    background: #fff;
+    border-color: #bbb;
+  }
+}

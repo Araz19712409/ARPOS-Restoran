@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — İstifadəçilər</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="products.css">
+  <link rel="stylesheet" href="users.css">
+</head>
+<body class="catalog-page" data-need="users.view">
+  <header class="top">
+    <div>
+      <h1>İstifadəçilər və hüquqlar</h1>
+      <p>Rol seçin, icazələri işarələyin. Gələcək işlər eyni hüquqlara bağlanacaq.</p>
+    </div>
+    <nav class="app-nav waiter-nav">
+      <a href="/orders.html">Sifariş</a>
+      <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+      <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
+      <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
+      <details class="more-nav">
+        <summary>Ofis</summary>
+        <div class="more-nav-list">
+          <a href="/reports.html" data-need="reports.view">Hesabat</a>
+          <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
+          <a href="/" data-need="layout.edit">Çertyoj</a>
+          <a href="/products.html" data-need="products.edit">Məhsullar</a>
+          <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a href="/printers.html" data-need="printers.view">Printerlər</a>
+          <a class="active" href="/users.html" data-need="users.view">İstifadəçilər</a>
+          <a href="/settings.html" data-need="settings.view">Ayarlar</a>
+        </div>
+      </details>
+      <button id="logout" type="button">Çıxış</button>
+    </nav>
+  </header>
+
+  <aside class="panel catalog-side">
+    <section>
+      <h2>Rollar</h2>
+      <div class="row">
+        <input id="role-name" type="text" placeholder="məs. Baş ofisiant" maxlength="40">
+        <button id="add-role" type="button">Əlavə et</button>
+      </div>
+      <div id="role-list" class="group-list"></div>
+    </section>
+    <p id="message" class="message"></p>
+    <p class="hint">İlk admin PIN: 0000. Sonra dəyişin. Silmə gələcəkdə yalnız icazəsi olan adminə qalacaq.</p>
+  </aside>
+
+  <main class="catalog-main">
+    <div class="catalog-toolbar">
+      <div>
+        <p class="eyebrow">Seçilmiş rol</p>
+        <h2 id="role-title">Rol seçin</h2>
+      </div>
+      <button id="add-user" class="gold" type="button">Yeni istifadəçi</button>
+    </div>
+
+    <section class="perm-box">
+      <p class="eyebrow">İcazələr</p>
+      <div id="perm-grid" class="perm-grid"></div>
+      <button id="save-perms" class="gold" type="button">İcazələri saxla</button>
+    </section>
+
+    <section>
+      <p class="eyebrow">Bu roldakı istifadəçilər</p>
+      <div id="user-grid" class="user-grid"></div>
+    </section>
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <form id="user-form" class="modal-card">
+      <h3 id="modal-title">Yeni istifadəçi</h3>
+      <label>Ad
+        <input id="user-name" type="text" maxlength="40" required>
+      </label>
+      <label>Rol
+        <select id="user-role"></select>
+      </label>
+      <label>PIN (6-8 rəqəm)
+        <input id="user-pin" type="password" inputmode="numeric" maxlength="8" placeholder="dəyişməsə boş buraxın">
+      </label>
+      <label class="check-line">
+        <input id="user-active" type="checkbox" checked>
+        Aktiv
+      </label>
+      <p class="eyebrow">Qrafik</p>
+      <div id="user-days" class="user-days"></div>
+      <div class="product-price-row">
+        <label>Başla
+          <input id="user-from" type="time">
+        </label>
+        <label>Bitir
+          <input id="user-to" type="time">
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button id="cancel-modal" type="button">Bağla</button>
+        <button class="gold" type="submit">Yadda saxla</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="log-client.js"></script>
+  <script src="confirm.js"></script>
+  <script src="nav.js"></script>
+  <script src="users-ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+.report-page .receipt-card {
+  width: min(420px, 100%);
+}
+
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 4mm;
+  }
+
+  html,
+  body {
+    display: block !important;
+    width: 74mm !important;
+    max-width: 74mm !important;
+    background: #fff !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #receipt-modal,
+  #receipt-modal * {
+    visibility: visible;
+  }
+
+  .top,
+  .report-toolbar,
+  .report-table-wrap,
+  .pin-lock,
+  .modal-actions,
+  #message,
+  #receipt-msg {
+    display: none !important;
+  }
+
+  #receipt-modal.modal,
+  #receipt-modal {
+    position: static !important;
+    inset: auto !important;
+    width: 74mm !important;
+    max-width: 74mm !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+    display: block !important;
+  }
+
+  #receipt-modal .modal-card,
+  .receipt-card,
+  .receipt-paper {
+    width: 74mm !important;
+    max-width: 74mm !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+    display: block !important;
+  }
+}

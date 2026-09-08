@@ -1,0 +1,176 @@
+.printer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.printer-card {
+  background: #2a241c;
+  border: 1px solid #4a3d2d;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.22);
+}
+
+.printer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.printer-card h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.2rem;
+}
+
+.status {
+  min-width: 72px;
+  text-align: center;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.status.unknown {
+  background: #3d3428;
+  color: #c9b89a;
+}
+
+.status.ok {
+  background: #1f3d28;
+  color: #8ee0a4;
+}
+
+.status.bad {
+  background: #3d1f1f;
+  color: #f0a0a0;
+}
+
+.status.off {
+  background: #2a241c;
+  color: #8a7d68;
+  border: 1px solid #5a4c3a;
+}
+
+.meta {
+  color: #d8c7aa;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.meta b {
+  color: #f4ead8;
+}
+
+.check-note {
+  margin-top: 10px;
+  min-height: 2.4em;
+  color: #c9b89a;
+  font-size: 0.8rem;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.check-line {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.check-line input {
+  width: auto;
+  min-height: 0;
+}
+
+.catalog-page .panel b {
+  color: #e2b65a;
+}
+
+.queue-title {
+  margin-top: 28px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.35rem;
+  color: #f6efe4;
+}
+
+.queue-wrap {
+  overflow: auto;
+  border: 1px solid #4a3d2d;
+  border-radius: 12px;
+}
+
+.queue-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.queue-table th,
+.queue-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #3d3428;
+  color: #f6efe4;
+}
+
+.queue-table th {
+  background: #2a241c;
+  color: #d8c7aa;
+  font-size: 0.8rem;
+}
+
+#modal .printer-form {
+  width: min(560px, 94vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.printer-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  overflow: auto;
+}
+
+.printer-fields label {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.printer-fields .span-2 {
+  grid-column: 1 / -1;
+}
+
+.printer-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: center;
+}
+
+.printer-form .modal-actions {
+  position: sticky;
+  bottom: 0;
+  margin: 0;
+  padding-top: 10px;
+  background: #241e18;
+  border-top: 1px solid #4a3d2d;
+}
+
+.printer-form .modal-actions .gold {
+  min-width: 150px;
+  min-height: 44px;
+  font-size: 1.05rem;
+}

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Müştəri ekranı</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="orders.css">
+  <style>
+    .display-page { height: 100vh; padding: 16px 24px; overflow: hidden; }
+    .display-page h1 { font-family: Georgia, serif; font-size: 2rem; margin: 0 0 8px; }
+    .display-page .d-total { font-size: 2.2rem; color: #e2b65a; margin: 12px 0 0; }
+    .display-page .d-row { display: flex; justify-content: space-between; font-size: 1.2rem; margin: 0 0 8px; }
+  </style>
+</head>
+<body class="order-page display-page" data-need="orders.create|payments.take|kitchen.view">
+  <h1 id="d-table">Masa</h1>
+  <p id="d-status" class="hint"></p>
+  <div id="d-lines"></div>
+  <p id="d-total" class="d-total"></p>
+  <script src="nav.js"></script>
+  <script>
+    (function () {
+      function money(v) { return Number(v || 0).toFixed(2); }
+      function termId() {
+        try {
+          var q = new URLSearchParams(window.location.search).get('terminalId');
+          if (q) {
+            return Number(q) || 0;
+          }
+          var row = JSON.parse(window.localStorage.getItem('posTerminal') || 'null');
+          return row && row.id ? Number(row.id) : 0;
+        } catch (error) {
+          return 0;
+        }
+      }
+      function draw() {
+        fetch('/api/display?terminalId=' + encodeURIComponent(termId())).then(function (res) { return res.json(); }).then(function (body) {
+          var data = body.data || {};
+          if (data.empty) {
+            document.getElementById('d-table').textContent = 'Xoş gəlmisiniz';
+            document.getElementById('d-status').textContent = '';
+            document.getElementById('d-lines').innerHTML = '';
+            document.getElementById('d-total').textContent = '';
+            return;
+          }
+          document.getElementById('d-table').textContent = data.tableName || 'Hesab';
+          document.getElementById('d-status').textContent = data.status === 'paid' ? 'Ödənildi' : 'Açıq hesab';
+          document.getElementById('d-lines').innerHTML = (data.items || []).map(function (item) {
+            return '<div class="d-row"><span>' + item.qty + '× ' + item.name +
+              '</span><strong>' + money(item.salePrice * item.qty) + '</strong></div>';
+          }).join('');
+          document.getElementById('d-total').textContent = money(data.total) + ' AZN';
+        }).catch(function () { return null; });
+      }
+      draw();
+      window.setInterval(draw, 2500);
+    })();
+  </script>
+</body>
+</html>

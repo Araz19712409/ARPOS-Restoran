@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Satış hesabatı</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="products.css">
+  <link rel="stylesheet" href="reports.css">
+  <link rel="stylesheet" href="dates.css">
+</head>
+<body class="catalog-page report-page" data-need="reports.view">
+  <header class="top">
+    <div>
+      <h1>Satış hesabatı</h1>
+      <p id="waiter-line">Ödənilmiş satışlar, saatlıq yük, ABC, ləğv, endirim və geri.</p>
+    </div>
+    <nav class="app-nav waiter-nav">
+      <a href="/orders.html">Sifariş</a>
+      <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+      <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
+      <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
+      <details class="more-nav">
+        <summary>Ofis</summary>
+        <div class="more-nav-list">
+          <a class="active" href="/reports.html" data-need="reports.view">Hesabat</a>
+          <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
+          <a href="/" data-need="layout.edit">Çertyoj</a>
+          <a href="/products.html" data-need="products.edit">Məhsullar</a>
+          <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a href="/printers.html" data-need="printers.view">Printerlər</a>
+          <a href="/users.html" data-need="users.view">İstifadəçilər</a>
+          <a href="/settings.html" data-need="settings.view">Ayarlar</a>
+        </div>
+      </details>
+      <button id="logout" type="button">Çıxış</button>
+    </nav>
+  </header>
+
+  <main class="catalog-main report-main">
+    <div class="report-toolbar">
+      <div class="report-presets">
+        <button type="button" data-range="today">Bu gün</button>
+        <button type="button" data-range="yesterday">Dünən</button>
+        <button type="button" data-range="days7">7 gün</button>
+        <button type="button" data-range="week">Bu həftə</button>
+        <button type="button" data-range="month">Bu ay</button>
+        <button type="button" data-range="lastmonth">Keçən ay</button>
+      </div>
+      <label>Başlanğıc
+        <input id="rep-from" type="date">
+      </label>
+      <label>Son
+        <input id="rep-to" type="date">
+      </label>
+      <label>Filial
+        <select id="rep-branch">
+          <option value="">Hamısı</option>
+        </select>
+      </label>
+      <button id="rep-load" class="gold" type="button">Göstər</button>
+    </div>
+    <p id="message" class="message"></p>
+    <div id="report-kpis" class="report-kpis"></div>
+    <h2>Saatlıq yük</h2>
+    <p class="hint">Ödəniş saatına görə çek sayı və cəm.</p>
+    <div id="hour-strip" class="hour-strip"></div>
+    <h2>Satışlar</h2>
+    <div class="report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Vaxt</th>
+            <th>Masa</th>
+            <th>Ofisiant</th>
+            <th>Üsul</th>
+            <th>Nağd</th>
+            <th>Kart</th>
+            <th>İlkin</th>
+            <th>Xidmət</th>
+            <th>Bonus</th>
+            <th>Cəm</th>
+          </tr>
+        </thead>
+        <tbody id="sales-body"></tbody>
+      </table>
+    </div>
+    <h2>Ofisiantlar</h2>
+    <div class="report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Ofisiant</th>
+            <th>Satış</th>
+            <th>Cəm</th>
+            <th>Xidmət</th>
+            <th>Bonus</th>
+          </tr>
+        </thead>
+        <tbody id="waiter-body"></tbody>
+      </table>
+    </div>
+    <h2>Məhsullar</h2>
+    <div class="report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Məhsul</th>
+            <th>Sinif</th>
+            <th>Say</th>
+            <th>Cəm</th>
+            <th>Pay</th>
+          </tr>
+        </thead>
+        <tbody id="product-body"></tbody>
+      </table>
+    </div>
+    <h2>Ləğvlər</h2>
+    <div class="report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Vaxt</th>
+            <th>Masa</th>
+            <th>Məhsul</th>
+            <th>Say</th>
+            <th>Məbləğ</th>
+            <th>Kim</th>
+          </tr>
+        </thead>
+        <tbody id="void-body"></tbody>
+      </table>
+    </div>
+    <h2>Endirimlər</h2>
+    <div class="report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Vaxt</th>
+            <th>Masa</th>
+            <th>Ofisiant</th>
+            <th>Məbləğ</th>
+            <th>Səbəb</th>
+          </tr>
+        </thead>
+        <tbody id="discount-body"></tbody>
+      </table>
+    </div>
+    <h2>Qaytarmalar</h2>
+    <div class="report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Vaxt</th>
+            <th>Masa</th>
+            <th>Ofisiant</th>
+            <th>Məbləğ</th>
+            <th>Səbəb</th>
+          </tr>
+        </thead>
+        <tbody id="refund-body"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <div id="pin-lock" class="pin-lock">
+    <div class="pin-card">
+      <p class="eyebrow">Hesabat girişi</p>
+      <h2>PIN yazın</h2>
+      <p id="pin-dots" class="pin-dots"></p>
+      <p id="pin-error" class="message"></p>
+      <div id="pin-pad" class="pin-pad"></div>
+    </div>
+  </div>
+
+  <script src="log-client.js"></script>
+  <script src="nav.js"></script>
+  <script src="dates.js"></script>
+  <script src="reports-ui.js"></script>
+</body>
+</html>

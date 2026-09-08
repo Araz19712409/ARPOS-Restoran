@@ -1,0 +1,120 @@
+.pos-date-wrap {
+  position: relative;
+  display: block;
+}
+
+input.pos-date-native {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pos-date-btn {
+  width: 100%;
+  min-height: 44px;
+  min-width: 148px;
+  padding: 8px 12px;
+  font-size: 1.05rem;
+  text-align: left;
+}
+
+#pos-date-modal {
+  z-index: 40;
+}
+
+#pos-date-modal .modal-card {
+  width: min(430px, 100%);
+  max-height: min(92vh, 700px);
+  overflow: auto;
+  gap: 8px;
+}
+
+.pos-cal-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pos-cal-head strong {
+  flex: 1;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.pos-cal-head button {
+  min-width: 44px;
+  min-height: 40px;
+}
+
+.pos-cal-week,
+.pos-cal-days,
+.pos-cal-hours,
+.pos-cal-mins,
+.pos-cal-months,
+.pos-cal-quick {
+  display: grid;
+  gap: 4px;
+}
+
+.pos-cal-week,
+.pos-cal-days {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.pos-cal-week span {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #d8c7aa;
+}
+
+.pos-cal-days button,
+.pos-cal-hours button,
+.pos-cal-mins button,
+.pos-cal-months button,
+.pos-cal-quick button {
+  min-height: 38px;
+  padding: 0 4px;
+}
+
+.pos-cal-days button.mute {
+  opacity: 0.35;
+}
+
+.pos-cal-days button.active,
+.pos-cal-hours button.active,
+.pos-cal-mins button.active,
+.pos-cal-months button.active,
+.pos-cal-quick button.active {
+  background: #c9842a;
+  color: #fff;
+  border-color: #c9842a;
+}
+
+.pos-cal-hours {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.pos-cal-mins,
+.pos-cal-quick {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pos-cal-months {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pos-cal-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #d8c7aa;
+}
+
+@media (max-height: 720px) {
+  .pos-cal-days button,
+  .pos-cal-hours button,
+  .pos-cal-mins button {
+    min-height: 32px;
+  }
+}

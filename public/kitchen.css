@@ -1,0 +1,99 @@
+.kitchen-page {
+  background:
+    radial-gradient(circle at top, #3a3228 0%, #1c1813 46%, #14110e 100%);
+  color: #f4ead8;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto 1fr;
+}
+
+.kitchen-page .top {
+  padding: 10px 16px;
+}
+
+.kitchen-main {
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.kitchen-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  align-content: start;
+  gap: 12px;
+}
+
+.kitchen-empty {
+  grid-column: 1 / -1;
+  color: #c9b89a;
+  font-size: 1.2rem;
+  padding: 40px 8px;
+  text-align: center;
+}
+
+.kitchen-card {
+  background: #2a241c;
+  border: 1px solid #5a4c3a;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 168px;
+}
+
+.kitchen-card.age-wait {
+  border-color: #c9842a;
+}
+
+.kitchen-card.age-late {
+  border-color: #c45a4a;
+  background: #3a221c;
+}
+
+.kitchen-card .meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #c9b89a;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.kitchen-card h3 {
+  font-size: 1.45rem;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.kitchen-card .qty {
+  color: #e2b65a;
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+.kitchen-card .note {
+  color: #9fd0e8;
+  font-weight: 700;
+}
+
+.kitchen-card .who {
+  color: #9b8b72;
+  font-size: 0.82rem;
+}
+
+.kitchen-card button {
+  margin-top: auto;
+  min-height: 52px;
+  background: #1a7a4c;
+  color: #f2fff7;
+  border: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.kitchen-card button:hover {
+  background: #21945c;
+}

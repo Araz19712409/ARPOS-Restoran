@@ -1,0 +1,16 @@
+{
+  "name": "arpos-restoran",
+  "version": "1.1.0",
+  "productName": "Arpos Restoran",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test.js",
+    "license": "node scripts/make-license.js",
+    "setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-setup.ps1"
+  },
+  "description": "Arpos Restoran — restoran kassası",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}

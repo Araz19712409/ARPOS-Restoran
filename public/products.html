@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Məhsullar</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="products.css">
+</head>
+<body class="catalog-page" data-need="products.edit">
+  <header class="top">
+    <div>
+      <h1>Məhsul kataloqu</h1>
+      <p>Qrup, qiymət, şəkil və sifarişin gedəcəyi yer.</p>
+    </div>
+    <nav class="app-nav waiter-nav">
+      <a href="/orders.html">Sifariş</a>
+      <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+      <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
+      <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
+      <details class="more-nav">
+        <summary>Ofis</summary>
+        <div class="more-nav-list">
+          <a href="/reports.html" data-need="reports.view">Hesabat</a>
+          <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
+          <a href="/" data-need="layout.edit">Çertyoj</a>
+          <a class="active" href="/products.html" data-need="products.edit">Məhsullar</a>
+          <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a href="/printers.html" data-need="printers.view">Printerlər</a>
+          <a href="/users.html" data-need="users.view">İstifadəçilər</a>
+          <a href="/settings.html" data-need="settings.view">Ayarlar</a>
+        </div>
+      </details>
+      <button id="logout" type="button">Çıxış</button>
+    </nav>
+  </header>
+
+  <aside class="panel catalog-side">
+    <section>
+      <div class="side-head">
+        <h2>Qruplar</h2>
+        <button id="toggle-group-form" type="button" class="icon-plus" aria-label="Yeni qrup">+</button>
+      </div>
+      <div id="group-add-row" class="row hidden">
+        <input id="group-name" type="text" placeholder="məs. Şərablar" maxlength="40">
+        <button id="add-group" type="button">Əlavə et</button>
+      </div>
+      <div id="group-list" class="group-list"></div>
+    </section>
+    <section>
+      <div class="side-head">
+        <h2>Sifariş hara gedəcək</h2>
+        <button id="toggle-station-form" type="button" class="icon-plus" aria-label="Yeni stansiya">+</button>
+      </div>
+      <div id="station-add-row" class="row hidden">
+        <input id="station-name" type="text" placeholder="məs. Şirniyyat" maxlength="40">
+        <button id="add-station" type="button">Əlavə et</button>
+      </div>
+      <div id="station-list" class="group-list"></div>
+    </section>
+    <p id="message" class="message"></p>
+    <p class="hint">Hər məhsulun sifarişi seçilmiş stansiyaya gedəcək: mətbəx, manqal, bar.</p>
+  </aside>
+
+  <main class="catalog-main">
+    <div class="catalog-toolbar">
+      <div>
+        <p class="eyebrow">Seçilmiş qrup</p>
+        <h2 id="group-title">Qrup seçin</h2>
+      </div>
+      <div class="toolbar-actions">
+        <div class="size-scale">
+          <span>Kart ölçüsü</span>
+          <button id="scale-down" type="button" aria-label="Kiçilt">−</button>
+          <input id="card-scale" type="range" min="1" max="5" step="1" value="2">
+          <button id="scale-up" type="button" aria-label="Böyüt">+</button>
+        </div>
+        <button id="add-product" class="gold" type="button">Yeni məhsul</button>
+      </div>
+    </div>
+    <div class="search-bar">
+      <input id="product-search" type="search" placeholder="Məhsul, qrup və ya stansiya axtar..." maxlength="60">
+      <button id="clear-search" type="button">Təmizlə</button>
+    </div>
+    <div id="product-grid" class="product-grid" data-scale="2"></div>
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <form id="product-form" class="modal-card">
+      <h3 id="modal-title">Yeni məhsul</h3>
+      <div class="modal-scroll">
+        <label>Ad
+          <input id="product-name" type="text" maxlength="60" required>
+        </label>
+        <div class="product-price-row">
+          <div id="cost-buy-wrap" class="hidden">
+            <label>Alış (istehsal), AZN
+              <input id="product-buy" type="number" min="0" step="0.01">
+            </label>
+          </div>
+          <label>Satış, AZN
+            <input id="product-price" type="number" min="0" max="10000" step="0.01" required>
+          </label>
+        </div>
+        <div id="cost-wrap" class="hidden">
+          <p class="hint">Tərkibdən istehsal qiyməti yazılır. Dəyişmək olar.</p>
+          <p id="product-cost" class="hint"></p>
+          <div id="recipe-rows"></div>
+          <button id="recipe-add" type="button">Xammal əlavə et</button>
+        </div>
+        <p class="hint">Porsiya — ofisiant birini seçir. Qiymət satışa əlavə olunur (0 = eyni). Xammal yazsanız anbardan çıxır.</p>
+        <div id="portion-rows" class="mod-list"></div>
+        <button id="portion-add" type="button">+ Porsiya</button>
+        <p class="hint">Əlavə / sous — istəyə görə. Xammal yazsanız, qəbulda anbardan çıxır.</p>
+        <div id="extra-rows" class="mod-list"></div>
+        <button id="extra-add" type="button">+ Əlavə</button>
+        <label>Sifariş hara gedəcək
+          <select id="product-station" required></select>
+        </label>
+        <label>Kurs
+          <select id="product-course">
+            <option value="">Avtomatik (Bar dərhal, qalanı isti)</option>
+            <option value="1">Soyuq — birinci çıxır</option>
+            <option value="2">İsti — sonra göndərilir</option>
+            <option value="0">Dərhal (içki)</option>
+          </select>
+        </label>
+        <label>Allergen
+          <input id="product-allergens" type="text" maxlength="80" placeholder="südlü, qoz, gluten">
+        </label>
+        <div class="product-price-row">
+          <label>Happy hour, AZN
+            <input id="product-happy" type="number" min="0" max="10000" step="0.01">
+          </label>
+          <label>Saatdan
+            <input id="product-happy-from" type="number" min="0" max="24" step="0.5" placeholder="17">
+          </label>
+          <label>Saatadək
+            <input id="product-happy-to" type="number" min="0" max="24" step="0.5" placeholder="19">
+          </label>
+        </div>
+        <label>Kombo (məhsul ID, vergüllə)
+          <input id="product-combo" type="text" maxlength="40" placeholder="3,5,8">
+        </label>
+        <label>Şəkil
+          <input id="product-image" type="file" accept="image/png,image/jpeg,image/webp">
+        </label>
+        <div id="image-preview" class="image-preview">Şəkil seçilməyib</div>
+      </div>
+    <div class="modal-actions">
+      <button id="cancel-modal" type="button">Bağla</button>
+      <button class="gold" type="submit">Yadda saxla</button>
+    </div>
+    </form>
+  </div>
+
+  <div id="group-modal" class="modal hidden">
+    <form id="group-form" class="modal-card group-edit-card">
+      <h3>Qrupu dəyiş</h3>
+      <label>Ad
+        <input id="group-edit-name" type="text" maxlength="40" required>
+      </label>
+      <p class="eyebrow">İkon</p>
+      <div id="group-icon-grid" class="icon-grid"></div>
+      <div class="modal-actions">
+        <button id="cancel-group-modal" type="button">Bağla</button>
+        <button class="gold" type="submit">Yadda saxla</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="log-client.js"></script>
+  <script src="confirm.js"></script>
+  <script src="nav.js"></script>
+  <script src="group-icons.js?v=3"></script>
+  <script src="products.js?v=3"></script>
+</body>
+</html>

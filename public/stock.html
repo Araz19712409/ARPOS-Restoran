@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anbar</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="products.css">
+  <link rel="stylesheet" href="reports.css">
+</head>
+<body class="catalog-page report-page" data-need="stock.view" data-ops="full">
+  <header class="top">
+    <div>
+      <h1>Anbar</h1>
+      <p id="waiter-line">Qalıq, alış, tarix.</p>
+    </div>
+    <nav class="app-nav waiter-nav">
+      <a href="/orders.html">Sifariş</a>
+      <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+      <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
+      <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
+      <details class="more-nav">
+        <summary>Ofis</summary>
+        <div class="more-nav-list">
+          <a href="/reports.html" data-need="reports.view">Hesabat</a>
+          <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
+          <a href="/" data-need="layout.edit">Çertyoj</a>
+          <a href="/products.html" data-need="products.edit">Məhsullar</a>
+          <a class="active" href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a href="/printers.html" data-need="printers.view">Printerlər</a>
+          <a href="/users.html" data-need="users.view">İstifadəçilər</a>
+          <a href="/settings.html" data-need="settings.view">Ayarlar</a>
+        </div>
+      </details>
+      <button id="logout" type="button">Çıxış</button>
+    </nav>
+  </header>
+
+  <main class="catalog-main report-main">
+    <p id="message" class="message"></p>
+    <div class="stock-bar">
+      <div class="stock-tabs">
+        <button type="button" data-tab="qty" class="active">Qalıq</button>
+        <button type="button" data-tab="buy" id="stock-tab-buy">Alış</button>
+        <button type="button" data-tab="hist">Tarix</button>
+      </div>
+      <div id="stock-qty-tools" class="stock-bar-tools">
+        <input id="stock-search" type="search" placeholder="Axtar..." maxlength="40">
+        <label class="check-line">
+          <input id="stock-low-only" type="checkbox">
+          Az qalanlar
+        </label>
+      </div>
+      <button id="stock-open-add" class="gold" type="button">+ Yeni xammal</button>
+    </div>
+
+    <section id="stock-qty-panel">
+      <div class="report-table-wrap">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Ad</th>
+              <th>Qalıq</th>
+              <th>Min qalıq</th>
+              <th>Alış, 1 vahid</th>
+              <th>Cəm</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="stock-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="stock-buy-box" class="hidden">
+      <p class="hint">Qalıq artır, alış qiyməti orta çəkili yenilənir.</p>
+      <form id="stock-buy-form">
+        <div class="report-toolbar">
+          <label>Təchizatçı
+            <input id="buy-supplier" type="text" list="supplier-list" maxlength="40" placeholder="məs. Market" autocomplete="off">
+            <datalist id="supplier-list"></datalist>
+          </label>
+          <label>Sənəd №
+            <input id="buy-doc" type="text" maxlength="20">
+          </label>
+        </div>
+        <div id="buy-lines" class="buy-lines"></div>
+        <div class="buy-foot">
+          <button id="buy-add-line" type="button">Sətir əlavə et</button>
+          <strong id="buy-total">0.00 AZN</strong>
+          <button class="gold" type="submit">Yadda saxla</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="stock-hist-panel" class="hidden">
+      <h2>Alış sənədləri</h2>
+      <div class="report-table-wrap">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Vaxt</th>
+              <th>Təchizatçı</th>
+              <th>Sənəd</th>
+              <th>Sətir</th>
+              <th>Cəm</th>
+              <th>Kim</th>
+            </tr>
+          </thead>
+          <tbody id="buy-body"></tbody>
+        </table>
+      </div>
+      <h2>Hərəkət</h2>
+      <div class="report-table-wrap">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Vaxt</th>
+              <th>Xammal</th>
+              <th>Növ</th>
+              <th>Miqdar</th>
+              <th>Qeyd</th>
+            </tr>
+          </thead>
+          <tbody id="move-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="stock-add-modal" class="modal hidden">
+    <form id="stock-add-form" class="modal-card">
+      <h3>Yeni xammal</h3>
+      <p class="hint">Alış — 1 vahidin qiyməti. Cəm — bu miqdara verilən pul (20 kq-a 20 AZN → alış 1 AZN/kq).</p>
+      <label>Ad
+        <input id="stock-name" type="text" maxlength="40" required>
+      </label>
+      <label>Vahid
+        <select id="stock-unit">
+          <option value="əd">əd</option>
+          <option value="kq">kq</option>
+          <option value="l">l</option>
+          <option value="qr">qr</option>
+          <option value="ml">ml</option>
+        </select>
+      </label>
+      <label>Miqdar
+        <input id="stock-qty" type="number" min="0" step="0.001" value="0">
+      </label>
+      <label>Min qalıq
+        <input id="stock-min" type="number" min="0" step="0.001" value="0">
+      </label>
+      <label>Alış, 1 vahid
+        <input id="stock-buy" type="number" min="0" step="0.01" value="0">
+      </label>
+      <label>Cəm, AZN
+        <input id="stock-total" type="number" min="0" step="0.01" value="0">
+      </label>
+      <div class="modal-actions">
+        <button id="cancel-stock-add" type="button">Bağla</button>
+        <button class="gold" type="submit">Yadda saxla</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="stock-edit-modal" class="modal hidden">
+    <form id="stock-edit-form" class="modal-card">
+      <h3 id="stock-edit-title">Dəyiş</h3>
+      <p id="stock-edit-qty-line" class="hint"></p>
+      <label>Ad
+        <input id="stock-edit-name" type="text" maxlength="40" required>
+      </label>
+      <label>Vahid
+        <select id="stock-edit-unit">
+          <option value="əd">əd</option>
+          <option value="kq">kq</option>
+          <option value="l">l</option>
+          <option value="qr">qr</option>
+          <option value="ml">ml</option>
+        </select>
+      </label>
+      <p id="stock-edit-unit-hint" class="hint hidden">Vahid dəyişmir: qalıq və ya hərəkət var.</p>
+      <label>Min qalıq
+        <input id="stock-edit-min" type="number" min="0" step="0.001">
+      </label>
+      <label>Alış, 1 vahid
+        <input id="stock-edit-buy" type="number" min="0" step="0.01">
+      </label>
+      <label>Cəm, AZN
+        <input id="stock-edit-total" type="number" min="0" step="0.01">
+      </label>
+      <div class="modal-actions">
+        <button id="cancel-stock-edit" type="button">Bağla</button>
+        <button class="gold" type="submit">Yadda saxla</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="stock-move-modal" class="modal hidden">
+    <form id="stock-move-form" class="modal-card">
+      <h3 id="stock-move-title">Qalıq düzəlt</h3>
+      <p class="hint">Alış sənədi deyil. Qalığı əl ilə düzəldir: gəlib, gedib, və ya sayım.</p>
+      <label>Növ
+        <select id="stock-move-type">
+          <option value="in">Giriş — qalığa əlavə</option>
+          <option value="out">Çıxış — xarab/zay çıx</option>
+          <option value="count">Sayım — rəfdəki real say</option>
+          <option value="adjust">Düzəliş — qalığı yaz</option>
+        </select>
+      </label>
+      <label id="stock-waste-wrap">Zay səbəbi
+        <select id="stock-waste-reason">
+          <option value="">—</option>
+          <option value="xarab">Xarab</option>
+          <option value="töküldü">Töküldü</option>
+          <option value="ev">Ev</option>
+          <option value="digər">Digər</option>
+        </select>
+      </label>
+      <label>Miqdar
+        <input id="stock-move-qty" type="number" min="0.001" step="0.001" required>
+      </label>
+      <label>Qeyd
+        <input id="stock-move-note" type="text" maxlength="80">
+      </label>
+      <div class="modal-actions">
+        <button id="cancel-stock-move" type="button">Bağla</button>
+        <button class="gold" type="submit">Yadda saxla</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="pin-lock" class="pin-lock">
+    <div class="pin-card">
+      <p class="eyebrow">Anbar girişi</p>
+      <h2>PIN yazın</h2>
+      <p id="pin-dots" class="pin-dots"></p>
+      <p id="pin-error" class="message"></p>
+      <div id="pin-pad" class="pin-pad"></div>
+    </div>
+  </div>
+
+  <script src="log-client.js"></script>
+  <script src="confirm.js"></script>
+  <script src="nav.js"></script>
+  <script src="stock-ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sifariş</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="products.css">
+  <link rel="stylesheet" href="orders.css">
+  <link rel="stylesheet" href="dates.css">
+</head>
+<body class="order-page">
+  <header class="top">
+    <div class="top-left">
+      <button id="switch-waiter" class="hidden" type="button">Ofisiantı dəyiş</button>
+      <div>
+        <h1>Sifariş</h1>
+        <p id="waiter-line">Masa seçin, məhsula basın, qəbul edin.</p>
+      </div>
+    </div>
+    <nav class="app-nav waiter-nav">
+      <a class="active" href="/orders.html">Sifariş</a>
+      <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+      <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
+      <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
+      <details class="more-nav">
+        <summary>Ofis</summary>
+        <div class="more-nav-list">
+          <a href="/reports.html" data-need="reports.view">Hesabat</a>
+          <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
+          <a href="/" data-need="layout.edit">Çertyoj</a>
+          <a href="/products.html" data-need="products.edit">Məhsullar</a>
+          <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a href="/printers.html" data-need="printers.view">Printerlər</a>
+          <a href="/users.html" data-need="users.view">İstifadəçilər</a>
+          <a href="/settings.html" data-need="settings.view">Ayarlar</a>
+        </div>
+      </details>
+      <button id="switch-terminal" type="button">Terminal</button>
+      <button id="logout" type="button">Çıxış</button>
+    </nav>
+  </header>
+
+  <aside class="floor-col">
+    <div class="floor-bar">
+      <h2>Zal</h2>
+      <div id="floor-tabs" class="group-tabs"></div>
+    </div>
+    <input id="table-search" type="search" placeholder="Masa və ya zal axtar..." maxlength="40">
+    <div id="table-filters" class="table-filters">
+      <button type="button" data-filter="all" class="active">Hamısı</button>
+      <button type="button" data-filter="empty">Boş</button>
+      <button type="button" data-filter="reserved">Rezerv</button>
+      <button type="button" data-filter="busy">Hesab</button>
+    </div>
+    <div class="table-filters floor-extra">
+      <button id="new-takeaway" type="button">Takeaway</button>
+      <button id="new-delivery" type="button">Çatdırılma</button>
+      <button id="waitlist-open" type="button">Növbə</button>
+    </div>
+    <div id="service-board" class="table-grid"></div>
+    <div id="table-board" class="table-board"></div>
+  </aside>
+  <div id="floor-resizer" class="floor-resizer" title="Eni dartın"></div>
+
+  <main class="menu-col">
+    <div class="menu-top">
+      <div id="group-tabs" class="group-tabs"></div>
+      <div class="menu-tools">
+        <input id="order-search" type="search" placeholder="Axtar..." maxlength="60">
+        <div class="size-scale">
+          <span>Ölçü</span>
+          <button id="scale-down" type="button" aria-label="Kiçilt">−</button>
+          <input id="order-card-scale" type="range" min="1" max="5" step="1" value="2">
+          <button id="scale-up" type="button" aria-label="Böyüt">+</button>
+        </div>
+      </div>
+    </div>
+    <div id="product-grid" class="order-grid" data-scale="2"></div>
+  </main>
+
+  <aside class="check-col">
+    <div class="check-head">
+      <p class="eyebrow">Satış masası</p>
+      <h2 id="check-table" class="table-title">Masa seçin</h2>
+      <label class="guest-line">Qonaq
+        <input id="order-guests" type="number" min="0" max="99" value="0" disabled>
+      </label>
+      <div id="service-guest" class="service-guest hidden">
+        <input id="order-guest-name" type="text" maxlength="40" placeholder="Ad">
+        <input id="order-guest-phone" type="tel" maxlength="20" placeholder="Tel">
+        <input id="order-guest-address" class="svc-deliv hidden" type="text" maxlength="80" placeholder="Ünvan">
+        <input id="order-courier" class="svc-deliv hidden" type="text" maxlength="40" placeholder="Kuryer">
+      </div>
+      <p id="reserve-info" class="reserve-info"></p>
+    </div>
+    <div id="check-list" class="check-list"></div>
+    <div class="check-foot">
+      <div class="check-sum-box">
+        <div class="check-sum sub">
+          <span>Məhsul</span>
+          <strong id="check-items">0.00 AZN</strong>
+        </div>
+        <div id="check-discount-row" class="check-sum sub hidden">
+          <span id="check-discount-label">Endirim</span>
+          <strong id="check-discount">0.00 AZN</strong>
+        </div>
+        <div id="check-service-row" class="check-sum sub">
+          <span id="check-service-label">Xidmət</span>
+          <strong id="check-service">0.00 AZN</strong>
+        </div>
+        <div id="check-tip-row" class="check-sum sub hidden">
+          <span>Bəxşiş</span>
+          <strong id="check-tip">0.00 AZN</strong>
+        </div>
+        <div class="check-sum">
+          <span>Cəm</span>
+          <strong id="check-total">0.00 AZN</strong>
+        </div>
+      </div>
+      <p id="message" class="message"></p>
+      <div class="more-actions">
+        <button id="reserve-table" type="button">Rezerv</button>
+        <button id="cancel-reserve" type="button">Rezervi ləğv</button>
+        <button id="prepay-open" type="button">İlkin</button>
+        <button id="reprint-order" type="button">Çap</button>
+        <button id="discount-open" type="button">Endirim</button>
+        <button id="move-open" type="button">Köçür</button>
+        <button id="fire-course" type="button" style="display:none">İstini göndər</button>
+        <button id="handoff-open" type="button" style="display:none">Hesabı ver</button>
+        <button id="merge-open" type="button" style="display:none">Birləşdir</button>
+        <button id="unmerge-open" type="button" style="display:none">Ayır</button>
+      </div>
+      <div class="main-actions">
+        <button id="pay-open" type="button">Ödəniş</button>
+        <button id="accept-order" class="gold" type="button">Qəbul et</button>
+      </div>
+    </div>
+  </aside>
+
+  <div id="option-modal" class="modal hidden">
+    <form id="option-form" class="modal-card option-card">
+      <h3 id="option-title">Seçim</h3>
+      <p id="option-base" class="hint"></p>
+      <div id="option-portions" class="opt-grid"></div>
+      <div id="option-extras" class="opt-grid"></div>
+      <p id="option-sum" class="option-sum"></p>
+      <div class="modal-actions">
+        <button id="option-cancel" type="button">Bağla</button>
+        <button class="gold" type="submit">Əlavə et</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="reserve-modal" class="modal hidden">
+    <form id="reserve-form" class="modal-card">
+      <h3>Rezerv</h3>
+      <label>Qonaq
+        <input id="res-name" type="text" maxlength="40" required>
+      </label>
+      <label>Telefon
+        <input id="res-phone" type="tel" maxlength="20">
+      </label>
+      <label>Vaxt
+        <input id="res-at" type="datetime-local" required>
+      </label>
+      <label>Nəfər
+        <input id="res-guests" type="number" min="1" max="20" value="2" required>
+      </label>
+      <label>Qeyd
+        <input id="res-note" type="text" maxlength="80">
+      </label>
+      <div class="modal-actions">
+        <button id="cancel-res-modal" type="button">Bağla</button>
+        <button class="gold" type="submit">Yadda saxla</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="pay-modal" class="modal hidden">
+    <form id="pay-form" class="modal-card pay-card">
+      <div class="pay-head">
+        <h3 id="pay-title">Ödəniş</h3>
+        <p id="pay-table-label" class="pay-table-label"></p>
+      </div>
+      <div class="pay-scroll">
+      <div class="pay-due-box">
+        <span id="pay-due-label">Ödəniləcək</span>
+        <strong id="pay-due-amt">0.00</strong>
+        <small>AZN</small>
+      </div>
+      <div id="pay-breakdown" class="pay-breakdown">
+        <div class="pay-row"><span>Məhsul</span><strong id="pay-row-items">0.00</strong></div>
+        <div id="pay-row-off-wrap" class="pay-row hidden"><span>Endirim</span><strong id="pay-row-off">0.00</strong></div>
+        <div id="pay-row-svc-wrap" class="pay-row hidden"><span>Xidmət</span><strong id="pay-row-svc">0.00</strong></div>
+        <div id="pay-row-tip-wrap" class="pay-row hidden"><span>Bəxşiş</span><strong id="pay-row-tip">0.00</strong></div>
+        <div id="pay-row-pre-wrap" class="pay-row hidden"><span>İlkin</span><strong id="pay-row-pre">0.00</strong></div>
+        <div id="pay-row-paid-wrap" class="pay-row hidden"><span>Ödənilib</span><strong id="pay-row-paid">0.00</strong></div>
+        <div class="pay-row remain"><span>Hesab qalığı</span><strong id="pay-row-remain">0.00</strong></div>
+      </div>
+      <p id="pay-total" class="hidden"></p>
+      <div id="pay-pick-wrap">
+        <p class="hint">Sətir və ya oturacaq. Boş = bütün hesab.</p>
+        <div id="pay-seats" class="pay-seats"></div>
+        <div id="pay-pick" class="pay-pick"></div>
+      </div>
+      <div id="split-wrap" class="pay-split">
+        <span>Neçə nəfər</span>
+        <div class="pay-split-ctrl">
+          <button id="pay-split-minus" type="button">−</button>
+          <input id="pay-split" type="number" min="1" max="10" value="1">
+          <button id="pay-split-plus" type="button">+</button>
+        </div>
+      </div>
+      <p id="pay-share" class="pay-share"></p>
+      <div class="pay-extra-row">
+        <label id="pay-tip-wrap">Bəxşiş
+          <input id="pay-tip" type="number" min="0" step="0.01" value="0">
+        </label>
+        <label>VÖEN
+          <input id="pay-voen" type="text" inputmode="numeric" maxlength="12" placeholder="Şirkət">
+        </label>
+        <label>Ad
+          <input id="pay-buyer" type="text" maxlength="40" placeholder="İstəyə görə">
+        </label>
+        <label>Hədiyyə
+          <input id="pay-gift" type="text" maxlength="16" placeholder="Kod">
+        </label>
+      </div>
+      <label id="prepay-amt-wrap" class="hidden">İlkin məbləğ
+        <input id="pay-prepay-amt" type="number" min="0.01" step="0.01">
+      </label>
+      <div class="pay-methods">
+        <button id="pay-method-cash" type="button">Nağd</button>
+        <button id="pay-method-card" type="button">Kart</button>
+        <button id="pay-method-mix" type="button">Qarışıq</button>
+      </div>
+      <div id="pay-mix-fields" class="pay-mix hidden">
+        <label>Nağd
+          <input id="pay-cash-amt" type="number" min="0" step="0.01">
+        </label>
+        <label>Kart
+          <input id="pay-card-amt" type="number" min="0" step="0.01">
+        </label>
+      </div>
+      <div id="tender-wrap" class="pay-tender">
+        <label>Müştəri verdi
+          <input id="pay-tendered" type="number" min="0" step="0.01">
+        </label>
+        <div id="pay-quick" class="pay-quick"></div>
+      </div>
+      <p id="pay-change" class="pay-change"></p>
+      </div>
+      <div class="modal-actions pay-actions">
+        <button id="cancel-pay" type="button">Bağla</button>
+        <button id="pay-submit" class="gold" type="submit">Satışı bitir</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="discount-modal" class="modal hidden">
+    <form id="discount-form" class="modal-card">
+      <h3>Endirim</h3>
+      <label>Növ
+        <select id="discount-type">
+          <option value="percent">Faiz</option>
+          <option value="amount">Manat</option>
+        </select>
+      </label>
+      <label>Dəyər
+        <input id="discount-value" type="number" min="0.01" step="0.01" required>
+      </label>
+      <label>Səbəb
+        <input id="discount-reason" type="text" maxlength="40" placeholder="Məsələn: daimi müştəri">
+      </label>
+      <div class="modal-actions">
+        <button id="discount-clear" type="button">Ləğv et</button>
+        <button id="cancel-discount" type="button">Bağla</button>
+        <button class="gold" type="submit">Tətbiq et</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="handoff-modal" class="modal hidden">
+    <form id="handoff-form" class="modal-card">
+      <h3>Hesabı ver</h3>
+      <p class="hint">Yeni ofisiant öz PIN-ini yazır. Masa və terminal qalır.</p>
+      <label>PIN
+        <input id="handoff-pin" type="password" inputmode="numeric" maxlength="8" required>
+      </label>
+      <div class="modal-actions">
+        <button id="cancel-handoff" type="button">Bağla</button>
+        <button class="gold" type="submit">Ver</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="waitlist-modal" class="modal hidden">
+    <form id="waitlist-form" class="modal-card">
+      <h3>Növbə</h3>
+      <div id="waitlist-rows" class="waitlist-rows"></div>
+      <label>Ad
+        <input id="wl-name" type="text" maxlength="40" required>
+      </label>
+      <label>Telefon
+        <input id="wl-phone" type="tel" maxlength="20">
+      </label>
+      <label>Nəfər
+        <input id="wl-guests" type="number" min="1" max="20" value="2" required>
+      </label>
+      <label>Masa
+        <select id="wl-table">
+          <option value="">Seçin</option>
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button id="waitlist-close" type="button">Bağla</button>
+        <button class="gold" type="submit">Yadda saxla</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="merge-modal" class="modal hidden">
+    <form id="merge-form" class="modal-card">
+      <h3>Masaları birləşdir</h3>
+      <label>Masa
+        <select id="merge-table" required></select>
+      </label>
+      <div class="modal-actions">
+        <button id="cancel-merge" type="button">Bağla</button>
+        <button class="gold" type="submit">Birləşdir</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="unmerge-modal" class="modal hidden">
+    <form id="unmerge-form" class="modal-card">
+      <h3>Masanı ayır</h3>
+      <label>Masa
+        <select id="unmerge-table" required></select>
+      </label>
+      <div class="modal-actions">
+        <button id="cancel-unmerge" type="button">Bağla</button>
+        <button class="gold" type="submit">Ayır</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="move-modal" class="modal hidden">
+    <form id="move-form" class="modal-card">
+      <h3>Masanı köçür</h3>
+      <label>Yeni masa
+        <select id="move-table" required></select>
+      </label>
+      <div class="modal-actions">
+        <button id="cancel-move" type="button">Bağla</button>
+        <button class="gold" type="submit">Köçür</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="receipt-modal" class="modal hidden">
+    <div class="modal-card receipt-card">
+      <div id="receipt-paper" class="receipt-paper"></div>
+      <p id="receipt-msg" class="message"></p>
+      <div class="modal-actions">
+        <button id="receipt-close" type="button">Bağla</button>
+        <button id="receipt-print" class="gold" type="button">Çap et</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pin-lock" class="pin-lock">
+    <div class="pin-card">
+      <p class="eyebrow">Ofisiant girişi</p>
+      <h2>PIN yazın</h2>
+      <p id="pin-dots" class="pin-dots"></p>
+      <p id="pin-error" class="message"></p>
+      <div id="pin-pad" class="pin-pad"></div>
+      <button id="pin-switch-back" class="hidden" type="button">Geri</button>
+    </div>
+  </div>
+
+  <div id="terminal-lock" class="pin-lock hidden">
+    <div class="pin-card">
+      <p class="eyebrow">Terminal</p>
+      <h2>Hansı kassa?</h2>
+      <p class="hint">Bu kompüterin terminalını seçin.</p>
+      <div id="terminal-pick" class="pin-pad"></div>
+    </div>
+  </div>
+
+  <script src="log-client.js"></script>
+  <script src="confirm.js"></script>
+  <script src="nav.js"></script>
+  <script src="receipt-view.js"></script>
+  <script src="dates.js"></script>
+  <script src="group-icons.js?v=3"></script>
+  <script src="orders-ui.js?v=6"></script>
+</body>
+</html>

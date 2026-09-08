@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Çeklər</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="products.css">
+  <link rel="stylesheet" href="reports.css">
+  <link rel="stylesheet" href="orders.css">
+  <link rel="stylesheet" href="receipts.css">
+  <link rel="stylesheet" href="dates.css">
+</head>
+<body class="catalog-page report-page" data-need="payments.take|reports.view">
+  <header class="top">
+    <div>
+      <h1>Çeklər</h1>
+      <p id="waiter-line">Ödənilmiş çeklərə baxın, görünüş və çap.</p>
+    </div>
+    <nav class="app-nav waiter-nav">
+      <a href="/orders.html">Sifariş</a>
+      <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+      <a class="active" href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
+      <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
+      <details class="more-nav">
+        <summary>Ofis</summary>
+        <div class="more-nav-list">
+          <a href="/reports.html" data-need="reports.view">Hesabat</a>
+          <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
+          <a href="/" data-need="layout.edit">Çertyoj</a>
+          <a href="/products.html" data-need="products.edit">Məhsullar</a>
+          <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a href="/printers.html" data-need="printers.view">Printerlər</a>
+          <a href="/users.html" data-need="users.view">İstifadəçilər</a>
+          <a href="/settings.html" data-need="settings.view">Ayarlar</a>
+        </div>
+      </details>
+      <button id="logout" type="button">Çıxış</button>
+    </nav>
+  </header>
+
+  <main class="catalog-main report-main">
+    <div class="report-toolbar">
+      <div class="report-presets">
+        <button type="button" data-range="today">Bu gün</button>
+        <button type="button" data-range="yesterday">Dünən</button>
+        <button type="button" data-range="days7">7 gün</button>
+        <button type="button" data-range="week">Bu həftə</button>
+        <button type="button" data-range="month">Bu ay</button>
+        <button type="button" data-range="lastmonth">Keçən ay</button>
+      </div>
+      <label>Başlanğıc
+        <input id="rep-from" type="date">
+      </label>
+      <label>Son
+        <input id="rep-to" type="date">
+      </label>
+      <button id="rep-load" class="gold" type="button">Göstər</button>
+    </div>
+    <p id="message" class="message"></p>
+    <div class="report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Çek</th>
+            <th>Vaxt</th>
+            <th>Masa</th>
+            <th>Ofisiant</th>
+            <th>Xidmət</th>
+            <th>Cəm</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="receipt-body"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <div id="receipt-modal" class="modal hidden">
+    <div class="modal-card receipt-card">
+      <div id="receipt-paper" class="receipt-paper"></div>
+      <p id="receipt-msg" class="message"></p>
+      <div class="modal-actions">
+        <button id="receipt-close" type="button">Bağla</button>
+        <button id="receipt-refund" type="button">Geri</button>
+        <button id="receipt-print" class="gold" type="button">Çap et</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="refund-modal" class="modal hidden">
+    <form id="refund-form" class="modal-card">
+      <h3>Geri ödəniş</h3>
+      <p id="refund-sum" class="hint"></p>
+      <label>Səbəb
+        <input id="refund-reason" type="text" maxlength="40" required placeholder="Məsələn: səhv çek">
+      </label>
+      <div class="modal-actions">
+        <button id="cancel-refund" type="button">Bağla</button>
+        <button class="gold" type="submit">Qaytar</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="pin-lock" class="pin-lock">
+    <div class="pin-card">
+      <p class="eyebrow">Hesabat girişi</p>
+      <h2>PIN yazın</h2>
+      <p id="pin-dots" class="pin-dots"></p>
+      <p id="pin-error" class="message"></p>
+      <div id="pin-pad" class="pin-pad"></div>
+    </div>
+  </div>
+
+  <script src="log-client.js"></script>
+  <script src="nav.js"></script>
+  <script src="dates.js"></script>
+  <script src="receipt-view.js"></script>
+  <script src="receipts-ui.js"></script>
+</body>
+</html>

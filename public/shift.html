@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kassa çıxarışı</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="products.css">
+  <link rel="stylesheet" href="reports.css">
+</head>
+<body class="catalog-page report-page" data-need="payments.take|reports.view">
+  <header class="top">
+    <div class="top-left">
+      <button id="switch-waiter" class="hidden" type="button">Ofisiantı dəyiş</button>
+      <div>
+        <h1>Kassa çıxarışı</h1>
+        <p id="waiter-line">Növbəni açın, nağdı sayın, bağlayın.</p>
+      </div>
+    </div>
+    <nav class="app-nav waiter-nav">
+      <a href="/orders.html">Sifariş</a>
+      <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+      <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
+      <a class="active" href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
+      <details class="more-nav">
+        <summary>Ofis</summary>
+        <div class="more-nav-list">
+          <a href="/reports.html" data-need="reports.view">Hesabat</a>
+          <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
+          <a href="/" data-need="layout.edit">Çertyoj</a>
+          <a href="/products.html" data-need="products.edit">Məhsullar</a>
+          <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a href="/printers.html" data-need="printers.view">Printerlər</a>
+          <a href="/users.html" data-need="users.view">İstifadəçilər</a>
+          <a href="/settings.html" data-need="settings.view">Ayarlar</a>
+        </div>
+      </details>
+      <button id="logout" type="button">Çıxış</button>
+    </nav>
+  </header>
+
+  <main class="catalog-main report-main">
+    <div class="report-toolbar">
+      <label>Terminal
+        <select id="shift-terminal"></select>
+      </label>
+    </div>
+    <p id="message" class="message"></p>
+
+    <section id="shift-open-box" class="hidden">
+      <h2>Növbəni aç</h2>
+      <form id="shift-open-form" class="report-toolbar">
+        <label>Başlanğıc nağd
+          <input id="shift-start" type="number" min="0" step="0.01" value="0" required>
+        </label>
+        <button class="gold" type="submit">Növbəni aç</button>
+      </form>
+    </section>
+
+    <section id="shift-live-box" class="hidden">
+      <h2>Açıq növbə</h2>
+      <p id="shift-open-meta" class="hint"></p>
+      <div id="shift-kpis" class="report-kpis"></div>
+      <form id="shift-drop-form" class="report-toolbar">
+        <label>Nağd çıxarış
+          <input id="shift-drop-amt" type="number" min="0.01" step="0.01" required>
+        </label>
+        <label>Səbəb
+          <input id="shift-drop-note" type="text" maxlength="40" placeholder="Bank, xərc...">
+        </label>
+        <button type="submit">Yadda saxla</button>
+      </form>
+      <p id="shift-drops" class="hint"></p>
+      <form id="shift-close-form" class="report-toolbar">
+        <label>Sayılan nağd
+          <input id="shift-counted" type="number" min="0" step="0.01" required>
+        </label>
+        <label>Qeyd
+          <input id="shift-note" type="text" maxlength="80">
+        </label>
+        <button class="gold" type="submit">Növbəni bağla</button>
+      </form>
+    </section>
+
+    <section id="clock-box">
+      <h2>İşə giriş</h2>
+      <p id="tip-pool" class="hint"></p>
+      <button id="clock-toggle" type="button">Giriş / çıxış</button>
+      <div id="clock-list" class="hint"></div>
+      <form id="gift-form" class="report-toolbar">
+        <label>Hədiyyə kodu
+          <input id="gift-code" type="text" maxlength="16" required>
+        </label>
+        <label>Məbləğ
+          <input id="gift-amt" type="number" min="0.01" step="0.01" required>
+        </label>
+        <button class="gold" type="submit">Yadda saxla</button>
+      </form>
+    </section>
+
+    <h2>Bağlanmış növbələr</h2>
+    <div class="report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Açıldı</th>
+            <th>Bağlandı</th>
+            <th>Nağd</th>
+            <th>Kart</th>
+            <th>Gözlənilən</th>
+            <th>Sayılan</th>
+            <th>Fərq</th>
+          </tr>
+        </thead>
+        <tbody id="shift-history"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <div id="pin-lock" class="pin-lock">
+    <div class="pin-card">
+      <p class="eyebrow">Kassa girişi</p>
+      <h2>PIN yazın</h2>
+      <p id="pin-dots" class="pin-dots"></p>
+      <p id="pin-error" class="message"></p>
+      <div id="pin-pad" class="pin-pad"></div>
+      <button id="pin-switch-back" class="hidden" type="button">Geri</button>
+    </div>
+  </div>
+
+  <script src="log-client.js"></script>
+  <script src="nav.js"></script>
+  <script src="shift-ui.js"></script>
+</body>
+</html>

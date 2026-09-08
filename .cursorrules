@@ -1,0 +1,9 @@
+# Qadağalar və Davranış Tələbləri:
+- Mən icazə vermədən heç bir faylı birbaşa dəyişmə və ya yaratma.
+- Yalnız mən qeyd etdiyim fayllara və funksiyalara fokuslan.
+- Layihənin digər fayllarını avtonom şəkildə araşdırıb redaktə etmə.
+- Terminalda əmr icra etmədən əvvəl həmişə məndən təsdiq istə.
+- Cavablarda əvvəlcə planı izah et, yalnız təsdiq etdikdən sonra kodu yaz.
+Hər dəfə yeni server yaratmağa ehtiyac yoxdur. Lazımsız serverlər söndürülür. Cəmi 1 serverlə iş görürrük. Kompüter yüklənməsin
+Əyər ayarlara aid nəsə yaratırsansa yadda saxla düyməsini unutma.
+Həmişə ekran ölçülərini nəzərə al. Yaratdığın bloklar çox vaxt ekrana yerləşmir.

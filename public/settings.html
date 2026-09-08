@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Ayarlar</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="products.css">
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body class="catalog-page settings-page" data-need="settings.view">
+  <header class="top">
+    <div>
+      <h1>Ayarlar</h1>
+      <p id="waiter-line">İş rejimi, xidmət, terminal və nüsxə.</p>
+    </div>
+    <nav class="app-nav waiter-nav">
+      <a href="/orders.html">Sifariş</a>
+      <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+      <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
+      <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
+      <details class="more-nav">
+        <summary>Ofis</summary>
+        <div class="more-nav-list">
+          <a href="/reports.html" data-need="reports.view">Hesabat</a>
+          <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
+          <a href="/" data-need="layout.edit">Çertyoj</a>
+          <a href="/products.html" data-need="products.edit">Məhsullar</a>
+          <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a href="/printers.html" data-need="printers.view">Printerlər</a>
+          <a href="/users.html" data-need="users.view">İstifadəçilər</a>
+          <a class="active" href="/settings.html" data-need="settings.view">Ayarlar</a>
+        </div>
+      </details>
+      <button id="logout" type="button">Çıxış</button>
+    </nav>
+  </header>
+
+  <aside class="panel catalog-side">
+    <section>
+      <h2>İş rejimi</h2>
+      <p class="hint">Yalnız satış: anbar və marja yoxdur. Tam: xammal, maya, hesabat.</p>
+      <label class="ops-choice">
+        <input id="ops-sales" name="ops-mode" type="radio" value="sales">
+        Yalnız satış
+      </label>
+      <label class="ops-choice">
+        <input id="ops-full" name="ops-mode" type="radio" value="full">
+        Satış + anbar
+      </label>
+      <button id="save-ops" class="gold" type="button">Yadda saxla</button>
+    </section>
+    <section>
+      <h2>Xidmət haqqı</h2>
+      <p class="hint">Satış cəminə əlavə olunur. 0 olsa, xidmət yoxdur.</p>
+      <label>Faiz
+        <input id="service-percent" type="number" min="0" max="100" step="0.1" value="0">
+      </label>
+      <button id="save-service" class="gold" type="button">Yadda saxla</button>
+    </section>
+    <section>
+      <h2>Şəbəkə</h2>
+      <p class="hint">Eyni Wi‑Fi-dakı planşet və kassa. Windows-da 3004 portunu açın.</p>
+      <label class="ops-choice">
+        <input id="lan-off" name="lan-mode" type="radio" value="off">
+        Yalnız bu kompüter
+      </label>
+      <label class="ops-choice">
+        <input id="lan-on" name="lan-mode" type="radio" value="on">
+        Şəbəkədə aç
+      </label>
+      <p id="lan-urls" class="hint"></p>
+      <button id="save-lan" class="gold" type="button">Yadda saxla</button>
+    </section>
+    <section>
+      <h2>Filial</h2>
+      <p class="hint">Çekdə və hesabatda görünür.</p>
+      <label>Ad
+        <input id="branch-name" type="text" maxlength="60" placeholder="Mərkəz">
+      </label>
+      <button id="save-branch" class="gold" type="button">Yadda saxla</button>
+    </section>
+    <section>
+      <h2>SMS</h2>
+      <p class="hint">Rezerv və növbə. URL-də {phone} {text} {login} {password}.</p>
+      <label class="ops-choice">
+        <input id="sms-on" type="checkbox">
+        Göndər
+      </label>
+      <label>Ünvan
+        <input id="sms-url" type="text" maxlength="240" placeholder="https://.../send">
+      </label>
+      <label>Login
+        <input id="sms-login" type="text" maxlength="80">
+      </label>
+      <label>Şifrə
+        <input id="sms-password" type="password" maxlength="80">
+      </label>
+      <label>Göndərən
+        <input id="sms-sender" type="text" maxlength="20">
+      </label>
+      <label>Rezerv mətni
+        <input id="sms-reserve" type="text" maxlength="200">
+      </label>
+      <label>Növbə mətni
+        <input id="sms-wait" type="text" maxlength="200">
+      </label>
+      <label>Sınaq telefon
+        <input id="sms-test-phone" type="tel" maxlength="20">
+      </label>
+      <button id="save-sms" class="gold" type="button">Yadda saxla</button>
+      <button id="sms-test" type="button">Sınaq göndər</button>
+    </section>
+    <section>
+      <h2>Yeniləmə</h2>
+      <p class="hint">GitHub release. Quraşdırıcı: scripts/install.ps1</p>
+      <p id="update-ver" class="hint"></p>
+      <label>Repo
+        <input id="update-repo" type="text" maxlength="80" placeholder="ad/ARPOS-Restoran">
+      </label>
+      <label>Token (özəl repo)
+        <input id="update-token" type="password" maxlength="120">
+      </label>
+      <button id="save-update" class="gold" type="button">Yadda saxla</button>
+      <button id="update-check" type="button">Yoxla</button>
+      <button id="update-apply" type="button">Quraşdır</button>
+    </section>
+    <section>
+      <h2>E-kassa (hazırlıq)</h2>
+      <p class="hint">Rəsmi NMQ operatoru bağlı deyil. VÖEN + obyekt dolu olsa növbə «hazır» olur, yenə vergiyə getmir.</p>
+      <label>VÖEN
+        <input id="ekassa-voen" type="text" inputmode="numeric" maxlength="10">
+      </label>
+      <label>Obyekt
+        <input id="ekassa-object" type="text" maxlength="80">
+      </label>
+      <label>Obyekt kodu
+        <input id="ekassa-code" type="text" maxlength="40">
+      </label>
+      <label>Operator
+        <input id="ekassa-operator" type="text" maxlength="40">
+      </label>
+      <label>Qeyd
+        <input id="ekassa-note" type="text" maxlength="80">
+      </label>
+      <button id="save-ekassa" class="gold" type="button">Yadda saxla</button>
+    </section>
+    <section>
+      <h2>Ofisiant</h2>
+      <p class="hint">Yeni ofisiantı <a href="/users.html">İstifadəçilər</a> səhifəsindən əlavə edin. Burada yalnız bonus faizini yazıb Yadda saxla basın.</p>
+    </section>
+    <p id="message" class="message"></p>
+    <button id="save-settings" class="gold" type="button">Yadda saxla</button>
+  </aside>
+
+  <main class="catalog-main">
+    <div class="catalog-toolbar">
+      <div>
+        <h2>Ofisiant bonusları</h2>
+        <p class="hint">Faizi dəyişin, sonra Yadda saxla basın.</p>
+      </div>
+      <button id="save-bonuses" class="gold" type="button">Yadda saxla</button>
+    </div>
+    <div class="report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Ofisiant</th>
+            <th>Bonus, %</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="bonus-body"></tbody>
+      </table>
+    </div>
+    <h2 class="backup-title">Terminallar</h2>
+    <p class="hint">Hər kassa və ya planşet bir terminaldır. Eyni masa eyni anda bir terminaldadır.</p>
+    <form id="terminal-form">
+      <label class="backup-folder-label">Yeni terminal
+        <span class="backup-folder-row">
+          <input id="new-terminal" type="text" maxlength="40" placeholder="Kassa 2" required>
+          <button id="add-terminal" class="gold" type="submit">Əlavə et</button>
+        </span>
+      </label>
+    </form>
+    <div class="report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Ad</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="terminal-body"></tbody>
+      </table>
+    </div>
+    <h2 class="backup-title">Ehtiyat nüsxə</h2>
+    <p class="hint">Gündə bir dəfə avtomatik. Son 14 nüsxə saxlanır. Bərpa bütün satış və ayarları qaytarır.</p>
+    <label class="backup-folder-label">Ehtiyat yeri
+      <span class="backup-folder-row">
+        <input id="backup-folder" type="text" maxlength="240" placeholder="D:\POS-ehtiyat">
+        <button id="backup-pick" type="button">Qovluq seç</button>
+      </span>
+    </label>
+    <p class="hint">Düyməyə basın, disk və ya papka seçin. Sonra Yadda saxla və ya İndi nüsxə al.</p>
+    <button id="backup-now" class="gold" type="button">İndi nüsxə al</button>
+    <div class="report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Vaxt</th>
+            <th>Səbəb</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="backup-body"></tbody>
+      </table>
+    </div>
+    <h2 class="backup-title">E-kassa növbəsi</h2>
+    <p class="hint">Satış bağlananda buraya düşür. «Hazır» = VÖEN yazılıb. Vergiyə göndərilmir.</p>
+    <div class="report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Vaxt</th>
+            <th>Masa</th>
+            <th>Cəm</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="fiscal-body"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <div id="edit-modal" class="modal hidden">
+    <form id="edit-form" class="modal-card">
+      <h3>Ofisiantı dəyiş</h3>
+      <label>Ad
+        <input id="edit-name" type="text" maxlength="40" required>
+      </label>
+      <label>Yeni PIN (dəyişməsə boş)
+        <input id="edit-pin" type="password" inputmode="numeric" maxlength="8">
+      </label>
+      <label>Rol
+        <select id="edit-role"></select>
+      </label>
+      <label>Bonus, %
+        <input id="edit-bonus" type="number" min="0" max="100" step="0.1" value="0">
+      </label>
+      <div class="modal-actions">
+        <button id="cancel-edit" type="button">Bağla</button>
+        <button class="gold" type="submit">Yadda saxla</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="pin-lock" class="pin-lock">
+    <div class="pin-card">
+      <p class="eyebrow">Ayarlar girişi</p>
+      <h2>PIN yazın</h2>
+      <p id="pin-dots" class="pin-dots"></p>
+      <p id="pin-error" class="message"></p>
+      <div id="pin-pad" class="pin-pad"></div>
+    </div>
+  </div>
+
+  <script src="log-client.js"></script>
+  <script src="confirm.js"></script>
+  <script src="nav.js"></script>
+  <script src="settings-ui.js?v=3"></script>
+</body>
+</html>

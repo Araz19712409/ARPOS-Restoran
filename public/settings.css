@@ -1,0 +1,183 @@
+.ops-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  color: #f6efe4;
+  font-weight: 700;
+}
+
+.ops-choice input {
+  width: auto;
+}
+
+.settings-page .catalog-main h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.35rem;
+  color: #f6efe4;
+}
+
+.report-table-wrap {
+  overflow: auto;
+  border: 1px solid #4a3d2d;
+  border-radius: 12px;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.report-table th,
+.report-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #3d3428;
+}
+
+.report-table th {
+  background: #2a241c;
+  color: #d8c7aa;
+  font-size: 0.8rem;
+}
+
+.report-table td {
+  color: #f6efe4;
+}
+
+.report-table input {
+  max-width: 120px;
+}
+
+.row-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.row-actions button {
+  min-height: 36px;
+  padding: 0 10px;
+}
+
+#waiter-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#add-waiter {
+  width: 100%;
+  margin-top: 12px;
+}
+
+#save-settings,
+#save-service,
+#save-lan,
+#save-branch,
+#save-sms,
+#save-update,
+#save-bonuses {
+  min-height: 48px;
+  margin-top: 10px;
+  font-size: 1.05rem;
+}
+
+#save-settings,
+#save-service,
+#save-lan,
+#save-branch,
+#save-sms,
+#save-update {
+  width: 100%;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.pin-lock {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 8, 6, 0.86);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+}
+
+.pin-lock.hidden {
+  display: none;
+}
+
+.pin-card {
+  width: min(360px, 92vw);
+  background: #241e18;
+  border: 1px solid #c9a56a;
+  border-radius: 18px;
+  padding: 22px;
+  text-align: center;
+}
+
+.pin-card h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  margin: 8px 0 12px;
+}
+
+.pin-dots {
+  min-height: 1.4em;
+  letter-spacing: 0.4em;
+  font-size: 1.6rem;
+  color: #e2b65a;
+  margin-bottom: 12px;
+}
+
+.pin-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.pin-pad button {
+  min-height: 56px;
+  font-size: 1.25rem;
+  background: #2a241c;
+  color: #f4ead8;
+  border-color: #5a4c3a;
+}
+
+.backup-title {
+  margin-top: 28px;
+}
+
+.backup-folder-label {
+  display: block;
+  margin: 10px 0 4px;
+}
+
+.backup-folder-row {
+  display: flex;
+  gap: 8px;
+  max-width: 720px;
+  align-items: center;
+}
+
+#backup-folder {
+  flex: 1;
+  min-width: 0;
+}
+
+#backup-pick {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+#backup-now {
+  margin: 10px 0 12px;
+}
+
+.eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c9a56a;
+}

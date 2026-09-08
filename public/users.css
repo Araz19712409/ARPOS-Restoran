@@ -1,0 +1,97 @@
+.user-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.user-days label {
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.perm-box {
+  background: #2a241c;
+  border: 1px solid #4a3d2d;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 22px;
+}
+
+.perm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 12px 0 16px;
+}
+
+.perm-group {
+  border: 1px solid #3d3428;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.perm-group h4 {
+  color: #e2b65a;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.perm-group label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.perm-group input {
+  width: auto;
+  min-height: 0;
+}
+
+.user-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.user-card {
+  background: #2a241c;
+  border: 1px solid #4a3d2d;
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.user-card h3 {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.user-card .meta {
+  color: #d8c7aa;
+  font-size: 0.85rem;
+  margin: 6px 0 12px;
+}
+
+.check-line {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.check-line input {
+  width: auto;
+  min-height: 0;
+}
+
+#user-form.modal-card {
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  padding: 12px;
+  gap: 8px;
+}
