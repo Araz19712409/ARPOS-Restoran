@@ -52,6 +52,16 @@
   flex-wrap: wrap;
 }
 
+.catalog-toolbar button.gold,
+.perm-box button.gold,
+.buy-foot button.gold {
+  width: auto;
+  min-height: 34px;
+  margin-top: 0;
+  padding: 4px 14px;
+  font-size: 0.85rem;
+}
+
 .size-scale {
   display: flex;
   align-items: center;
@@ -570,6 +580,14 @@
   gap: 8px;
   flex-shrink: 0;
   padding-top: 4px;
+}
+
+.modal-actions button.gold,
+.modal-actions button.primary {
+  width: auto;
+  min-height: 34px;
+  margin-top: 0;
+  padding: 4px 14px;
 }
 
 @media (max-width: 800px) {

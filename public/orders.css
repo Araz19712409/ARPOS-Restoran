@@ -716,6 +716,13 @@
   gap: 8px;
 }
 
+.modal-actions button.gold {
+  width: auto;
+  min-height: 34px;
+  margin-top: 0;
+  padding: 4px 14px;
+}
+
 #pay-open {
   width: 100%;
   margin: 0;

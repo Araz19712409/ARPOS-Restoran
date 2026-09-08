@@ -174,8 +174,11 @@ button {
 
 button.primary,
 button.gold {
-  width: 100%;
-  margin-top: 10px;
+  width: auto;
+  min-height: 34px;
+  margin-top: 0;
+  padding: 4px 14px;
+  font-size: 0.85rem;
   background: #c9842a;
   color: #fff;
   border-color: #c9842a;

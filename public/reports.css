@@ -17,6 +17,17 @@
   margin-bottom: 16px;
 }
 
+.report-toolbar button,
+.report-toolbar button.gold,
+.stock-bar button.gold,
+.buy-foot button.gold {
+  width: auto;
+  min-height: 34px;
+  margin-top: 0;
+  padding: 4px 14px;
+  font-size: 0.85rem;
+}
+
 .report-presets {
   display: flex;
   gap: 8px;
@@ -243,6 +254,14 @@
 .buy-foot strong {
   color: #e2b65a;
   margin-left: auto;
+}
+
+#clock-toggle {
+  width: auto;
+  min-height: 34px;
+  margin-top: 8px;
+  padding: 4px 14px;
+  font-size: 0.85rem;
 }
 
 .stock-bar {
