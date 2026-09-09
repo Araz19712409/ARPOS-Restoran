@@ -236,6 +236,20 @@ test('az qalıq yalnız min yazılanda', function () {
   assert.strictEqual(low.low, true);
 });
 
+test('barkod təmizlənir', function () {
+  assert.strictEqual(catalog.cleanBarcode(' 12 34! '), '1234');
+  assert.strictEqual(catalog.cleanBarcode('AB-12'), 'AB-12');
+  assert.strictEqual(catalog.cleanBarcode('x'.repeat(40)).length, 32);
+});
+
+test('çatdırılma statusu sıxılır', function () {
+  assert.strictEqual(orders.cleanRunStatus('delivery', 'way'), 'way');
+  assert.strictEqual(orders.cleanRunStatus('delivery', 'bad'), 'prep');
+  assert.strictEqual(orders.cleanRunStatus('takeaway', 'ready'), 'ready');
+  assert.strictEqual(orders.cleanRunStatus('takeaway', 'way'), 'prep');
+  assert.strictEqual(orders.cleanRunStatus('dine', 'way'), '');
+});
+
 test('qəbulda quoted happy hour saxlanır', function () {
   const product = { salePrice: 10, happyPrice: 7, happyFrom: 3, happyTo: 4, portions: [], extras: [] };
   const quoted = catalog.resolveQuotedPrice(product, {}, 7);

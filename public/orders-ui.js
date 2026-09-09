@@ -514,6 +514,10 @@
       small.textContent = item.guestName || (item.channel === 'delivery' ? 'Çatdırılma' : 'Takeaway');
       btn.appendChild(label);
       btn.appendChild(small);
+      var badge = document.createElement('span');
+      badge.className = 'run-badge';
+      badge.textContent = runStatusLabel(item.channel, runStatusOf(item));
+      btn.appendChild(badge);
       btn.addEventListener('click', function () {
         if (!waiter) {
           showLock();
@@ -661,10 +665,36 @@
         return false;
       }
       if (q) {
-        return normalize(item.name).indexOf(q) !== -1;
+        return normalize(item.name).indexOf(q) !== -1 ||
+          normalize(item.barcode).indexOf(q) !== -1;
       }
       return item.groupId === groupId;
     });
+  }
+
+  function productByBarcode(raw) {
+    var code = String(raw || '').replace(/[^0-9A-Za-z\-]/g, '');
+    if (!code) {
+      return null;
+    }
+    var hits = products.filter(function (item) {
+      return !item.blocked && !item.soldOut &&
+        String(item.barcode || '').toUpperCase() === code.toUpperCase();
+    });
+    return hits.length === 1 ? hits[0] : null;
+  }
+
+  function takeBarcodeHit(raw) {
+    var hit = productByBarcode(raw);
+    if (!hit) {
+      return false;
+    }
+    addProduct(hit);
+    searchQuery = '';
+    document.getElementById('order-search').value = '';
+    renderGroups();
+    renderProducts();
+    return true;
   }
 
   function renderProducts() {
@@ -938,6 +968,69 @@
     return table ? (table.name || ('Masa ' + table.number)) : 'Masa seçin';
   }
 
+  function runStatusOf(order) {
+    if (!order) {
+      return '';
+    }
+    if (order.channel === 'delivery' || order.channel === 'takeaway') {
+      return order.runStatus || 'prep';
+    }
+    return '';
+  }
+
+  function runStatusLabel(channel, status) {
+    if (channel === 'delivery') {
+      if (status === 'way') {
+        return 'Yolda';
+      }
+      if (status === 'done') {
+        return 'Çatdı';
+      }
+      return 'Mətbəxdə';
+    }
+    if (channel === 'takeaway') {
+      if (status === 'ready') {
+        return 'Hazır';
+      }
+      if (status === 'done') {
+        return 'Verildi';
+      }
+      return 'Mətbəxdə';
+    }
+    return '';
+  }
+
+  function renderRunStatus(order) {
+    var box = document.getElementById('run-status');
+    if (!box) {
+      return;
+    }
+    box.innerHTML = '';
+    var ch = order && order.channel;
+    var show = !!(order && (ch === 'delivery' || ch === 'takeaway'));
+    box.classList.toggle('hidden', !show);
+    if (!show) {
+      return;
+    }
+    var cur = runStatusOf(order);
+    var steps = ch === 'delivery'
+      ? [{ id: 'prep', name: 'Mətbəxdə' }, { id: 'way', name: 'Yolda' }, { id: 'done', name: 'Çatdı' }]
+      : [{ id: 'prep', name: 'Mətbəxdə' }, { id: 'ready', name: 'Hazır' }, { id: 'done', name: 'Verildi' }];
+    steps.forEach(function (step) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = step.name;
+      btn.className = step.id === cur ? 'active' : '';
+      btn.addEventListener('click', function () {
+        if (step.id === cur) {
+          return;
+        }
+        runAction('/api/orders/run-status', { orderId: order.id, runStatus: step.id });
+      });
+      box.appendChild(btn);
+    });
+  }
+
   function renderCheck() {
     var table = tableById(tableId);
     var order = openOrder();
@@ -980,6 +1073,7 @@
         }
       }
     }
+    renderRunStatus(order);
     if (document.activeElement !== guestsBox) {
       guestsBox.value = String(orderGuests);
     }
@@ -1172,8 +1266,19 @@
 
   document.getElementById('order-search').addEventListener('input', function (event) {
     searchQuery = event.target.value;
+    var code = String(searchQuery || '').replace(/[^0-9A-Za-z\-]/g, '');
+    if (code.length >= 4 && takeBarcodeHit(searchQuery)) {
+      return;
+    }
     renderGroups();
     renderProducts();
+  });
+  document.getElementById('order-search').addEventListener('keydown', function (event) {
+    if (event.key !== 'Enter') {
+      return;
+    }
+    event.preventDefault();
+    takeBarcodeHit(event.target.value);
   });
 
   function runAction(url, extra, question) {

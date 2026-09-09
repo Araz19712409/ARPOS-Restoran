@@ -79,7 +79,7 @@
       </div>
     </div>
     <div class="search-bar">
-      <input id="product-search" type="search" placeholder="Məhsul, qrup və ya stansiya axtar..." maxlength="60">
+      <input id="product-search" type="search" placeholder="Məhsul, barkod, qrup və ya stansiya..." maxlength="60">
       <button id="clear-search" type="button">Təmizlə</button>
     </div>
     <div id="product-grid" class="product-grid" data-scale="2"></div>
@@ -91,6 +91,9 @@
       <div class="modal-scroll">
         <label>Ad
           <input id="product-name" type="text" maxlength="60" required>
+        </label>
+        <label>Barkod
+          <input id="product-barcode" type="text" maxlength="32" placeholder="Skan və ya kod" autocomplete="off">
         </label>
         <div class="product-price-row">
           <div id="cost-buy-wrap" class="hidden">
@@ -173,6 +176,6 @@
   <script src="confirm.js"></script>
   <script src="nav.js"></script>
   <script src="group-icons.js?v=3"></script>
-  <script src="products.js?v=4"></script>
+  <script src="products.js?v=5"></script>
 </body>
 </html>

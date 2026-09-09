@@ -231,6 +231,10 @@ function parseComboIds(value) {
     .slice(0, 12);
 }
 
+function cleanBarcode(value) {
+  return String(value || '').replace(/[^0-9A-Za-z\-]/g, '').slice(0, 32);
+}
+
 function parseAllergens(value) {
   return String(value || '')
     .replace(/<[^>]*>/g, '')
@@ -261,6 +265,7 @@ module.exports = {
   salePriceNow,
   resolveQuotedPrice,
   parseComboIds,
+  cleanBarcode,
   parseAllergens,
   markText
 };

@@ -177,6 +177,7 @@ function openForTable(box, tableId, tableName, extra) {
       guestPhone: (extra && extra.guestPhone) || '',
       guestAddress: (extra && extra.guestAddress) || '',
       courierName: (extra && extra.courierName) || '',
+      runStatus: channel === 'dine' ? '' : 'prep',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -256,6 +257,23 @@ function soldProductIds() {
   return map;
 }
 
+function cleanRunStatus(channel, value) {
+  const v = String(value || '');
+  if (channel === 'delivery') {
+    if (v === 'way' || v === 'done') {
+      return v;
+    }
+    return 'prep';
+  }
+  if (channel === 'takeaway') {
+    if (v === 'ready' || v === 'done') {
+      return v;
+    }
+    return 'prep';
+  }
+  return '';
+}
+
 function paidTotal(order) {
   return (order.payments || []).reduce(function (sum, row) {
     return sum + Number(row.cashAmount || 0) + Number(row.cardAmount || 0) + Number(row.giftAmount || 0);
@@ -271,6 +289,7 @@ module.exports = {
   findOpenForTable: findOpenForTable,
   tableIdsOf: tableIdsOf,
   isServiceTable: isServiceTable,
+  cleanRunStatus: cleanRunStatus,
   channelOfId: channelOfId,
   openForTable: openForTable,
   isOpenLine: isOpenLine,

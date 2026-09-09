@@ -832,8 +832,14 @@ app.post('/api/products', function (req, res) {
       happyFrom: body.happyFrom === '' || body.happyFrom == null ? null : stock.parseDec(body.happyFrom),
       happyTo: body.happyTo === '' || body.happyTo == null ? null : stock.parseDec(body.happyTo),
       comboIds: catalog.parseComboIds(body.comboIds),
-      course: catalog.courseOf({ course: body.course, stationId: stationId })
+      course: catalog.courseOf({ course: body.course, stationId: stationId }),
+      barcode: catalog.cleanBarcode(body.barcode)
     };
+    if (product.barcode && store.products.some(function (item) {
+      return item.barcode === product.barcode;
+    })) {
+      reject(400, 'Bu barkod başqa məhsuldadır.');
+    }
     if (users.hasPermission(req.staff && req.staff.role, 'cost.edit')) {
       stock.applyRecipe(product);
     }
@@ -940,6 +946,15 @@ app.put('/api/products/:id', function (req, res) {
     }
     if (body.comboIds != null) {
       product.comboIds = catalog.parseComboIds(body.comboIds);
+    }
+    if (body.barcode != null) {
+      const code = catalog.cleanBarcode(body.barcode);
+      if (code && store.products.some(function (item) {
+        return item.id !== product.id && item.barcode === code;
+      })) {
+        reject(400, 'Bu barkod başqa məhsuldadır.');
+      }
+      product.barcode = code;
     }
     catalog.writeCatalog(store);
     return { product: product, body: body };
@@ -1922,6 +1937,35 @@ app.post('/api/orders/guests', function (req, res) {
     order.updatedAt = new Date().toISOString();
     orders.writeOrders(store);
     return { guests: guests };
+  }).then(function (data) {
+    res.json({ success: true, data: data });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.post('/api/orders/run-status', function (req, res) {
+  if (!needPerm(req, res, 'orders.create')) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const body = req.body || {};
+    const terminal = needTerminal(body);
+    const store = orders.readOrders();
+    const order = store.orders.find(function (item) {
+      return item.id === Number(body.orderId) && item.status === 'open';
+    });
+    if (!order) {
+      reject(404, 'Açıq hesab tapılmadı.');
+    }
+    if (order.channel !== 'delivery' && order.channel !== 'takeaway') {
+      reject(400, 'Yalnız götür / çatdır.');
+    }
+    needOrderTables(order, terminal);
+    order.runStatus = orders.cleanRunStatus(order.channel, body.runStatus);
+    order.updatedAt = new Date().toISOString();
+    orders.writeOrders(store);
+    return { order: order };
   }).then(function (data) {
     res.json({ success: true, data: data });
   }).catch(function (error) {

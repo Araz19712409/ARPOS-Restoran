@@ -152,6 +152,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 119. [x] 1.1.10 — Çertyoj otaq ölçü/ad, xana, masalı silmə icazəsi
 120. [x] 1.1.11 — Açılışda PIN banneri kassiri əllə bağlatmır
 130. [x] 1.1.12 — Z çap, hesabat CSV, az qalıq, ödəniş qalığı
+131. [x] 1.1.13 — Barkod, oflayn növbə, çatdırılma statusu
 
 ### Professional (9.09)
 121. [x] Növbə bağlananda çap olunan Z (nağd/kart/hədiyyə/çıxarış)
@@ -160,13 +161,13 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 124. [x] Ödənişdə qalıq avtomatik (nağd/kart)
 125. [ ] Kart POS terminalı — model deyəndə
 126. [x] Çekmecə kick (nağd çek / Z)
-127. [ ] Barkod / sürətli kod — sonra
-128. [ ] Oflayn: köçür/mətbəx də növbə — sonra
-129. [ ] Çatdırılma statusu (yolda/çatdı) — sonra
+127. [x] Barkod / sürətli kod
+128. [x] Oflayn: köçür/mətbəx də növbə
+129. [x] Çatdırılma statusu (yolda/çatdı)
 
 ## Bitdi (əvvəlki)
 - Ehtiyat nüsxə, terminallar, endirim, çap, PIN, növbə, anbar, alış, menyu bölgüsü (zal / ofis)
 - Ofisiantı dəyiş, əməliyyat jurnalı
 
 ## Qiymət
-İşlək restoran kassası. 1–124 və 126 bağlandı. 125, 127–129 gözləyir.
+İşlək restoran kassası. 1–124 və 126–129 bağlandı. 125 (kart POS) model deyəndə.

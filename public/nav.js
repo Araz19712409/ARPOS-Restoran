@@ -42,9 +42,11 @@
       var url = typeof input === 'string' ? input : (input && input.url) || '';
       var method = String((init && init.method) || 'GET').toUpperCase();
       setNetOk(false);
-      if ((method === 'POST' || method === 'PUT') && /\/api\/orders\/(accept|pay)\b/.test(url)) {
+      if ((method === 'POST' || method === 'PUT') &&
+          (/\/api\/orders\/(accept|pay|fire|move|guests|run-status)\b/.test(url) ||
+            /\/api\/kitchen\/(done|serve)\b/.test(url))) {
         queueWrite(url, init);
-        banner('Şəbəkə yoxdur. Qəbul/ödəniş növbəyə yazıldı.', 'warn');
+        banner('Şəbəkə yoxdur. Əməliyyat növbəyə yazıldı.', 'warn');
         throw new Error('Şəbəkə yoxdur. Qayıdanda göndəriləcək.');
       }
       banner('Şəbəkə yoxdur.', 'err');
@@ -64,7 +66,7 @@
   }
 
   function writeQueue(list) {
-    window.localStorage.setItem(QKEY, JSON.stringify(list.slice(-20)));
+    window.localStorage.setItem(QKEY, JSON.stringify(list.slice(-40)));
   }
 
   function queueKeyOf(url, body) {
@@ -75,6 +77,21 @@
       }
       if (String(url).indexOf('/accept') >= 0) {
         return 'accept:' + (o.tableId || o.orderId || '');
+      }
+      if (String(url).indexOf('/fire') >= 0) {
+        return 'fire:' + o.orderId;
+      }
+      if (String(url).indexOf('/move') >= 0) {
+        return 'move:' + o.orderId;
+      }
+      if (String(url).indexOf('/guests') >= 0) {
+        return 'guests:' + (o.tableId || o.orderId || '');
+      }
+      if (String(url).indexOf('/run-status') >= 0) {
+        return 'run:' + o.orderId;
+      }
+      if (String(url).indexOf('/kitchen/') >= 0) {
+        return 'kit:' + (o.orderId || '') + ':' + (o.itemId || '');
       }
     } catch (error) {
       return String(url);

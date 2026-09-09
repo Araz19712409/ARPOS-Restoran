@@ -319,6 +319,34 @@
   width: calc(50% - 3px);
 }
 
+.run-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+}
+
+.run-status button {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  padding: 4px 6px;
+  font-size: 0.72rem;
+}
+
+.run-status button.active {
+  background: #e2b65a;
+  color: #2a2118;
+  font-weight: 800;
+}
+
+.table-tile .run-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  margin-top: 2px;
+  opacity: 0.95;
+}
+
 .floor-extra {
   margin-top: 6px;
 }

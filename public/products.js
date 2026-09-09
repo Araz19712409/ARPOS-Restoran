@@ -419,6 +419,7 @@
       return item.groupId === selectedGroupId;
     }
     return normalize(item.name).indexOf(query) !== -1
+      || normalize(item.barcode).indexOf(query) !== -1
       || normalize(groupName(item.groupId)).indexOf(query) !== -1
       || normalize(stationName(item.stationId)).indexOf(query) !== -1
       || String(item.salePrice).indexOf(query) !== -1;
@@ -649,6 +650,7 @@
     imageData = '';
     document.getElementById('modal-title').textContent = product ? 'Məhsulu dəyiş' : 'Yeni məhsul';
     document.getElementById('product-name').value = product ? product.name : '';
+    document.getElementById('product-barcode').value = product && product.barcode ? product.barcode : '';
     document.getElementById('product-price').value = product ? product.salePrice : '';
     fillStationSelect(product ? product.stationId : (store.stations[0] && store.stations[0].id));
     var courseEl = document.getElementById('product-course');
@@ -890,6 +892,7 @@
     var payload = {
       groupId: selectedGroupId,
       name: document.getElementById('product-name').value,
+      barcode: document.getElementById('product-barcode').value,
       salePrice: document.getElementById('product-price').value,
       stationId: Number(document.getElementById('product-station').value),
       course: document.getElementById('product-course').value === ''
