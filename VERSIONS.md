@@ -1,5 +1,6 @@
 # Arpos Restoran — versiyalar
 
+- **1.1.12** — 2026-09-09 — Z çap, CSV, az qalıq, ödəniş qalığı
 - **1.1.11** — 2026-09-09 — Açılışda PIN banneri qalmır
 - **1.1.10** — 2026-09-08 — Çertyoj: otaq ölçüsü/adı, xana, masalı otaq PIN
 - **1.1.9** — 2026-09-08 — Kassa və digər panellərdə qısa düymələr

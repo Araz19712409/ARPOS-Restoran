@@ -9,6 +9,12 @@
   color: #f6efe4;
 }
 
+#stock-low-banner {
+  color: #e2b65a;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
 .report-toolbar {
   display: flex;
   flex-wrap: wrap;

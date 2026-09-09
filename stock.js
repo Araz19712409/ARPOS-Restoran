@@ -184,7 +184,7 @@ function publicItem(item) {
     qty: qty,
     minQty: minQty,
     buyPrice: money(item.buyPrice),
-    low: qty <= minQty
+    low: minQty > 0 && qty <= minQty
   };
 }
 
@@ -557,13 +557,19 @@ function changeLines(catalogStore, lines, sign, meta) {
         at: new Date().toISOString()
       });
       box.nextMoveId += 1;
-      if (item.qty <= qtyOf(item.minQty)) {
+      if (qtyOf(item.minQty) > 0 && item.qty <= qtyOf(item.minQty)) {
         warns.push(item.name + ' az qalıb');
       }
     });
   });
   writeStock(box);
   return warns;
+}
+
+function lowItems() {
+  return readStock().items.map(publicItem).filter(function (item) {
+    return item.low;
+  });
 }
 
 function deductLines(catalogStore, lines, meta) {
@@ -592,6 +598,7 @@ module.exports = {
   removeItem: removeItem,
   moveStock: moveStock,
   addPurchase: addPurchase,
+  lowItems: lowItems,
   deductLines: deductLines,
   restockLines: restockLines,
   lackMessage: lackMessage

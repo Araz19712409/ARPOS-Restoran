@@ -2,6 +2,7 @@
   var waiter = null;
   var pinBuffer = '';
   var rangeKey = 'today';
+  var lastReport = null;
 
   function api(url, options) {
     return fetch(url, options).then(function (res) {
@@ -193,6 +194,7 @@
     api(q)
       .then(function (body) {
         var data = body.data;
+        lastReport = data;
         var sum = data.summary;
         var branchBox = document.getElementById('rep-branch');
         var hasBranch = false;
@@ -397,6 +399,57 @@
       loadReport();
     });
   });
+  function csvCell(value) {
+    var s = String(value == null ? '' : value);
+    if (/[";\n\r]/.test(s)) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  }
+
+  function downloadCsv(name, rows) {
+    var text = '\uFEFF' + rows.map(function (row) {
+      return row.map(csvCell).join(';');
+    }).join('\r\n');
+    var blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    window.setTimeout(function () {
+      URL.revokeObjectURL(a.href);
+    }, 1000);
+  }
+
+  document.getElementById('rep-csv').addEventListener('click', function () {
+    if (!lastReport || !lastReport.sales) {
+      say('Əvvəl Göstər basın.', 'warn');
+      return;
+    }
+    var from = document.getElementById('rep-from').value;
+    var to = document.getElementById('rep-to').value;
+    var rows = [['Vaxt', 'Masa', 'Ofisiant', 'Üsul', 'Nağd', 'Kart', 'İlkin', 'Xidmət', 'Bonus', 'Cəm']];
+    lastReport.sales.forEach(function (row) {
+      rows.push([
+        formatWhen(row.at),
+        row.tableName,
+        row.waiterName,
+        methodLabel(row.method),
+        Number(row.cash).toFixed(2),
+        Number(row.card).toFixed(2),
+        Number(row.prepaid).toFixed(2),
+        Number(row.service || 0).toFixed(2),
+        Number(row.bonus || 0).toFixed(2),
+        Number(row.total).toFixed(2)
+      ]);
+    });
+    var sum = lastReport.summary || {};
+    rows.push([]);
+    rows.push(['Cəm', '', '', '', Number(sum.cash || 0).toFixed(2), Number(sum.card || 0).toFixed(2), Number(sum.prepaid || 0).toFixed(2), '', '', Number(sum.total || 0).toFixed(2)]);
+    downloadCsv('satis-' + from + '-' + to + '.csv', rows);
+    say('CSV yükləndi.', 'ok');
+  });
+
   document.getElementById('rep-load').addEventListener('click', function () {
     rangeKey = '';
     document.querySelectorAll('.report-presets button').forEach(function (btn) {

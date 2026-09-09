@@ -1400,7 +1400,10 @@ app.get('/api/orders', function (req, res) {
         orders: orders.readOrders().orders,
         reservations: reservations.readReservations().reservations,
         settings: settings.readSettings(),
-        locks: terminals.listLocks()
+        locks: terminals.listLocks(),
+        lowStock: req.staff && users.hasPermission(req.staff.role, 'stock.view')
+          ? stock.lowItems()
+          : []
       }
     });
   } catch (error) {
@@ -4138,9 +4141,61 @@ app.post('/api/shifts/close', function (req, res) {
     return { terminalName: terminal.name, packed: packed };
   }).then(function (result) {
     audit(req, 'shift', result.terminalName + ' — növbə bağlandı');
-    res.json({ success: true, data: result.packed });
+    const packed = result.packed;
+    packed.terminalName = result.terminalName;
+    packed.branchName = settings.readSettings().branchName || '';
+    printers.sendZTickets(packed).then(function (print) {
+      res.json({
+        success: true,
+        data: packed,
+        warning: print && print.warning ? print.warning : ''
+      });
+    }).catch(function () {
+      res.json({ success: true, data: packed, warning: 'Z çapı getmədi.' });
+    });
   }).catch(function (error) {
     sendFail(res, error);
+  });
+});
+
+app.post('/api/shifts/print-z', function (req, res) {
+  if (!needPerm(req, res, 'payments.take')) {
+    return;
+  }
+  const body = req.body || {};
+  const terminal = terminals.getById(body.terminalId);
+  if (!terminal) {
+    res.status(400).json({ success: false, message: 'Terminal seçin.' });
+    return;
+  }
+  const store = shifts.readStore();
+  let row = null;
+  if (body.shiftId) {
+    row = store.shifts.find(function (item) {
+      return item.id === Number(body.shiftId) && item.terminalId === terminal.id;
+    });
+  } else {
+    row = store.shifts.filter(function (item) {
+      return item.terminalId === terminal.id && item.status === 'closed';
+    }).sort(function (a, b) {
+      return String(b.closedAt || '').localeCompare(String(a.closedAt || ''));
+    })[0];
+  }
+  if (!row) {
+    res.status(404).json({ success: false, message: 'Bağlanmış növbə yoxdur.' });
+    return;
+  }
+  const packed = shifts.withExpected(row, orders.readOrders().orders, reservations.readReservations());
+  packed.terminalName = terminal.name;
+  packed.branchName = settings.readSettings().branchName || '';
+  printers.sendZTickets(packed).then(function (print) {
+    if (print && print.warning && !print.anyOk) {
+      res.status(400).json({ success: false, message: print.warning });
+      return;
+    }
+    res.json({ success: true, data: packed, warning: print && print.warning ? print.warning : '' });
+  }).catch(function (error) {
+    res.status(500).json({ success: false, message: error.message || 'Z çapı getmədi.' });
   });
 });
 

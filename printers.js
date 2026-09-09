@@ -219,6 +219,9 @@ function ticketBytes(printer, title, lines) {
     chunks.push(Buffer.from([0x1b, 0x61, 0x00]));
   }
   chunks.push(Buffer.from(padLines(printer, lines).join('\n') + '\n\n\n', 'ascii'));
+  if (printer && printer.openDrawer) {
+    chunks.push(Buffer.from([0x1b, 0x70, 0x00, 0x19, 0xfa]));
+  }
   chunks.push(Buffer.from([0x1d, 0x56, 0x41, 0x10]));
   return Buffer.concat(chunks);
 }
@@ -531,8 +534,67 @@ async function deliverReceipt(order) {
     return { anyOk: false, results: [], warning: 'Kassa printeri yoxdur. Brauzerdən çap edin.' };
   }
   return tryPrinters(list, function (printer) {
-    return buildReceiptTicket(printer, order);
+    const cash = Number((order.payment && order.payment.cashAmount) || 0);
+    return buildReceiptTicket(Object.assign({}, printer, { openDrawer: cash > 0 }), order);
   }, 'Çek çapı');
+}
+
+function formatWhen(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return '';
+  }
+  function two(n) {
+    return (n < 10 ? '0' : '') + n;
+  }
+  return two(d.getDate()) + '.' + two(d.getMonth() + 1) + ' ' + two(d.getHours()) + ':' + two(d.getMinutes());
+}
+
+function buildZTicket(printer, packed) {
+  const width = contentWidth(printer);
+  const row = packed.shift || {};
+  const tot = packed.totals || {};
+  const lines = [];
+  lines.push(toPrinterText(packed.branchName || 'Arpos Restoran'));
+  lines.push(toPrinterText((packed.terminalName || '') + '  Z-hesabat'));
+  lines.push(dash(width));
+  lines.push(toPrinterText('Acildi  ' + formatWhen(row.openedAt)));
+  lines.push(toPrinterText('Baglandi  ' + formatWhen(row.closedAt)));
+  lines.push(toPrinterText('Kassir  ' + (row.closedByName || row.openedByName || '')));
+  lines.push(dash(width));
+  lines.push(line(width, 'Cek', String(tot.count || 0)));
+  lines.push(line(width, 'Cem', Number(tot.total || 0).toFixed(2)));
+  lines.push(line(width, 'Nagd', Number(tot.cash || 0).toFixed(2)));
+  lines.push(line(width, 'Kart', Number(tot.card || 0).toFixed(2)));
+  lines.push(line(width, 'Hediye', Number(tot.gift || 0).toFixed(2)));
+  lines.push(line(width, 'Ilkin', Number(tot.prepaid || 0).toFixed(2)));
+  if (tot.refundCash || tot.refundCard) {
+    lines.push(line(width, 'Geri nagd', Number(tot.refundCash || 0).toFixed(2)));
+    lines.push(line(width, 'Geri kart', Number(tot.refundCard || 0).toFixed(2)));
+  }
+  lines.push(dash(width));
+  lines.push(line(width, 'Baslangic', Number(row.startingCash || 0).toFixed(2)));
+  (packed.drops || []).forEach(function (drop) {
+    lines.push(line(width, 'Cixaris ' + toPrinterText(drop.note || ''), Number(drop.amount || 0).toFixed(2)));
+  });
+  lines.push(line(width, 'Gozlenilen', Number(packed.expectedCash || 0).toFixed(2)));
+  lines.push(line(width, 'Sayilan', Number(row.countedCash || 0).toFixed(2)));
+  lines.push(line(width, 'Ferq', Number(packed.difference || 0).toFixed(2)));
+  lines.push(eq(width));
+  return ticketBytes(Object.assign({}, printer, { openDrawer: true }), 'Z', lines);
+}
+
+async function sendZTickets(packed) {
+  const store = readStore();
+  const list = store.printers.filter(function (item) {
+    return item.enabled && item.role === 'receipt';
+  });
+  if (!list.length) {
+    return { anyOk: false, results: [], warning: 'Kassa printeri yoxdur.' };
+  }
+  return tryPrinters(list, function (printer) {
+    return buildZTicket(printer, packed);
+  }, 'Z capi');
 }
 
 async function sendStationTickets(stationId, payload) {
@@ -726,6 +788,7 @@ module.exports = {
   testPrint: testPrint,
   sendStationTickets: sendStationTickets,
   sendReceiptTickets: sendReceiptTickets,
+  sendZTickets: sendZTickets,
   listQueue: listQueue,
   processQueue: processQueue,
   retryJob: retryJob,

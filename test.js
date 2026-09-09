@@ -229,6 +229,13 @@ test('ping kilidsiz masanı yenidən götürür', function () {
   terminals.release(99, term.id);
 });
 
+test('az qalıq yalnız min yazılanda', function () {
+  const emptyMin = stock.publicItem({ id: 1, name: 'Su', unit: 'l', qty: 0, minQty: 0, buyPrice: 1 });
+  const low = stock.publicItem({ id: 2, name: 'Un', unit: 'kq', qty: 0.5, minQty: 2, buyPrice: 1 });
+  assert.strictEqual(emptyMin.low, false);
+  assert.strictEqual(low.low, true);
+});
+
 test('qəbulda quoted happy hour saxlanır', function () {
   const product = { salePrice: 10, happyPrice: 7, happyFrom: 3, happyTo: 4, portions: [], extras: [] };
   const quoted = catalog.resolveQuotedPrice(product, {}, 7);

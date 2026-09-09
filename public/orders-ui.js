@@ -67,6 +67,7 @@
   var cardScale = readCardScale();
   var scaleTimer = 0;
   var scaleHydrated = false;
+  var lowTold = false;
 
   function api(url, options) {
     return fetch(url, options).then(function (res) {
@@ -453,6 +454,12 @@
       }
       if (!groupId && groups[0]) {
         groupId = groups[0].id;
+      }
+      var low = parts[2].data.lowStock || [];
+      if (!lowTold && low.length) {
+        lowTold = true;
+        say(low.length + ' xammal az qalıb: ' +
+          low.slice(0, 6).map(function (row) { return row.name; }).join(', '), 'warn');
       }
       render();
     }).catch(function (error) {
@@ -1644,7 +1651,7 @@
     document.getElementById('pay-method-cash').classList.toggle('active', method === 'cash');
     document.getElementById('pay-method-card').classList.toggle('active', method === 'card');
     document.getElementById('pay-method-mix').classList.toggle('active', method === 'mix');
-    document.getElementById('pay-mix-fields').classList.toggle('hidden', method !== 'mix');
+    document.getElementById('pay-mix-fields').classList.remove('hidden');
     if (method === 'cash') {
       document.getElementById('pay-cash-amt').value = payDue.toFixed(2);
       document.getElementById('pay-card-amt').value = '0.00';

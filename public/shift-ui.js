@@ -458,10 +458,30 @@
       })
     }).then(function (body) {
       var diff = body.data && body.data.difference;
-      say(diff === 0 ? 'Növbə bağlandı. Çekmece tutdu.' : ('Növbə bağlandı. Fərq: ' + money(diff)));
+      var msg = diff === 0 ? 'Növbə bağlandı. Çekmece tutdu.' : ('Növbə bağlandı. Fərq: ' + money(diff));
+      if (body.warning) {
+        msg += ' ' + body.warning;
+      } else {
+        msg += ' Z çapıldı.';
+      }
+      say(msg, body.warning ? 'warn' : 'ok');
       document.getElementById('shift-counted').value = '';
       document.getElementById('shift-note').value = '';
       loadShift();
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
+  });
+  document.getElementById('shift-print-z').addEventListener('click', function () {
+    if (!can('payments.take')) {
+      return;
+    }
+    api('/api/shifts/print-z', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ terminalId: terminalId })
+    }).then(function (body) {
+      say(body.warning || 'Z çapıldı.', body.warning ? 'warn' : 'ok');
     }).catch(function (error) {
       say(error.message, 'err');
     });

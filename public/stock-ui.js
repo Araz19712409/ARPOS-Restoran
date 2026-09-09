@@ -180,6 +180,19 @@
   }
 
   function render() {
+    var low = items.filter(function (row) { return row.low; });
+    var banner = document.getElementById('stock-low-banner');
+    if (banner) {
+      if (low.length) {
+        banner.textContent = low.length + ' xammal az qalıb: ' +
+          low.slice(0, 8).map(function (row) { return row.name; }).join(', ') +
+          (low.length > 8 ? '…' : '');
+        banner.classList.remove('hidden');
+      } else {
+        banner.textContent = '';
+        banner.classList.add('hidden');
+      }
+    }
     var box = document.getElementById('stock-body');
     box.innerHTML = '';
     if (!items.length) {
