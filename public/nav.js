@@ -772,6 +772,7 @@
       }
       var lock = ensureLicenseLock();
       document.getElementById('license-machine').textContent = data.machine || '';
+      document.getElementById('license-error').textContent = data.error || '';
       lock.classList.remove('hidden');
       done();
     }).catch(function () {

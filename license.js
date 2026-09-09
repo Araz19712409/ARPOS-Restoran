@@ -2,10 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const { execFileSync } = require('child_process');
 const store = require('./store');
 const version = require('./version');
 
 const FILE = path.join(__dirname, 'data', 'license.json');
+const STAMP_FILE = path.join(__dirname, 'data', 'machine.json');
 const PUB_FILE = path.join(__dirname, 'license-public.pem');
 
 function publicKeyPem() {
@@ -15,7 +17,37 @@ function publicKeyPem() {
   throw new Error('Lisenziya açarı tapılmadı.');
 }
 
-function machineId() {
+function windowsMachineGuid() {
+  if (process.platform !== 'win32') {
+    return '';
+  }
+  try {
+    const out = execFileSync('reg.exe', [
+      'query',
+      'HKLM\\SOFTWARE\\Microsoft\\Cryptography',
+      '/v',
+      'MachineGuid'
+    ], { encoding: 'utf8', windowsHide: true, timeout: 4000 });
+    const match = String(out).match(/MachineGuid\s+REG_\w+\s+([0-9a-fA-F-]{8,})/i);
+    return match ? match[1].trim() : '';
+  } catch (error) {
+    return '';
+  }
+}
+
+function hashId(raw) {
+  return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 16);
+}
+
+function liveId() {
+  const guid = windowsMachineGuid();
+  if (guid) {
+    return hashId('guid|' + guid);
+  }
+  return hashId([os.hostname(), os.platform(), os.arch()].join('|'));
+}
+
+function legacyMacId() {
   const macs = [];
   const nets = os.networkInterfaces() || {};
   Object.keys(nets).forEach(function (name) {
@@ -26,8 +58,45 @@ function machineId() {
     });
   });
   macs.sort();
-  const raw = [os.hostname(), os.platform(), os.arch(), macs[0] || ''].join('|');
-  return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 16);
+  return hashId([os.hostname(), os.platform(), os.arch(), macs[0] || ''].join('|'));
+}
+
+function readStamp() {
+  try {
+    const row = store.readJson(STAMP_FILE);
+    return row && row.bound && row.live ? row : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function rememberBinding(tokenM) {
+  const live = liveId();
+  store.writeJson(STAMP_FILE, {
+    bound: String(tokenM || live).toLowerCase(),
+    live: live
+  });
+}
+
+function machineMatches(tokenM) {
+  const want = String(tokenM || '').toLowerCase();
+  if (!want) {
+    return true;
+  }
+  const live = liveId();
+  if (want === live || want === legacyMacId()) {
+    rememberBinding(want);
+    return true;
+  }
+  const stamp = readStamp();
+  if (stamp && String(stamp.bound).toLowerCase() === want && String(stamp.live).toLowerCase() === live) {
+    return true;
+  }
+  return false;
+}
+
+function machineId() {
+  return liveId();
 }
 
 function machineText() {
@@ -80,7 +149,7 @@ function readLicense() {
   }
 }
 
-function status() {
+function currentStatus() {
   const info = {
     product: 'Arpos Restoran',
     version: version.current(),
@@ -101,18 +170,49 @@ function status() {
     info.error = 'Lisenziyanın müddəti bitib.';
     return info;
   }
-  const mine = machineId();
-  if (data.m && String(data.m).toLowerCase() !== mine) {
+  if (!machineMatches(data.m)) {
     info.error = 'Bu kod başqa kompüterə yazılıb.';
-    return info;
-  }
-  if (row.machine && String(row.machine).toLowerCase() !== mine) {
-    info.error = 'Lisenziya bu kompüterə bağlı deyil.';
     return info;
   }
   info.licensed = true;
   info.name = data.n || '';
   info.expires = data.e ? Number(data.e) : 0;
+  return info;
+}
+
+function activateFromOwner() {
+  const ownerFile = path.join(__dirname, 'scripts', 'license-owner.js');
+  const priv = path.join(__dirname, 'keys', 'arpos-private.pem');
+  if (!fs.existsSync(ownerFile) || !fs.existsSync(priv)) {
+    return false;
+  }
+  let owner;
+  try {
+    owner = require('./scripts/license-owner');
+  } catch (error) {
+    return false;
+  }
+  const made = owner.issue({ name: 'Arpos Restoran', machine: machineId() });
+  if (made.error || !made.token) {
+    return false;
+  }
+  const out = activate(made.token);
+  return !out.error;
+}
+
+let ownerAttempted = false;
+
+function status() {
+  const info = currentStatus();
+  if (info.licensed) {
+    return info;
+  }
+  if (!ownerAttempted) {
+    ownerAttempted = true;
+    if (activateFromOwner()) {
+      return currentStatus();
+    }
+  }
   return info;
 }
 
@@ -129,13 +229,13 @@ function activate(raw) {
   if (data.e && Number(data.e) > 0 && Number(data.e) * 1000 < Date.now()) {
     return { error: 'Lisenziyanın müddəti bitib.' };
   }
-  const mine = machineId();
-  if (data.m && String(data.m).toLowerCase() !== mine) {
+  if (data.m && !machineMatches(data.m)) {
     return { error: 'Bu kod bu kompüter üçün deyil. Maşın kodunu göndərin.' };
   }
+  rememberBinding(data.m);
   const row = {
     token: parsed.token,
-    machine: mine,
+    machine: liveId(),
     name: String(data.n || '').slice(0, 60),
     activatedAt: new Date().toISOString(),
     version: version.current()
