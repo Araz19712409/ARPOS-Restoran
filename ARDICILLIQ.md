@@ -154,6 +154,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 130. [x] 1.1.12 — Z çap, hesabat CSV, az qalıq, ödəniş qalığı
 131. [x] 1.1.13 — Barkod, oflayn növbə, çatdırılma statusu
 132. [x] 1.1.14 — Lisenziya müştəridə yenidən yükləmədə qalır
+133. [x] 1.1.15 — Mühasib: kassa kitabı, ödəniş üsulu, P&L
 
 ### Professional (9.09)
 121. [x] Növbə bağlananda çap olunan Z (nağd/kart/hədiyyə/çıxarış)

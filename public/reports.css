@@ -339,8 +339,10 @@
   overflow: auto;
 }
 
-@media (max-width: 720px) {
-  .buy-line {
-    grid-template-columns: 1fr 1fr;
-  }
+.books-tabs {
+  margin-bottom: 10px;
+}
+
+.books-panel h2 {
+  margin-top: 8px;
 }

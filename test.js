@@ -12,6 +12,7 @@ const licenseOwner = require('./scripts/license-owner');
 const version = require('./version');
 const store = require('./store');
 const terminals = require('./terminals');
+const books = require('./books');
 const path = require('path');
 
 function test(name, fn) {
@@ -254,6 +255,59 @@ test('qəbulda quoted happy hour saxlanır', function () {
   const product = { salePrice: 10, happyPrice: 7, happyFrom: 3, happyTo: 4, portions: [], extras: [] };
   const quoted = catalog.resolveQuotedPrice(product, {}, 7);
   assert.strictEqual(quoted.salePrice, 7);
+});
+
+test('mühasib: ödəniş və kassa kitabı', function () {
+  const from = new Date('2026-09-10T00:00:00');
+  const to = new Date('2026-09-10T23:59:59.999');
+  const data = books.build({
+    from: from,
+    to: to,
+    showCost: true,
+    showStock: true,
+    terminals: [{ id: 1, name: 'Kassa 1' }],
+    book: { reservations: [] },
+    catalog: { products: [{ id: 1, ingredients: [] }] },
+    stock: {
+      items: [{ id: 5, name: 'Un', buyPrice: 2, qty: 1 }],
+      moves: [{ type: 'out', itemId: 5, qty: 3, note: 'xarab', at: '2026-09-10T11:00:00' }],
+      purchases: [{ at: '2026-09-10T09:00:00', total: 40 }]
+    },
+    shifts: [{
+      id: 1,
+      terminalId: 1,
+      status: 'closed',
+      startingCash: 20,
+      openedAt: '2026-09-10T10:00:00',
+      closedAt: '2026-09-10T22:00:00',
+      countedCash: 45,
+      drops: [{ amount: 5 }]
+    }],
+    orders: [{
+      status: 'paid',
+      terminalId: 1,
+      items: [{ productId: 1, qty: 1, salePrice: 30, complimentary: false }],
+      payment: {
+        at: '2026-09-10T12:00:00',
+        method: 'mixed',
+        cashAmount: 10,
+        cardAmount: 20,
+        giftAmount: 0,
+        prepaid: 0,
+        total: 30,
+        discountAmount: 0
+      }
+    }]
+  });
+  assert.strictEqual(data.payments.cash, 10);
+  assert.strictEqual(data.payments.card, 20);
+  assert.strictEqual(data.payments.total, 30);
+  assert.strictEqual(data.methods.filter(function (row) { return row.method === 'mixed'; })[0].count, 1);
+  assert.strictEqual(data.cashbook.length, 1);
+  assert.strictEqual(data.cashbook[0].expected, 25);
+  assert.strictEqual(data.cashbook[0].difference, 20);
+  assert.strictEqual(data.pnl.waste, 6);
+  assert.strictEqual(data.pnl.purchases, 40);
 });
 
 console.log('Bütün testlər keçdi.');

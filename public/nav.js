@@ -211,6 +211,21 @@
       if (!reports) {
         continue;
       }
+      if (!list.querySelector('a[href="/books.html"]')) {
+        var books = document.createElement('a');
+        books.href = '/books.html';
+        books.setAttribute('data-need', 'reports.view');
+        books.textContent = 'Mühasib';
+        var here = window.location.pathname;
+        if (here === '/books.html' || here === '/books') {
+          books.className = 'active';
+        }
+        if (reports.nextSibling) {
+          list.insertBefore(books, reports.nextSibling);
+        } else {
+          list.appendChild(books);
+        }
+      }
       if (!list.querySelector('a[href="/journal.html"]')) {
         var a = document.createElement('a');
         a.href = '/journal.html';
@@ -220,8 +235,9 @@
         if (path === '/journal.html' || path === '/journal') {
           a.className = 'active';
         }
-        if (reports.nextSibling) {
-          list.insertBefore(a, reports.nextSibling);
+        var after = list.querySelector('a[href="/books.html"]') || reports;
+        if (after.nextSibling) {
+          list.insertBefore(a, after.nextSibling);
         } else {
           list.appendChild(a);
         }

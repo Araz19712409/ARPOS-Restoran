@@ -24,6 +24,7 @@ const sms = require('./sms');
 const updater = require('./updater');
 const license = require('./license');
 const version = require('./version');
+const books = require('./books');
 
 const app = express();
 const PORT = 3004;
@@ -1401,6 +1402,33 @@ app.get('/api/reports/sales', function (req, res) {
         refunds: refunds,
         branchName: settings.readSettings().branchName || ''
       }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
+app.get('/api/reports/books', function (req, res) {
+  try {
+    const staff = users.canUser(Number(req.query.waiterId), 'reports.view');
+    if (!staff || !staff.ok) {
+      res.status(403).json({
+        success: false,
+        message: staff ? 'Hesabata icazəniz yoxdur.' : 'PIN ilə daxil olun.'
+      });
+      return;
+    }
+    const from = books.parseBound(req.query.from, false) || new Date(new Date().setHours(0, 0, 0, 0));
+    const to = books.parseBound(req.query.to, true) || new Date(new Date().setHours(23, 59, 59, 999));
+    if (from.getTime() > to.getTime()) {
+      res.status(400).json({ success: false, message: 'Tarix aralığı səhvdir.' });
+      return;
+    }
+    const showCost = users.hasPermission(req.staff && req.staff.role, 'cost.view');
+    const showStock = showCost || users.hasPermission(req.staff && req.staff.role, 'stock.view');
+    res.json({
+      success: true,
+      data: books.report(from, to, { showCost: showCost, showStock: showStock })
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
