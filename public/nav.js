@@ -486,6 +486,7 @@
   var refreshPrintQueue = null;
 
   function afterLogin(data) {
+    hideBanner();
     apply(data);
     if (refreshPrintQueue) {
       refreshPrintQueue();
@@ -554,10 +555,22 @@
     return el;
   }
 
+  function pinLockOpen() {
+    var lock = document.getElementById('pin-lock');
+    return !!(lock && !lock.classList.contains('hidden'));
+  }
+
+  function isLoginPrompt(msg) {
+    return /PIN ilə daxil olun/i.test(msg);
+  }
+
   function banner(text, kind) {
     var msg = String(text == null ? '' : text).trim();
     if (!msg) {
       hideBanner();
+      return;
+    }
+    if (isLoginPrompt(msg) && (pinLockOpen() || !session())) {
       return;
     }
     if (kind !== 'ok' && kind !== 'err' && kind !== 'warn') {
@@ -611,11 +624,6 @@
     document.addEventListener('DOMContentLoaded', boot);
   } else {
     boot();
-  }
-
-  function pinLockOpen() {
-    var lock = document.getElementById('pin-lock');
-    return !!(lock && !lock.classList.contains('hidden'));
   }
 
   function clickPadKey(key) {

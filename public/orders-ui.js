@@ -155,6 +155,9 @@
 
   function showLock() {
     document.getElementById('pin-lock').classList.remove('hidden');
+    if (window.PosNav && window.PosNav.hideBanner) {
+      window.PosNav.hideBanner();
+    }
     pinBuffer = '';
     drawPin();
   }
@@ -407,6 +410,9 @@
   }
 
   function load() {
+    if (!waiter) {
+      return Promise.resolve();
+    }
     return Promise.all([
       api('/api/layout'),
       api('/api/catalog'),
