@@ -122,6 +122,39 @@ function withExpected(row, orderList, book) {
   };
 }
 
+function openShiftForTill(store, terminalId) {
+  const id = Number(terminalId) || 0;
+  if (id) {
+    return currentFor(store, id);
+  }
+  const open = (store.shifts || []).filter(function (row) {
+    return row.status === 'open';
+  });
+  return open.length === 1 ? open[0] : null;
+}
+
+function addCashDrop(store, terminalId, amount, note, user) {
+  const pay = money(amount);
+  if (!Number.isFinite(pay) || pay <= 0) {
+    return null;
+  }
+  const row = openShiftForTill(store, terminalId);
+  if (!row) {
+    return null;
+  }
+  if (!row.drops) {
+    row.drops = [];
+  }
+  row.drops.push({
+    amount: pay,
+    note: String(note || '').trim().slice(0, 40),
+    at: new Date().toISOString(),
+    userId: user && user.id ? user.id : 0,
+    userName: user && user.name ? String(user.name).slice(0, 40) : ''
+  });
+  return row;
+}
+
 module.exports = {
   money: money,
   readStore: readStore,
@@ -129,5 +162,7 @@ module.exports = {
   totals: totals,
   openTableNames: openTableNames,
   currentFor: currentFor,
-  withExpected: withExpected
+  withExpected: withExpected,
+  openShiftForTill: openShiftForTill,
+  addCashDrop: addCashDrop
 };

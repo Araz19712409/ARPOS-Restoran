@@ -65,7 +65,7 @@
         return 'kit:' + (o.orderId || '') + ':' + (o.itemId || '');
       }
       if (p === '/api/clock') {
-        return 'clock';
+        return 'clock:' + Date.now() + ':' + Math.random().toString(36).slice(2, 10);
       }
     } catch (error) {
       return String(url) + ':' + Date.now();

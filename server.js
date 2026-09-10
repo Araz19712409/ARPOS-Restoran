@@ -475,20 +475,32 @@ app.delete('/api/tables/:id', function (req, res) {
 });
 
 // Kataloqu qaytarırıq
+function sendCatalog(res, data) {
+  const sold = orders.soldProductIds();
+  data.products = (data.products || []).map(function (item) {
+    return Object.assign({}, item, {
+      sold: !!sold[item.id],
+      nowPrice: catalog.salePriceNow(item)
+    });
+  });
+  const stamp = settings.branchStamp();
+  data.branchCode = stamp.code;
+  data.branchName = stamp.name;
+  res.json({ success: true, data: data });
+}
+
 app.get('/api/catalog', function (req, res) {
   try {
-    const data = catalog.readCatalog();
-    const sold = orders.soldProductIds();
-    data.products = (data.products || []).map(function (item) {
-      return Object.assign({}, item, {
-        sold: !!sold[item.id],
-        nowPrice: catalog.salePriceNow(item)
+    const peek = catalog.loadCatalogRaw();
+    if (catalog.needsSoldOutRoll(peek)) {
+      catalog.readCatalogLocked().then(function (data) {
+        sendCatalog(res, data);
+      }).catch(function (error) {
+        res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
       });
-    });
-    const stamp = settings.branchStamp();
-    data.branchCode = stamp.code;
-    data.branchName = stamp.name;
-    res.json({ success: true, data: data });
+      return;
+    }
+    sendCatalog(res, catalog.readCatalog());
   } catch (error) {
     res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
   }
@@ -500,22 +512,31 @@ app.get('/api/catalog/prices', function (req, res) {
       return;
     }
     const stamp = settings.branchStamp();
-    const data = catalog.readCatalog();
-    res.json({
-      success: true,
-      data: {
-        branchCode: stamp.code,
-        branchName: stamp.name,
-        products: (data.products || []).map(function (row) {
-          return {
-            id: row.id,
-            name: row.name,
-            salePrice: row.salePrice,
-            prices: row.prices && typeof row.prices === 'object' ? row.prices : {}
-          };
-        })
-      }
-    });
+    function sendPrices(data) {
+      res.json({
+        success: true,
+        data: {
+          branchCode: stamp.code,
+          branchName: stamp.name,
+          products: (data.products || []).map(function (row) {
+            return {
+              id: row.id,
+              name: row.name,
+              salePrice: row.salePrice,
+              prices: row.prices && typeof row.prices === 'object' ? row.prices : {}
+            };
+          })
+        }
+      });
+    }
+    const peek = catalog.loadCatalogRaw();
+    if (catalog.needsSoldOutRoll(peek)) {
+      catalog.readCatalogLocked().then(sendPrices).catch(function (error) {
+        res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+      });
+      return;
+    }
+    sendPrices(catalog.readCatalog());
   } catch (error) {
     res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
   }
@@ -718,6 +739,18 @@ app.post('/api/stock/purchases/:id/pay', function (req, res) {
     const out = stock.payPurchase(req.params.id, req.body && req.body.amount, who);
     if (out.error) {
       reject(400, out.error);
+    }
+    const paid = Number(out.paid) || 0;
+    const shiftStore = shifts.readStore();
+    const dropped = shifts.addCashDrop(
+      shiftStore,
+      req.body && req.body.terminalId,
+      paid,
+      'Təchizatçı ödənişi',
+      req.staff && req.staff.user
+    );
+    if (dropped) {
+      shifts.writeStore(shiftStore);
     }
     return out.purchase;
   }).then(function (purchase) {

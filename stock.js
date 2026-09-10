@@ -794,7 +794,7 @@ function payPurchase(id, amount, who) {
   row.paidAmount = paidOf(row);
   row.credit = dueOf(row) > 0;
   writeStock(box);
-  return { purchase: publicPurchase(row) };
+  return { purchase: publicPurchase(row), paid: take };
 }
 
 function collectNeed(catalogStore, lines) {

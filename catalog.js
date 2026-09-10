@@ -3,6 +3,7 @@ const path = require('path');
 const store = require('./store');
 const stock = require('./stock');
 const db = require('./db');
+const lock = require('./lock');
 
 const UPLOAD_DIR = path.join(__dirname, 'public', 'uploads', 'products');
 
@@ -15,21 +16,19 @@ function defaultStations() {
   ];
 }
 
-// Kataloq faylını oxuyuruq
-function readCatalog() {
+function loadCatalogRaw() {
   if (db.migrated()) {
     const data = db.loadCatalog();
     if (!data.stations || !data.stations.length) {
       data.stations = defaultStations();
     }
-    persistSoldOutRoll(data);
     return data;
   }
   const raw = store.readJson(db.dataFile('catalog.json'));
   const stations = Array.isArray(raw.stations) && raw.stations.length
     ? raw.stations
     : defaultStations();
-  const data = {
+  return {
     nextGroupId: Number(raw.nextGroupId) || 1,
     nextProductId: Number(raw.nextProductId) || 1,
     nextStationId: Number(raw.nextStationId) || 4,
@@ -38,6 +37,15 @@ function readCatalog() {
     stations: stations,
     products: Array.isArray(raw.products) ? raw.products : []
   };
+}
+
+function needsSoldOutRoll(data) {
+  return (data.soldOutDay || '') !== todayKey();
+}
+
+// Kataloq faylını oxuyuruq
+function readCatalog() {
+  const data = loadCatalogRaw();
   persistSoldOutRoll(data);
   return data;
 }
@@ -49,10 +57,18 @@ function persistSoldOutRoll(data) {
     return;
   }
   try {
-    writeCatalog(data);
+    const fresh = loadCatalogRaw();
+    applySoldOutDay(fresh);
+    writeCatalog(fresh);
   } catch (error) {
     return;
   }
+}
+
+function readCatalogLocked() {
+  return lock.withLock('write', function () {
+    return readCatalog();
+  });
 }
 
 function todayKey() {
@@ -291,6 +307,9 @@ function markText(item) {
 
 module.exports = {
   readCatalog,
+  readCatalogLocked,
+  loadCatalogRaw,
+  needsSoldOutRoll,
   writeCatalog,
   saveProductImage,
   emptyCostFields,

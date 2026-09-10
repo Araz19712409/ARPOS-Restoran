@@ -77,9 +77,13 @@ function listToday() {
   return { today: today(box) };
 }
 
+const OPEN_PUNCH_CAP_MS = 16 * 3600000;
+
 function clipHours(inAt, outAt, from, to) {
   const start = new Date(inAt).getTime();
-  const stop = outAt ? new Date(outAt).getTime() : Date.now();
+  const stop = outAt
+    ? new Date(outAt).getTime()
+    : Math.min(Date.now(), start + OPEN_PUNCH_CAP_MS);
   const a = Math.max(start, from.getTime());
   const b = Math.min(stop, to.getTime());
   if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) {
@@ -136,5 +140,6 @@ module.exports = {
   listToday: listToday,
   payroll: payroll,
   clipHours: clipHours,
-  readStore: readStore
+  readStore: readStore,
+  OPEN_PUNCH_CAP_MS: OPEN_PUNCH_CAP_MS
 };

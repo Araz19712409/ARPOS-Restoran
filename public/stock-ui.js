@@ -400,10 +400,17 @@
       if (!ok) {
         return;
       }
+      var termId = 0;
+      try {
+        var term = JSON.parse(window.localStorage.getItem('posTerminal') || 'null');
+        termId = term && term.id ? Number(term.id) : 0;
+      } catch (error) {
+        termId = 0;
+      }
       return api('/api/stock/purchases/' + row.id + '/pay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: row.due })
+        body: JSON.stringify({ amount: row.due, terminalId: termId })
       }).then(function () {
         say('Borc ödənildi.');
         return load();

@@ -17,6 +17,7 @@ const clock = require('./clock');
 const offline = require('./public/offline.js');
 const db = require('./db');
 const totp = require('./totp');
+const backup = require('./backup');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -738,6 +739,58 @@ test('totp və istifadəçi kilidi', function () {
     settings.writeSettings({ tillLocked: true });
     assert.strictEqual(settings.readSettings().tillLocked, true);
   });
+});
+
+test('əməkhaqqı açıq punch-u 16 saatdan çox saymır', function () {
+  const inAt = new Date(Date.now() - 48 * 3600000).toISOString();
+  const hours = clock.clipHours(
+    inAt,
+    '',
+    new Date(Date.now() - 72 * 3600000),
+    new Date()
+  );
+  assert.ok(hours <= 16.01);
+  assert.ok(hours >= 15.9);
+});
+
+test('oflayn saat növbəsi iki toxunuşu saxlayır', function () {
+  const a = offline.queueKeyOf('/api/clock', '{}');
+  const b = offline.queueKeyOf('/api/clock', '{}');
+  assert.notStrictEqual(a, b);
+  assert.ok(String(a).indexOf('clock:') === 0);
+});
+
+test('alış ödənişi növbə nağdından düşür', function () {
+  const store = {
+    shifts: [{
+      terminalId: 1,
+      status: 'open',
+      startingCash: 100,
+      openedAt: '2026-09-10T10:00:00',
+      drops: []
+    }]
+  };
+  const row = shifts.addCashDrop(store, 1, 25, 'Təchizatçı ödənişi', { id: 2, name: 'Ali' });
+  assert.ok(row);
+  assert.strictEqual(row.drops[0].amount, 25);
+  const packed = shifts.withExpected(row, [], { reservations: [] });
+  assert.strictEqual(packed.expectedCash, 75);
+});
+
+test('GitHub ehtiyat sessiya faylını buraxır', function () {
+  assert.strictEqual(backup.githubSkip('session.key'), true);
+  assert.strictEqual(backup.githubSkip('sessions.json'), true);
+  assert.strictEqual(backup.githubSkip('pin-lock.json'), true);
+  assert.strictEqual(backup.githubSkip('clock.json'), false);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arpos-gh-'));
+  const src = path.join(dir, 'src');
+  const dest = path.join(dir, 'dest');
+  fs.mkdirSync(src);
+  fs.writeFileSync(path.join(src, 'session.key'), 'secret');
+  fs.writeFileSync(path.join(src, 'clock.json'), '{}');
+  backup.copyGithubTree(src, dest);
+  assert.strictEqual(fs.existsSync(path.join(dest, 'session.key')), false);
+  assert.strictEqual(fs.existsSync(path.join(dest, 'clock.json')), true);
 });
 
 console.log('Bütün testlər keçdi.');

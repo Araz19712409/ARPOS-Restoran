@@ -1,5 +1,6 @@
 # Arpos Restoran — versiyalar
 
+- **1.2.4** — 2026-09-10 — Maaş 16 saat, oflayn saat, 86 kilidi, alış ödənişi, GitHub sessiya
 - **1.2.3** — 2026-09-10 — Təchizatçı siyahısı, 86 sıfırlanması, ehtiyat faylları
 - **1.2.2** — 2026-09-10 — Mühasib FIFO/ƏDV, ofis sqlite, jurnal, oflayn, filial, 2FA, 1366 UX
 - **1.2.1** — 2026-09-10 — KEEP_MS sqlite xətası

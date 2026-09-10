@@ -30,6 +30,11 @@ const FILES = [
   'versions.json'
 ];
 const SQLITE_FILES = ['arpos.sqlite', 'arpos.sqlite-wal', 'arpos.sqlite-shm'];
+const GITHUB_SKIP = {
+  'pin-lock.json': true,
+  'sessions.json': true,
+  'session.key': true
+};
 
 function pad(n) {
   return (n < 10 ? '0' : '') + n;
@@ -161,6 +166,50 @@ function createBackup(reason) {
   return row;
 }
 
+function copyGithubTree(fromDir, toDir) {
+  fs.mkdirSync(toDir, { recursive: true });
+  FILES.forEach(function (file) {
+    if (GITHUB_SKIP[file]) {
+      return;
+    }
+    const src = path.join(fromDir, file);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(toDir, file));
+    }
+  });
+  SQLITE_FILES.forEach(function (file) {
+    const src = path.join(fromDir, file);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(toDir, file));
+    }
+  });
+  copyArchive(fromDir, toDir);
+  copyJournal(fromDir, toDir);
+  const meta = path.join(fromDir, 'meta.json');
+  if (fs.existsSync(meta)) {
+    fs.copyFileSync(meta, path.join(toDir, 'meta.json'));
+  }
+}
+
+function rmTree(dir) {
+  if (!fs.existsSync(dir)) {
+    return;
+  }
+  fs.readdirSync(dir).forEach(function (name) {
+    const full = path.join(dir, name);
+    if (fs.statSync(full).isDirectory()) {
+      rmTree(full);
+    } else {
+      fs.unlinkSync(full);
+    }
+  });
+  fs.rmdirSync(dir);
+}
+
+function githubSkip(file) {
+  return !!GITHUB_SKIP[file];
+}
+
 function pushGithub(dest, row) {
   const cfg = settings.readSettings().backupGithub || {};
   const repo = String(cfg.repo || '').trim();
@@ -169,12 +218,20 @@ function pushGithub(dest, row) {
     return Promise.resolve({ skipped: true });
   }
   const zip = dest + '.zip';
+  const stage = dest + '-gh';
+  try {
+    copyGithubTree(dest, stage);
+  } catch (error) {
+    rmTree(stage);
+    return Promise.reject(error);
+  }
   return new Promise(function (resolve, reject) {
     execFile('powershell', [
       '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
-      "Compress-Archive -Force -Path '" + dest.replace(/'/g, "''") + "\\*' -DestinationPath '" +
+      "Compress-Archive -Force -Path '" + stage.replace(/'/g, "''") + "\\*' -DestinationPath '" +
         zip.replace(/'/g, "''") + "'"
     ], { windowsHide: true }, function (error) {
+      rmTree(stage);
       if (error) {
         reject(error);
         return;
@@ -375,5 +432,7 @@ module.exports = {
   restoreBackup: restoreBackup,
   ensureDaily: ensureDaily,
   openFolder: openFolder,
-  pickFolder: pickFolder
+  pickFolder: pickFolder,
+  githubSkip: githubSkip,
+  copyGithubTree: copyGithubTree
 };
