@@ -318,6 +318,14 @@ test('mühasib: ödəniş və kassa kitabı', function () {
   assert.strictEqual(data.ledger[0].drops, 5);
 });
 
+test('sqlite canlı sifariş müddəti', function () {
+  assert.strictEqual(db.isLiveOrder({ status: 'open' }), true);
+  assert.strictEqual(db.isLiveOrder({
+    status: 'paid',
+    updatedAt: '2010-01-01T00:00:00.000Z'
+  }), false);
+});
+
 test('sqlite json köçürür və ödəniş qalır', function () {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arpos-db-'));
   const prev = process.env.ARPOS_DATA_DIR;

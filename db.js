@@ -25,6 +25,7 @@ const JSON_FILES = [
   'print-queue.json', 'pin-lock.json'
 ];
 const MOVE_FILES = ['catalog.json', 'orders.json', 'stock.json'];
+const KEEP_MS = 14 * 24 * 60 * 60 * 1000;
 
 let Database;
 let conn = null;
