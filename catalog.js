@@ -221,7 +221,17 @@ function resolveQuotedPrice(product, picks, quote) {
 }
 
 function salePriceNow(product) {
-  const base = Number(product && product.salePrice) || 0;
+  let code = '';
+  try {
+    code = require('./settings').branchStamp().code;
+  } catch (error) {
+    code = '';
+  }
+  const map = product && product.prices && typeof product.prices === 'object' ? product.prices : {};
+  let base = Number(product && product.salePrice) || 0;
+  if (code && map[code] != null && Number.isFinite(Number(map[code]))) {
+    base = Number(map[code]);
+  }
   const happy = Number(product && product.happyPrice);
   if (!Number.isFinite(happy) || happy < 0 || happy > 10000) {
     return Number(base.toFixed(2));

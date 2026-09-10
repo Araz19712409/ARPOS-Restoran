@@ -159,21 +159,34 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 135. [x] 1.1.17 — Mühasib 1C günlük müxabirə
 136. [x] 1.2.0 — SQLite baza
 137. [x] 1.2.1 — KEEP_MS sqlite xətası
+146. [x] 1.2.2 — Mühasib, sqlite ofis, jurnal, oflayn, filial, 2FA, 1366 UX
+
+### Ciddi (10.09) — bir-bir
+138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı
+139. [x] Mühasib: kreditor, FIFO, inventar AZN tarixə, əməkhaqqı, ƏDV
+140. [x] Qalan JSON → SQLite (istifadəçi, ayar, növbə, terminal)
+141. [x] Jurnal dəyişməz (yalnız əlavə)
+142. [x] Tam oflayn kassa + sinxron
+143. [x] Filial: ortaqlı baza / qiymət / konsolidasiya
+144. [x] Təhlükəsizlik: 2FA, mərkəzi blok
+145. [x] UX 1366: mühasib/anbar oxunaqlı
 
 ### Professional (9.09)
 121. [x] Növbə bağlananda çap olunan Z (nağd/kart/hədiyyə/çıxarış)
 122. [x] Hesabat CSV
 123. [x] Anbarda az qalıq banneri (min > 0)
 124. [x] Ödənişdə qalıq avtomatik (nağd/kart)
-125. [ ] Kart POS terminalı — model deyəndə
+125. [ ] Kart POS — AZ-də hələ yox, model deyəndə
 126. [x] Çekmecə kick (nağd çek / Z)
 127. [x] Barkod / sürətli kod
 128. [x] Oflayn: köçür/mətbəx də növbə
 129. [x] Çatdırılma statusu (yolda/çatdı)
+
+Buraxıldı (indi yox): rəsmi e-kassa/NMQ, mobil ofisiant, tərəzi.
 
 ## Bitdi (əvvəlki)
 - Ehtiyat nüsxə, terminallar, endirim, çap, PIN, növbə, anbar, alış, menyu bölgüsü (zal / ofis)
 - Ofisiantı dəyiş, əməliyyat jurnalı
 
 ## Qiymət
-İşlək restoran kassası. 1–124 və 126–129 bağlandı. 125 (kart POS) model deyəndə.
+İşlək restoran kassası. 1–124, 126–129, 106–145 bağlandı. 125 (kart POS) model deyəndə.

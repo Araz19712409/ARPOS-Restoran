@@ -155,12 +155,24 @@
       card.querySelector('h3').textContent = item.name;
       card.querySelector('.meta').textContent =
         (role ? role.name : 'Rolsuz') + ' • ' + (item.active ? 'Aktiv' : 'Sönülü') +
-        (item.hasPin ? ' • PIN var' : ' • PIN yoxdur');
+        (item.hasPin ? ' • PIN var' : ' • PIN yoxdur') +
+        (item.totpEnabled ? ' • 2FA' : '') +
+        (item.locked ? ' • Kilid' : '');
 
       var editBtn = document.createElement('button');
       editBtn.type = 'button';
       editBtn.textContent = 'Dəyiş';
       editBtn.addEventListener('click', function () { openModal(item); });
+
+      var totpBtn = document.createElement('button');
+      totpBtn.type = 'button';
+      totpBtn.textContent = item.totpEnabled ? '2FA söndür' : '2FA';
+      totpBtn.addEventListener('click', function () { toggleTotp(item); });
+
+      var lockBtn = document.createElement('button');
+      lockBtn.type = 'button';
+      lockBtn.textContent = item.locked ? 'Aç' : 'Kilidlə';
+      lockBtn.addEventListener('click', function () { toggleLock(item); });
 
       var delBtn = document.createElement('button');
       delBtn.type = 'button';
@@ -175,8 +187,57 @@
       });
 
       card.querySelector('.card-actions').appendChild(editBtn);
+      card.querySelector('.card-actions').appendChild(totpBtn);
+      if (!item.system) {
+        card.querySelector('.card-actions').appendChild(lockBtn);
+      }
       card.querySelector('.card-actions').appendChild(delBtn);
       grid.appendChild(card);
+    });
+  }
+
+  function toggleLock(item) {
+    api('/api/users/' + item.id + '/lock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locked: !item.locked })
+    }).then(load).catch(function (error) {
+      say(error.message, 'err');
+    });
+  }
+
+  function toggleTotp(item) {
+    if (item.totpEnabled) {
+      var offCode = window.prompt('2FA-nı söndürmək üçün tətbiq kodunu yazın.');
+      if (!offCode) {
+        return;
+      }
+      api('/api/users/' + item.id + '/totp/off', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: offCode })
+      }).then(load).catch(function (error) {
+        say(error.message, 'err');
+      });
+      return;
+    }
+    api('/api/users/' + item.id + '/totp/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    }).then(function (body) {
+      var secret = body.data && body.data.secret;
+      var code = window.prompt('Authenticator-ə bu açarı yazın, sonra 6 rəqəmli kodu daxil edin:\n' + secret);
+      if (!code) {
+        return null;
+      }
+      return api('/api/users/' + item.id + '/totp/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code })
+      }).then(load);
+    }).catch(function (error) {
+      say(error.message, 'err');
     });
   }
 
@@ -214,6 +275,7 @@
     fillDays(sch.days);
     document.getElementById('user-from').value = sch.from || '';
     document.getElementById('user-to').value = sch.to || '';
+    document.getElementById('user-wage').value = user && user.hourlyWage ? String(user.hourlyWage) : '0';
     document.getElementById('modal').classList.remove('hidden');
     document.getElementById('user-name').focus();
   }
@@ -287,7 +349,8 @@
       pin: document.getElementById('user-pin').value,
       scheduleDays: [],
       scheduleFrom: document.getElementById('user-from').value,
-      scheduleTo: document.getElementById('user-to').value
+      scheduleTo: document.getElementById('user-to').value,
+      hourlyWage: document.getElementById('user-wage').value
     };
     document.querySelectorAll('#user-days input:checked').forEach(function (box) {
       payload.scheduleDays.push(Number(box.value));

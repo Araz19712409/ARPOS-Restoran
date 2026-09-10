@@ -142,10 +142,45 @@ function drop(token) {
   }
 }
 
+function dropUser(userId) {
+  const id = Number(userId);
+  let cut = false;
+  Object.keys(sessions).forEach(function (token) {
+    if (sessions[token].userId === id) {
+      delete sessions[token];
+      cut = true;
+    }
+  });
+  if (cut) {
+    dirty = true;
+    save(true);
+  }
+}
+
+function dropOthers(keepIds) {
+  const keep = {};
+  (keepIds || []).forEach(function (id) {
+    keep[Number(id)] = true;
+  });
+  let cut = false;
+  Object.keys(sessions).forEach(function (token) {
+    if (!keep[sessions[token].userId]) {
+      delete sessions[token];
+      cut = true;
+    }
+  });
+  if (cut) {
+    dirty = true;
+    save(true);
+  }
+}
+
 load();
 
 module.exports = {
   create: create,
   get: get,
-  drop: drop
+  drop: drop,
+  dropUser: dropUser,
+  dropOthers: dropOthers
 };

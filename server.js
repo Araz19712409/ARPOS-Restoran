@@ -26,6 +26,7 @@ const license = require('./license');
 const version = require('./version');
 const books = require('./books');
 const db = require('./db');
+const totp = require('./totp');
 
 db.open();
 db.migrateJson();
@@ -109,7 +110,7 @@ app.use('/api', function (req, res, next) {
     });
     return;
   }
-  if (req.method === 'POST' && (req.path === '/login' || req.path === '/logs')) {
+  if (req.method === 'POST' && (req.path === '/login' || req.path === '/login/totp' || req.path === '/logs')) {
     return next();
   }
   const token = req.get('X-Session') || '';
@@ -131,6 +132,14 @@ app.use('/api', function (req, res, next) {
   req.query.waiterId = String(staff.user.id);
   if (users.needsPinChange(staff.user) && req.path !== '/pin' && req.path !== '/logout') {
     res.status(403).json({ success: false, message: 'Əvvəlcə PIN-i dəyişin.', mustChangePin: true });
+    return;
+  }
+  if (settings.readSettings().tillLocked && !users.isAdminUser(staff.user) && req.path !== '/logout') {
+    res.status(423).json({
+      success: false,
+      message: 'Kassa bağlanıb. Admin daxil olsun.',
+      tillLocked: true
+    });
     return;
   }
   next();
@@ -474,10 +483,83 @@ app.get('/api/catalog', function (req, res) {
         nowPrice: catalog.salePriceNow(item)
       });
     });
+    const stamp = settings.branchStamp();
+    data.branchCode = stamp.code;
+    data.branchName = stamp.name;
     res.json({ success: true, data: data });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
   }
+});
+
+app.get('/api/catalog/prices', function (req, res) {
+  try {
+    if (!needPerm(req, res, 'settings.view')) {
+      return;
+    }
+    const stamp = settings.branchStamp();
+    const data = catalog.readCatalog();
+    res.json({
+      success: true,
+      data: {
+        branchCode: stamp.code,
+        branchName: stamp.name,
+        products: (data.products || []).map(function (row) {
+          return {
+            id: row.id,
+            name: row.name,
+            salePrice: row.salePrice,
+            prices: row.prices && typeof row.prices === 'object' ? row.prices : {}
+          };
+        })
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
+app.put('/api/catalog/prices', function (req, res) {
+  if (!needAnyPerm(req, res, ['products.edit', 'settings.edit'])) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const pack = (req.body && req.body.products) || [];
+    if (!Array.isArray(pack) || !pack.length) {
+      reject(400, 'Qiymət siyahısı boşdur.');
+    }
+    const store = catalog.readCatalog();
+    let n = 0;
+    pack.forEach(function (row) {
+      const product = store.products.find(function (item) { return item.id === Number(row.id); });
+      if (!product) {
+        return;
+      }
+      if (row.salePrice != null) {
+        const p = stock.parseDec(row.salePrice);
+        if (Number.isFinite(p) && p >= 0 && p <= 10000) {
+          product.salePrice = Number(p.toFixed(2));
+        }
+      }
+      if (row.prices && typeof row.prices === 'object') {
+        product.prices = product.prices && typeof product.prices === 'object' ? product.prices : {};
+        Object.keys(row.prices).forEach(function (key) {
+          const code = settings.cleanBranchCode(key);
+          const val = stock.parseDec(row.prices[key]);
+          if (code && Number.isFinite(val) && val >= 0 && val <= 10000) {
+            product.prices[code] = Number(val.toFixed(2));
+          }
+        });
+      }
+      n += 1;
+    });
+    catalog.writeCatalog(store);
+    return { count: n };
+  }).then(function (data) {
+    res.json({ success: true, data: data });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
 });
 
 app.get('/api/stock', function (req, res) {
@@ -617,6 +699,28 @@ app.post('/api/stock/purchases', function (req, res) {
   }).then(function (purchase) {
     audit(req, 'stock', 'Alış sənədi');
     res.status(201).json({ success: true, data: purchase });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.post('/api/stock/purchases/:id/pay', function (req, res) {
+  if (!needPerm(req, res, 'stock.edit')) {
+    return;
+  }
+  if (!needStockMode(req, res)) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const who = req.staff && req.staff.user ? req.staff.user.name : '';
+    const out = stock.payPurchase(req.params.id, req.body && req.body.amount, who);
+    if (out.error) {
+      reject(400, out.error);
+    }
+    return out.purchase;
+  }).then(function (purchase) {
+    audit(req, 'stock', 'Alış ödənişi');
+    res.json({ success: true, data: purchase });
   }).catch(function (error) {
     sendFail(res, error);
   });
@@ -838,8 +942,16 @@ app.post('/api/products', function (req, res) {
       happyTo: body.happyTo === '' || body.happyTo == null ? null : stock.parseDec(body.happyTo),
       comboIds: catalog.parseComboIds(body.comboIds),
       course: catalog.courseOf({ course: body.course, stationId: stationId }),
-      barcode: catalog.cleanBarcode(body.barcode)
+      barcode: catalog.cleanBarcode(body.barcode),
+      prices: {}
     };
+    const code = settings.branchStamp().code;
+    if (code && body.branchPrice != null && String(body.branchPrice).trim() !== '') {
+      const bp = stock.parseDec(body.branchPrice);
+      if (Number.isFinite(bp) && bp >= 0 && bp <= 10000) {
+        product.prices[code] = Number(bp.toFixed(2));
+      }
+    }
     if (product.barcode && store.products.some(function (item) {
       return item.barcode === product.barcode;
     })) {
@@ -960,6 +1072,21 @@ app.put('/api/products/:id', function (req, res) {
         reject(400, 'Bu barkod başqa məhsuldadır.');
       }
       product.barcode = code;
+    }
+    if (body.branchPrice !== undefined) {
+      const branchCode = settings.branchStamp().code;
+      if (branchCode) {
+        product.prices = product.prices && typeof product.prices === 'object' ? product.prices : {};
+        if (body.branchPrice === '' || body.branchPrice == null) {
+          delete product.prices[branchCode];
+        } else {
+          const bp = stock.parseDec(body.branchPrice);
+          if (!Number.isFinite(bp) || bp < 0 || bp > 10000) {
+            reject(400, 'Filial qiyməti düzgün deyil.');
+          }
+          product.prices[branchCode] = Number(bp.toFixed(2));
+        }
+      }
     }
     catalog.writeCatalog(store);
     return { product: product, body: body };
@@ -1161,25 +1288,6 @@ app.get('/api/reports/sales', function (req, res) {
     }
     const branchName = settings.readSettings().branchName || '';
     const wantBranch = String(req.query.branch || '').trim();
-    if (wantBranch && branchName && wantBranch !== branchName) {
-      res.json({
-        success: true,
-        data: {
-          from: from.toISOString(),
-          to: to.toISOString(),
-          summary: { count: 0, total: 0, cash: 0, card: 0, prepaid: 0, gift: 0, service: 0, bonus: 0, cost: null, profit: null, voidCount: 0, voidTotal: 0, discountCount: 0, discountTotal: 0, refundCount: 0, refundTotal: 0 },
-          hours: [],
-          sales: [],
-          products: [],
-          waiters: [],
-          voids: [],
-          discounts: [],
-          refunds: [],
-          branchName: branchName
-        }
-      });
-      return;
-    }
     function inRange(value) {
       const at = new Date(value);
       return !Number.isNaN(at.getTime()) && at >= from && at <= to;
@@ -1208,6 +1316,9 @@ app.get('/api/reports/sales', function (req, res) {
     const catalogStore = catalog.readCatalog();
     const stockStore = stock.readStock();
     orders.readAllOrders().orders.forEach(function (order) {
+      if (!settings.matchesBranch(order, wantBranch)) {
+        return;
+      }
       const tableName = order.tableName || ('Masa ' + order.tableId);
       (order.items || []).forEach(function (item) {
         if (!item.voided || !inRange(item.voidedAt || order.updatedAt)) {
@@ -1404,7 +1515,8 @@ app.get('/api/reports/sales', function (req, res) {
         voids: voids,
         discounts: discounts,
         refunds: refunds,
-        branchName: settings.readSettings().branchName || ''
+        branchName: branchName,
+        branches: settings.collectBranches(orders.readAllOrders().orders)
       }
     });
   } catch (error) {
@@ -1432,7 +1544,11 @@ app.get('/api/reports/books', function (req, res) {
     const showStock = showCost || users.hasPermission(staff.role, 'stock.view');
     res.json({
       success: true,
-      data: books.report(from, to, { showCost: showCost, showStock: showStock })
+      data: books.report(from, to, {
+        showCost: showCost,
+        showStock: showStock,
+        branch: String(req.query.branch || '').trim()
+      })
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
@@ -1497,7 +1613,8 @@ app.put('/api/settings', function (req, res) {
     return;
   }
   lockedWrite(res, function () {
-    return settings.writeSettings({
+    const prev = settings.readSettings();
+    const next = settings.writeSettings({
       serviceChargePercent: body.serviceChargePercent,
       waiterBonuses: body.waiterBonuses,
       backupFolder: body.backupFolder,
@@ -1505,11 +1622,24 @@ app.put('/api/settings', function (req, res) {
       opsMode: body.opsMode,
       listenLan: body.listenLan,
       branchName: body.branchName,
+      branchCode: body.branchCode,
       sms: body.sms,
       update: body.update,
       backupGithub: body.backupGithub,
-      orderCardScale: body.orderCardScale
+      orderCardScale: body.orderCardScale,
+      vatPercent: body.vatPercent,
+      tillLocked: body.tillLocked
     });
+    if (next.tillLocked && !prev.tillLocked) {
+      sessions.dropOthers(users.adminIds());
+      journal.append({
+        userId: staff.user.id,
+        userName: staff.user.name,
+        kind: 'lock',
+        text: 'Kassa bağlandı'
+      });
+    }
+    return next;
   });
 });
 
@@ -1609,6 +1739,51 @@ app.post('/api/update/apply', function (req, res) {
 });
 
 // PIN ilə daxil oluruq
+function issueLogin(user, pinText) {
+  const store = users.readStore();
+  const live = store.users.find(function (item) { return item.id === user.id; });
+  const pin = String(pinText || '').replace(/\D/g, '');
+  const mustChange = pin !== '0000' && pin.length > 0 && (users.isDefaultPin(user) || pin.length < 6);
+  if (live && mustChange && !live.mustChangePin) {
+    live.mustChangePin = true;
+    users.writeStore(store);
+  }
+  journal.append({
+    userId: user.id,
+    userName: user.name,
+    kind: 'login',
+    text: 'Daxil oldu'
+  });
+  const role = store.roles.find(function (item) { return item.id === user.roleId; });
+  return {
+    user: users.publicUser(user),
+    permissions: role ? role.permissions : [],
+    token: sessions.create(user.id),
+    mustChangePin: mustChange || !!(live && live.mustChangePin),
+    opsMode: settings.readSettings().opsMode
+  };
+}
+
+function denyLockedUser(user, res) {
+  if (user && user.locked) {
+    res.status(403).json({ success: false, message: 'Hesab kilidlənib.', locked: true });
+    return true;
+  }
+  return false;
+}
+
+function denyTillUser(user, res) {
+  if (settings.readSettings().tillLocked && !users.isAdminUser(user)) {
+    res.status(403).json({
+      success: false,
+      message: 'Kassa bağlanıb. Admin daxil olsun.',
+      tillLocked: true
+    });
+    return true;
+  }
+  return false;
+}
+
 app.post('/api/login', function (req, res) {
   try {
     const ip = req.ip || (req.socket && req.socket.remoteAddress) || 'local';
@@ -1632,31 +1807,48 @@ app.post('/api/login', function (req, res) {
       res.status(403).json({ success: false, message: when.error });
       return;
     }
-    const store = users.readStore();
-    const live = store.users.find(function (item) { return item.id === user.id; });
-    const pinText = String((req.body && req.body.pin) || '').replace(/\D/g, '');
-    const mustChange = pinText !== '0000' && (users.isDefaultPin(user) || pinText.length < 6);
-    if (live && mustChange && !live.mustChangePin) {
-      live.mustChangePin = true;
-      users.writeStore(store);
+    if (denyLockedUser(user, res) || denyTillUser(user, res)) {
+      return;
     }
-    journal.append({
-      userId: user.id,
-      userName: user.name,
-      kind: 'login',
-      text: 'Daxil oldu'
-    });
-    const role = store.roles.find(function (item) { return item.id === user.roleId; });
-    res.json({
-      success: true,
-      data: {
-        user: users.publicUser(user),
-        permissions: role ? role.permissions : [],
-        token: sessions.create(user.id),
-        mustChangePin: mustChange || !!(live && live.mustChangePin),
-        opsMode: settings.readSettings().opsMode
-      }
-    });
+    if (user.totpEnabled && user.totpSecret) {
+      res.json({
+        success: true,
+        data: {
+          needTotp: true,
+          totpToken: users.putPendingTotp(user.id),
+          user: { id: user.id, name: user.name }
+        }
+      });
+      return;
+    }
+    const pinText = String((req.body && req.body.pin) || '').replace(/\D/g, '');
+    res.json({ success: true, data: issueLogin(user, pinText) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
+app.post('/api/login/totp', function (req, res) {
+  try {
+    const userId = users.takePendingTotp(req.body && req.body.totpToken);
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Kodun vaxtı bitdi. PIN-i yenidən yazın.' });
+      return;
+    }
+    const store = users.readStore();
+    const user = store.users.find(function (item) { return item.id === userId; });
+    if (!user || user.active === false) {
+      res.status(401).json({ success: false, message: 'PIN ilə daxil olun.' });
+      return;
+    }
+    if (denyLockedUser(user, res) || denyTillUser(user, res)) {
+      return;
+    }
+    if (!user.totpEnabled || !user.totpSecret || !totp.verify(user.totpSecret, req.body && req.body.code)) {
+      res.status(401).json({ success: false, message: 'Tətbiq kodu səhvdir.' });
+      return;
+    }
+    res.json({ success: true, data: issueLogin(user, '') });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
   }
@@ -2048,6 +2240,9 @@ app.post('/api/orders/accept', async function (req, res) {
       if (body.courierName != null) {
         order.courierName = sanitize(body.courierName, 40);
       }
+      const stamp = settings.branchStamp();
+      order.branchCode = stamp.code;
+      order.branchName = stamp.name;
       const fresh = [];
       const added = [];
 
@@ -2840,7 +3035,8 @@ app.post('/api/orders/pay', function (req, res) {
         waiterId: staff.user.id,
         waiterName: staff.user.name,
         shares: order.payments.length,
-        branchName: settings.readSettings().branchName || '',
+        branchName: settings.branchStamp().name || '',
+        branchCode: settings.branchStamp().code || '',
         buyerVoen: order.buyerVoen || '',
         buyerName: order.buyerName || ''
       };
@@ -3175,6 +3371,7 @@ app.post('/api/users', function (req, res) {
       system: false
     };
     users.setPin(user, body.pin);
+    user.hourlyWage = users.moneyWage(body.hourlyWage);
     if (body.scheduleDays != null || body.scheduleFrom != null) {
       user.schedule = {
         days: Array.isArray(body.scheduleDays)
@@ -3229,6 +3426,9 @@ app.put('/api/users/:id', function (req, res) {
       }
       users.setPin(user, body.pin);
     }
+    if (body.hourlyWage != null) {
+      user.hourlyWage = users.moneyWage(body.hourlyWage);
+    }
     if (body.scheduleDays != null || body.scheduleFrom != null || body.scheduleTo != null) {
       const days = Array.isArray(body.scheduleDays)
         ? body.scheduleDays.map(Number).filter(function (d) { return d >= 0 && d <= 6; }).slice(0, 7)
@@ -3238,6 +3438,102 @@ app.put('/api/users/:id', function (req, res) {
         from: sanitize(body.scheduleFrom, 5),
         to: sanitize(body.scheduleTo, 5)
       };
+    }
+    users.writeStore(store);
+    return users.publicUser(user);
+  });
+});
+
+function canSelfOrUsersEdit(req, res, id) {
+  if (!req.staff) {
+    res.status(401).json({ success: false, message: 'PIN ilə daxil olun.' });
+    return false;
+  }
+  if (Number(req.staff.user.id) === Number(id)) {
+    return true;
+  }
+  return needPerm(req, res, 'users.edit');
+}
+
+app.post('/api/users/:id/lock', function (req, res) {
+  if (!needPerm(req, res, 'users.edit')) {
+    return;
+  }
+  lockedWrite(res, function () {
+    const id = Number(req.params.id);
+    const want = (req.body || {}).locked !== false && (req.body || {}).locked !== 0;
+    const store = users.readStore();
+    const user = store.users.find(function (item) { return item.id === id; });
+    if (!user) {
+      reject(404, 'İstifadəçi tapılmadı.');
+    }
+    if (user.system && want) {
+      reject(400, 'Sistem adminini kilidləmək olmaz.');
+    }
+    user.locked = Boolean(want);
+    users.writeStore(store);
+    if (user.locked) {
+      sessions.dropUser(user.id);
+      journal.append({
+        userId: req.staff.user.id,
+        userName: req.staff.user.name,
+        kind: 'lock',
+        text: user.name + ' kilidləndi'
+      });
+    }
+    return users.publicUser(user);
+  });
+});
+
+app.post('/api/users/:id/totp/start', function (req, res) {
+  if (!canSelfOrUsersEdit(req, res, req.params.id)) {
+    return;
+  }
+  lockedWrite(res, function () {
+    const id = Number(req.params.id);
+    const store = users.readStore();
+    const user = store.users.find(function (item) { return item.id === id; });
+    if (!user) {
+      reject(404, 'İstifadəçi tapılmadı.');
+    }
+    const out = users.startTotp(user);
+    users.writeStore(store);
+    return out;
+  });
+});
+
+app.post('/api/users/:id/totp/confirm', function (req, res) {
+  if (!canSelfOrUsersEdit(req, res, req.params.id)) {
+    return;
+  }
+  lockedWrite(res, function () {
+    const id = Number(req.params.id);
+    const store = users.readStore();
+    const user = store.users.find(function (item) { return item.id === id; });
+    if (!user) {
+      reject(404, 'İstifadəçi tapılmadı.');
+    }
+    if (!users.confirmTotp(user, (req.body || {}).code)) {
+      reject(400, 'Tətbiq kodu səhvdir.');
+    }
+    users.writeStore(store);
+    return users.publicUser(user);
+  });
+});
+
+app.post('/api/users/:id/totp/off', function (req, res) {
+  if (!canSelfOrUsersEdit(req, res, req.params.id)) {
+    return;
+  }
+  lockedWrite(res, function () {
+    const id = Number(req.params.id);
+    const store = users.readStore();
+    const user = store.users.find(function (item) { return item.id === id; });
+    if (!user) {
+      reject(404, 'İstifadəçi tapılmadı.');
+    }
+    if (!users.offTotp(user, (req.body || {}).code)) {
+      reject(400, 'Tətbiq kodu səhvdir.');
     }
     users.writeStore(store);
     return users.publicUser(user);

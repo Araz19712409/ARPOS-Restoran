@@ -3,6 +3,10 @@ const store = require('./store');
 
 const FILE = path.join(__dirname, 'data', 'clock.json');
 
+function money(value) {
+  return Number((Number(value) || 0).toFixed(2));
+}
+
 function readStore() {
   try {
     const raw = store.readJson(FILE);
@@ -16,7 +20,7 @@ function readStore() {
 }
 
 function writeStore(data) {
-  data.punches = (data.punches || []).slice(-200);
+  data.punches = (data.punches || []).slice(-4000);
   store.writeJson(FILE, data);
 }
 
@@ -71,7 +75,64 @@ function listToday() {
   return { today: today(box) };
 }
 
+function clipHours(inAt, outAt, from, to) {
+  const start = new Date(inAt).getTime();
+  const stop = outAt ? new Date(outAt).getTime() : Date.now();
+  const a = Math.max(start, from.getTime());
+  const b = Math.min(stop, to.getTime());
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) {
+    return 0;
+  }
+  return (b - a) / 3600000;
+}
+
+function payroll(userList, from, to, punchList) {
+  const map = {};
+  (userList || []).forEach(function (user) {
+    map[Number(user.id)] = {
+      userId: Number(user.id),
+      name: user.name || '',
+      wage: money(user.hourlyWage),
+      hours: 0,
+      amount: 0
+    };
+  });
+  (punchList || readStore().punches).forEach(function (row) {
+    const hours = clipHours(row.inAt, row.outAt, from, to);
+    if (hours <= 0) {
+      return;
+    }
+    const id = Number(row.userId);
+    if (!map[id]) {
+      map[id] = {
+        userId: id,
+        name: row.userName || '',
+        wage: 0,
+        hours: 0,
+        amount: 0
+      };
+    }
+    map[id].hours += hours;
+    if (!map[id].name && row.userName) {
+      map[id].name = row.userName;
+    }
+  });
+  return Object.keys(map).map(function (key) {
+    const row = map[key];
+    row.hours = Number(row.hours.toFixed(2));
+    row.amount = money(row.hours * row.wage);
+    return row;
+  }).filter(function (row) {
+    return row.hours > 0;
+  }).sort(function (a, b) {
+    return String(a.name).localeCompare(String(b.name), 'az');
+  });
+}
+
 module.exports = {
   toggle: toggle,
-  listToday: listToday
+  listToday: listToday,
+  payroll: payroll,
+  clipHours: clipHours,
+  readStore: readStore
 };

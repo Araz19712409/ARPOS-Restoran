@@ -197,17 +197,16 @@
         lastReport = data;
         var sum = data.summary;
         var branchBox = document.getElementById('rep-branch');
-        var hasBranch = false;
-        for (var bi = 0; bi < branchBox.options.length; bi += 1) {
-          if (branchBox.options[bi].value === data.branchName) {
-            hasBranch = true;
-          }
-        }
-        if (data.branchName && !hasBranch) {
+        var keep = branchBox.value;
+        branchBox.innerHTML = '<option value="">Hamısı</option>';
+        (data.branches || []).forEach(function (row) {
           var opt = document.createElement('option');
-          opt.value = data.branchName;
-          opt.textContent = data.branchName;
+          opt.value = row.id;
+          opt.textContent = row.name;
           branchBox.appendChild(opt);
+        });
+        if (keep) {
+          branchBox.value = keep;
         }
         document.getElementById('report-kpis').innerHTML =
           '<div class="report-kpi"><span>Satış</span><strong>' + sum.count + '</strong></div>' +

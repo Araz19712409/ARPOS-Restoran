@@ -229,6 +229,10 @@
 
   function fillBranch() {
     document.getElementById('branch-name').value = current.branchName || '';
+    var code = document.getElementById('branch-code');
+    if (code) {
+      code.value = current.branchCode || '';
+    }
   }
 
   function fillSms() {
@@ -343,15 +347,20 @@
       body: JSON.stringify({
         waiterId: waiter.user.id,
         serviceChargePercent: dec(document.getElementById('service-percent').value),
+        vatPercent: dec(document.getElementById('vat-percent').value),
         waiterBonuses: map,
         backupFolder: backupFolderValue(),
         ekassa: ekassaPayload(),
         opsMode: opsModeValue(),
         listenLan: listenLanValue(),
         branchName: branchNameValue(),
+        branchCode: document.getElementById('branch-code')
+          ? document.getElementById('branch-code').value.trim()
+          : '',
         sms: smsPayload(),
         update: updatePayload(),
-        backupGithub: backupGithubPayload()
+        backupGithub: backupGithubPayload(),
+        tillLocked: !!(document.getElementById('till-locked') && document.getElementById('till-locked').checked)
       })
     }).then(function (body) {
       current = body.data || current;
@@ -448,6 +457,15 @@
     roles = body.data.roles || roles;
     document.getElementById('service-percent').value = String(current.serviceChargePercent || 0);
     document.getElementById('service-percent').disabled = false;
+    var vatBox = document.getElementById('vat-percent');
+    if (vatBox) {
+      vatBox.value = String(current.vatPercent || 0);
+      vatBox.disabled = false;
+    }
+    var tillBox = document.getElementById('till-locked');
+    if (tillBox) {
+      tillBox.checked = current.tillLocked === true;
+    }
     document.getElementById('backup-folder').value = current.backupFolder || '';
     var ek = current.ekassa || {};
     document.getElementById('ekassa-voen').value = ek.voen || '';
@@ -673,11 +691,63 @@
 
   document.getElementById('save-settings').addEventListener('click', saveAll);
   document.getElementById('save-service').addEventListener('click', saveAll);
+  document.getElementById('save-vat').addEventListener('click', saveAll);
+  var saveTill = document.getElementById('save-till');
+  if (saveTill) {
+    saveTill.addEventListener('click', saveAll);
+  }
   document.getElementById('save-bonuses').addEventListener('click', saveAll);
   document.getElementById('save-ekassa').addEventListener('click', saveAll);
   document.getElementById('save-ops').addEventListener('click', saveAll);
   document.getElementById('save-lan').addEventListener('click', saveAll);
   document.getElementById('save-branch').addEventListener('click', saveAll);
+  document.getElementById('prices-export').addEventListener('click', function () {
+    if (!waiter) {
+      return;
+    }
+    api('/api/catalog/prices').then(function (body) {
+      var blob = new Blob([JSON.stringify(body.data, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'arpos-qiymet.json';
+      a.click();
+      window.setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+      say('Qiymət faylı hazırdır.');
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
+  });
+  document.getElementById('prices-import').addEventListener('click', function () {
+    document.getElementById('prices-file').click();
+  });
+  document.getElementById('prices-file').addEventListener('change', function () {
+    var file = this.files && this.files[0];
+    this.value = '';
+    if (!file || !waiter) {
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function () {
+      var pack;
+      try {
+        pack = JSON.parse(String(reader.result || ''));
+      } catch (error) {
+        say('Fayl JSON deyil.', 'err');
+        return;
+      }
+      var list = pack.products || (Array.isArray(pack) ? pack : []);
+      api('/api/catalog/prices', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products: list })
+      }).then(function (body) {
+        say((body.data && body.data.count || 0) + ' məhsulun qiyməti gəldi.');
+      }).catch(function (error) {
+        say(error.message, 'err');
+      });
+    };
+    reader.readAsText(file);
+  });
   document.getElementById('save-sms').addEventListener('click', saveAll);
   document.getElementById('save-update').addEventListener('click', saveAll);
   document.getElementById('save-backup-gh').addEventListener('click', saveAll);

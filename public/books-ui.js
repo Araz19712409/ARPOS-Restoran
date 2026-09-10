@@ -92,9 +92,12 @@
     document.getElementById('tab-pay').classList.toggle('hidden', name !== 'pay');
     document.getElementById('tab-pnl').classList.toggle('hidden', name !== 'pnl');
     document.getElementById('tab-ledger').classList.toggle('hidden', name !== 'ledger');
+    document.getElementById('tab-debt').classList.toggle('hidden', name !== 'debt');
+    document.getElementById('tab-inv').classList.toggle('hidden', name !== 'inv');
+    document.getElementById('tab-payr').classList.toggle('hidden', name !== 'payr');
   }
 
-  function fillTable(id, cols, rows, emptyText) {
+  function fillTable(id, cols, rows, emptyText, numFrom) {
     var box = document.getElementById(id);
     box.innerHTML = '';
     if (!rows.length) {
@@ -104,9 +107,12 @@
     }
     rows.forEach(function (cells) {
       var tr = document.createElement('tr');
-      cells.forEach(function (text) {
+      cells.forEach(function (text, i) {
         var td = document.createElement('td');
         td.textContent = text;
+        if (numFrom != null && i >= numFrom) {
+          td.className = 'num';
+        }
         tr.appendChild(td);
       });
       box.appendChild(tr);
@@ -143,14 +149,14 @@
         row.difference == null ? '—' : Number(row.difference).toFixed(2)
       ];
     });
-    fillTable('cash-body', 10, rows, 'Bu aralıqda növbə yoxdur.');
+    fillTable('cash-body', 10, rows, 'Bu aralıqda növbə yoxdur.', 2);
   }
 
   function drawPay(data) {
     var methods = (data.methods || []).map(function (row) {
       return [methodLabel(row.method), String(row.count), Number(row.total).toFixed(2)];
     });
-    fillTable('method-body', 3, methods, 'Satış yoxdur.');
+    fillTable('method-body', 3, methods, 'Satış yoxdur.', 1);
     var days = (data.days || []).map(function (row) {
       return [
         row.date,
@@ -164,7 +170,7 @@
         Number(row.refundCard).toFixed(2)
       ];
     });
-    fillTable('day-body', 9, days, 'Günlük sətir yoxdur.');
+    fillTable('day-body', 9, days, 'Günlük sətir yoxdur.', 1);
   }
 
   function addLine(rows, name, value) {
@@ -181,11 +187,15 @@
     addLine(rows, 'Maya', pnl.cost);
     addLine(rows, 'Zay', pnl.waste);
     addLine(rows, 'Alış', pnl.purchases);
+    addLine(rows, 'ƏDV', pnl.vat);
+    addLine(rows, 'Əməkhaqqı', pnl.wages);
+    addLine(rows, 'İnventar', pnl.inventory);
+    addLine(rows, 'Kreditor', pnl.creditors);
     addLine(rows, 'Endirim', pnl.discount);
     addLine(rows, 'Pulsuz', pnl.complimentary);
     addLine(rows, 'Geri', pnl.refund);
     addLine(rows, 'Mənfəət', pnl.profit);
-    fillTable('pnl-body', 2, rows, 'Məlumat yoxdur.');
+    fillTable('pnl-body', 2, rows, 'Məlumat yoxdur.', 1);
     var waste = (data.waste || []).map(function (row) {
       return [
         formatWhen(row.at),
@@ -195,7 +205,7 @@
         Number(row.total).toFixed(2)
       ];
     });
-    fillTable('waste-body', 5, waste, 'Zay yoxdur.');
+    fillTable('waste-body', 5, waste, 'Zay yoxdur.', 3);
   }
 
   function dash(value) {
@@ -220,7 +230,59 @@
         Number(row.difference).toFixed(2)
       ];
     });
-    fillTable('ledger-body', 13, rows, 'Bu aralıqda sətir yoxdur.');
+    fillTable('ledger-body', 13, rows, 'Bu aralıqda sətir yoxdur.', 1);
+  }
+
+  function drawDebt(data) {
+    var cred = data.creditors || {};
+    var sums = (cred.suppliers || []).map(function (row) {
+      return [row.supplier, String(row.count), Number(row.total).toFixed(2), Number(row.paid).toFixed(2), Number(row.due).toFixed(2)];
+    });
+    fillTable('debt-sum-body', 5, sums, 'Açıq borc yoxdur.', 1);
+    var open = (cred.open || []).map(function (row) {
+      return [
+        formatWhen(row.at),
+        row.supplier,
+        row.docNo || '—',
+        Number(row.total).toFixed(2),
+        Number(row.paid).toFixed(2),
+        Number(row.due).toFixed(2)
+      ];
+    });
+    fillTable('debt-open-body', 6, open, 'Açıq sənəd yoxdur.', 3);
+  }
+
+  function drawInv(data) {
+    var inv = data.inventory || {};
+    var rows = (inv.items || []).map(function (row) {
+      return [
+        row.name,
+        String(row.qty),
+        row.unit || '',
+        Number(row.buyPrice).toFixed(2),
+        Number(row.value).toFixed(2)
+      ];
+    });
+    if (inv.total != null) {
+      rows.push(['Cəm', '', '', '', Number(inv.total).toFixed(2)]);
+    }
+    fillTable('inv-body', 5, rows, 'Qalıq yoxdur.', 1);
+  }
+
+  function drawPayr(data) {
+    var box = data.payroll || {};
+    var rows = (box.rows || []).map(function (row) {
+      return [
+        row.name,
+        String(row.hours),
+        Number(row.wage).toFixed(2),
+        Number(row.amount).toFixed(2)
+      ];
+    });
+    if (box.total) {
+      rows.push(['Cəm', '', '', Number(box.total).toFixed(2)]);
+    }
+    fillTable('payr-body', 4, rows, 'Bu aralıqda giriş yoxdur.', 1);
   }
 
   function setWaiter(data) {
@@ -295,15 +357,37 @@
       to = document.getElementById('rep-to').value;
     }
     say('');
-    api('/api/reports/books?waiterId=' + waiter.user.id +
-      '&from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to))
+    var branch = document.getElementById('rep-branch') ? document.getElementById('rep-branch').value : '';
+    var q = '/api/reports/books?waiterId=' + waiter.user.id +
+      '&from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to);
+    if (branch) {
+      q += '&branch=' + encodeURIComponent(branch);
+    }
+    api(q)
       .then(function (body) {
         lastReport = body.data;
+        var box = document.getElementById('rep-branch');
+        if (box) {
+          var keep = box.value;
+          box.innerHTML = '<option value="">Hamısı</option>';
+          (lastReport.branches || []).forEach(function (row) {
+            var opt = document.createElement('option');
+            opt.value = row.id;
+            opt.textContent = row.name;
+            box.appendChild(opt);
+          });
+          if (keep) {
+            box.value = keep;
+          }
+        }
         drawKpis(lastReport);
         drawCash(lastReport);
         drawPay(lastReport);
         drawPnl(lastReport);
         drawLedger(lastReport);
+        drawDebt(lastReport);
+        drawInv(lastReport);
+        drawPayr(lastReport);
       })
       .catch(function (error) {
         say(error.message, 'err');
@@ -423,11 +507,43 @@
       rows.push(['Maya', pnl.cost]);
       rows.push(['Zay', pnl.waste]);
       rows.push(['Alış', pnl.purchases]);
+      rows.push(['ƏDV', pnl.vat]);
+      rows.push(['Əməkhaqqı', pnl.wages]);
+      rows.push(['İnventar', pnl.inventory]);
+      rows.push(['Kreditor', pnl.creditors]);
       rows.push(['Endirim', pnl.discount]);
       rows.push(['Pulsuz', pnl.complimentary]);
       rows.push(['Geri', pnl.refund]);
       rows.push(['Mənfəət', pnl.profit]);
       downloadCsv('pnl-' + from + '-' + to + '.csv', rows);
+      return;
+    }
+    if (tab === 'debt') {
+      rows = [['Təchizatçı', 'Sənəd', 'Vaxt', 'Cəm', 'Ödənilib', 'Borc']];
+      (lastReport.creditors && lastReport.creditors.open || []).forEach(function (row) {
+        rows.push([row.supplier, row.docNo, row.at, row.total, row.paid, row.due]);
+      });
+      downloadCsv('borc-' + from + '-' + to + '.csv', rows);
+      return;
+    }
+    if (tab === 'inv') {
+      rows = [['Xammal', 'Qalıq', 'Vahid', 'Qiymət', 'AZN']];
+      var inv = lastReport.inventory || {};
+      (inv.items || []).forEach(function (row) {
+        rows.push([row.name, row.qty, row.unit, row.buyPrice, row.value]);
+      });
+      rows.push(['Cəm', '', '', '', inv.total]);
+      downloadCsv('qaliq-' + from + '-' + to + '.csv', rows);
+      return;
+    }
+    if (tab === 'payr') {
+      rows = [['Ad', 'Saat', '1 saat', 'Cəm']];
+      var payr = lastReport.payroll || {};
+      (payr.rows || []).forEach(function (row) {
+        rows.push([row.name, row.hours, row.wage, row.amount]);
+      });
+      rows.push(['Cəm', '', '', payr.total]);
+      downloadCsv('maas-' + from + '-' + to + '.csv', rows);
       return;
     }
     rows = [['Açılıb', 'Kassa', 'Başlanğıc', 'Nağd', 'Kart', 'Hədiyyə', 'Çıxarış', 'Gözlənilən', 'Sayılan', 'Fərq']];

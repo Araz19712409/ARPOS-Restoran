@@ -767,6 +767,9 @@
   }
 
   function livePrice(product) {
+    if (product && product.nowPrice != null && Number.isFinite(Number(product.nowPrice))) {
+      return Number(Number(product.nowPrice).toFixed(2));
+    }
     return salePriceNow(product);
   }
 

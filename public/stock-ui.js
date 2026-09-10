@@ -213,14 +213,18 @@
       var cells = tr.querySelectorAll('td');
       cells[0].textContent = row.name;
       cells[1].textContent = row.qty + ' ' + row.unit;
+      cells[1].className = 'num';
       cells[2].textContent = row.minQty + ' ' + row.unit;
+      cells[2].className = 'num';
       cells[3].textContent = Number(row.buyPrice).toFixed(2);
+      cells[3].className = 'num';
       cells[4].textContent = (Number(row.qty) * Number(row.buyPrice)).toFixed(2);
+      cells[4].className = 'num';
       var acts = document.createElement('div');
       acts.className = 'stock-acts';
       if (can('stock.edit')) {
         addAct(acts, 'Dəyiş', function () { openEdit(row); });
-        addAct(acts, 'Qalıq düzəlt', function () {
+        addAct(acts, 'Qalıq', function () {
           moveId = row.id;
           document.getElementById('stock-move-title').textContent = row.name;
           document.getElementById('stock-move-qty').value = '';
@@ -354,12 +358,14 @@
     var box = document.getElementById('buy-body');
     box.innerHTML = '';
     if (!purchases.length) {
-      box.innerHTML = '<tr><td colspan="6">Alış yoxdur.</td></tr>';
+      box.innerHTML = '<tr><td colspan="9">Alış yoxdur.</td></tr>';
       return;
     }
     purchases.forEach(function (row) {
+      var due = Number(row.due != null ? row.due : 0);
+      var paid = Number(row.paid != null ? row.paid : row.total);
       var tr = document.createElement('tr');
-      tr.innerHTML = '<td></td><td></td><td></td><td></td><td></td><td></td>';
+      tr.innerHTML = '<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>';
       var cells = tr.querySelectorAll('td');
       cells[0].textContent = formatWhen(row.at);
       cells[1].textContent = row.supplier || '—';
@@ -367,9 +373,43 @@
       cells[3].textContent = (row.lines || []).map(function (line) {
         return line.name + ' ' + line.qty + ' ' + line.unit;
       }).join(', ');
-      cells[4].textContent = Number(row.total).toFixed(2) + ' AZN';
-      cells[5].textContent = row.by || '';
+      cells[3].className = 'wrap';
+      cells[4].textContent = Number(row.total).toFixed(2);
+      cells[4].className = 'num';
+      cells[5].textContent = paid.toFixed(2);
+      cells[5].className = 'num';
+      cells[6].textContent = due.toFixed(2);
+      cells[6].className = 'num';
+      cells[7].textContent = row.by || '';
+      if (due > 0 && can('stock.edit')) {
+        var payBtn = document.createElement('button');
+        payBtn.type = 'button';
+        payBtn.textContent = 'Ödə';
+        payBtn.addEventListener('click', function () {
+          payPurchase(row);
+        });
+        cells[8].appendChild(payBtn);
+      }
       box.appendChild(tr);
+    });
+  }
+
+  function payPurchase(row) {
+    var due = Number(row.due || 0).toFixed(2);
+    window.askYes('Ödəniş', (row.supplier || 'Təchizatçı') + ': qalan ' + due + ' AZN ödənilsin?').then(function (ok) {
+      if (!ok) {
+        return;
+      }
+      return api('/api/stock/purchases/' + row.id + '/pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: row.due })
+      }).then(function () {
+        say('Borc ödənildi.');
+        return load();
+      });
+    }).catch(function (error) {
+      say(error.message, 'err');
     });
   }
 
@@ -534,11 +574,13 @@
       body: JSON.stringify({
         supplier: document.getElementById('buy-supplier').value,
         docNo: document.getElementById('buy-doc').value,
+        credit: document.getElementById('buy-credit').checked,
         lines: lines
       })
     }).then(function (body) {
       document.getElementById('buy-supplier').value = '';
       document.getElementById('buy-doc').value = '';
+      document.getElementById('buy-credit').checked = false;
       document.getElementById('buy-lines').innerHTML = '';
       addBuyLine();
       say('Alış yadda saxlandı: ' + Number(body.data.total).toFixed(2) + ' AZN');

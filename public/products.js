@@ -10,6 +10,7 @@
   var buyTouched = false;
   var editingGroupId = 0;
   var pickedIcon = '';
+  var branchCode = '';
 
   function dec(value) {
     return window.PosNav && window.PosNav.parseDec
@@ -54,6 +55,7 @@
     }
     return Promise.all(jobs).then(function (parts) {
       store = parts[0].data;
+      branchCode = store.branchCode || '';
       stockItems = parts[1] && parts[1].data ? (parts[1].data.items || []) : [];
       if (!selectedGroupId && store.groups[0]) {
         selectedGroupId = store.groups[0].id;
@@ -652,6 +654,13 @@
     document.getElementById('product-name').value = product ? product.name : '';
     document.getElementById('product-barcode').value = product && product.barcode ? product.barcode : '';
     document.getElementById('product-price').value = product ? product.salePrice : '';
+    var wrap = document.getElementById('branch-price-wrap');
+    var branchPriceEl = document.getElementById('product-branch-price');
+    if (wrap && branchPriceEl) {
+      wrap.classList.toggle('hidden', !branchCode);
+      var local = product && product.prices && branchCode ? product.prices[branchCode] : '';
+      branchPriceEl.value = local != null && local !== '' ? String(local) : '';
+    }
     fillStationSelect(product ? product.stationId : (store.stations[0] && store.stations[0].id));
     var courseEl = document.getElementById('product-course');
     if (courseEl) {
@@ -894,6 +903,9 @@
       name: document.getElementById('product-name').value,
       barcode: document.getElementById('product-barcode').value,
       salePrice: document.getElementById('product-price').value,
+      branchPrice: document.getElementById('product-branch-price')
+        ? document.getElementById('product-branch-price').value
+        : '',
       stationId: Number(document.getElementById('product-station').value),
       course: document.getElementById('product-course').value === ''
         ? ''

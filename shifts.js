@@ -1,14 +1,11 @@
-const path = require('path');
-const store = require('./store');
-
-const FILE = path.join(__dirname, 'data', 'shifts.json');
+const db = require('./db');
 
 function money(value) {
   return Number((Number(value) || 0).toFixed(2));
 }
 
 function readStore() {
-  const raw = store.readJson(FILE);
+  const raw = db.readOffice('shifts.json');
   return {
     nextId: Number(raw.nextId) || 1,
     shifts: Array.isArray(raw.shifts) ? raw.shifts : []
@@ -16,7 +13,7 @@ function readStore() {
 }
 
 function writeStore(data) {
-  store.writeJson(FILE, data);
+  db.writeOffice('shifts.json', data);
 }
 
 function stampIn(iso, fromMs, toMs) {

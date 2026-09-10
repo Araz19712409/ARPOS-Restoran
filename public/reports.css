@@ -341,8 +341,212 @@
 
 .books-tabs {
   margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 
-.books-panel h2 {
-  margin-top: 8px;
+.jr-bad td {
+  color: #b42318;
+}
+
+.report-table td.num,
+.report-table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.dense-office {
+  height: 100vh;
+  overflow: hidden;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.dense-office .top {
+  padding: 8px 14px;
+  gap: 10px;
+}
+
+.dense-office .top h1 {
+  font-size: 1.1rem;
+}
+
+.dense-office .top p {
+  margin-top: 2px;
+  font-size: 0.82rem;
+}
+
+.dense-office .app-nav a,
+.dense-office .app-nav summary,
+.dense-office #logout {
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 0.82rem;
+}
+
+.dense-office .catalog-main {
+  padding: 8px 12px 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dense-office #message:empty {
+  display: none;
+}
+
+.dense-office #message {
+  margin: 0 0 6px;
+}
+
+.dense-office .report-toolbar {
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.dense-office .report-toolbar label {
+  font-size: 0.78rem;
+}
+
+.dense-office .report-toolbar input,
+.dense-office .report-toolbar select,
+.dense-office .report-presets button,
+.dense-office .stock-tabs button,
+.dense-office .stock-bar button,
+.dense-office .stock-bar-tools input {
+  min-height: 32px;
+  width: auto;
+  padding: 3px 8px;
+  font-size: 0.8rem;
+}
+
+.dense-office .report-presets {
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.dense-office .books-tabs,
+.dense-office .stock-bar {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+
+.dense-office .report-kpis {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.dense-office .report-kpi {
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.dense-office .report-kpi span {
+  font-size: 0.72rem;
+  margin-bottom: 2px;
+}
+
+.dense-office .report-kpi strong {
+  font-size: 0.95rem;
+}
+
+.dense-office .report-main h2 {
+  font-size: 0.95rem;
+  margin: 8px 0 6px;
+}
+
+.dense-office .hint {
+  font-size: 0.78rem;
+  margin: 0 0 6px;
+}
+
+.dense-office .books-panel:not(.hidden),
+.dense-office #stock-qty-panel:not(.hidden),
+.dense-office #stock-buy-box:not(.hidden),
+.dense-office #stock-hist-panel:not(.hidden) {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.dense-office .report-table-wrap {
+  flex: 1;
+  min-height: 120px;
+}
+
+.dense-office .report-table {
+  min-width: 0;
+}
+
+.dense-office #tab-cash .report-table,
+.dense-office #tab-ledger .report-table,
+.dense-office #tab-pay .report-table-wrap:last-of-type .report-table,
+.dense-office #stock-hist-panel .report-table-wrap:first-of-type .report-table {
+  min-width: 920px;
+}
+
+.dense-office .report-table th,
+.dense-office .report-table td {
+  padding: 5px 8px;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.dense-office .report-table td.wrap,
+.dense-office .report-table td:first-child {
+  white-space: normal;
+}
+
+.dense-office .report-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.dense-office .stock-bar-tools input[type="search"] {
+  width: 160px;
+}
+
+.dense-office .buy-line {
+  grid-template-columns: minmax(120px, 1.3fr) 88px 96px 88px auto;
+  gap: 6px;
+}
+
+.dense-office .buy-line input,
+.dense-office .buy-line select,
+.dense-office .buy-line button {
+  min-height: 32px;
+  font-size: 0.8rem;
+}
+
+.dense-office .buy-del {
+  width: auto;
+}
+
+.dense-office .pin-pad button {
+  min-height: 48px;
+}
+
+.dense-office .modal-card {
+  max-height: calc(100vh - 24px);
+}
+
+@media (max-width: 1366px) {
+  .dense-office .report-kpis {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (max-height: 768px) {
+  .dense-office .pin-card {
+    padding: 14px;
+  }
+
+  .dense-office .pin-pad button {
+    min-height: 44px;
+  }
 }

@@ -13,7 +13,10 @@ const version = require('./version');
 const store = require('./store');
 const terminals = require('./terminals');
 const books = require('./books');
+const clock = require('./clock');
+const offline = require('./public/offline.js');
 const db = require('./db');
+const totp = require('./totp');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -21,6 +24,26 @@ const path = require('path');
 function test(name, fn) {
   fn();
   console.log('ok  ' + name);
+}
+
+function withTempDb(fn) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arpos-t-'));
+  const prev = process.env.ARPOS_DATA_DIR;
+  process.env.ARPOS_DATA_DIR = dir;
+  db.close();
+  try {
+    assert.ok(db.open());
+    const mig = db.migrateJson();
+    assert.ok(mig.ok, mig.error || 'köçürmə');
+    fn();
+  } finally {
+    db.close();
+    if (prev) {
+      process.env.ARPOS_DATA_DIR = prev;
+    } else {
+      delete process.env.ARPOS_DATA_DIR;
+    }
+  }
 }
 
 test('kurs: bar dərhal, mətbəx isti, soyuq seçimi', function () {
@@ -52,9 +75,53 @@ test('PIN qaydaları', function () {
   assert.strictEqual(users.forbiddenPin('0000'), true);
 });
 
+test('oflayn növbə açarı və id dəyişməsi', function () {
+  assert.strictEqual(offline.shouldQueue('POST', '/api/orders/accept'), true);
+  assert.strictEqual(offline.shouldQueue('POST', '/api/orders/void'), true);
+  assert.strictEqual(offline.shouldQueue('GET', '/api/orders'), false);
+  assert.strictEqual(offline.isCacheGet('GET', '/api/catalog'), true);
+  const list = [{
+    url: '/api/orders/pay',
+    body: JSON.stringify({ orderId: -9, cashAmount: 4 }),
+    tempOrderId: -9
+  }];
+  const mapped = offline.remapQueue(list, -9, 42);
+  assert.strictEqual(JSON.parse(mapped[0].body).orderId, 42);
+  const data = offline.applyAccept({ orders: [] }, {
+    tableId: 3,
+    items: [{ productId: 1, qty: 1, salePrice: 2 }]
+  }, -5);
+  assert.strictEqual(data.orders[0].id, -5);
+  assert.strictEqual(data.orders[0].status, 'open');
+});
+
 test('jurnal gün açarı', function () {
   assert.strictEqual(journal.dayKey('2026-09-07'), '2026-09-07');
   assert.strictEqual(journal.dayKey(new Date(2026, 8, 7)), '2026-09-07');
+});
+
+test('jurnal yalnız əlavə olunur və pozulma görünür', function () {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arpos-jr-'));
+  const prev = process.env.ARPOS_DATA_DIR;
+  process.env.ARPOS_DATA_DIR = dir;
+  journal.append({ userName: 'Ali', kind: 'login', text: 'Daxil oldu' });
+  journal.append({ userName: 'Ali', kind: 'pay', text: 'Ödəniş 10' });
+  const key = journal.dayKey(new Date());
+  const rows = journal.readDay(key);
+  assert.strictEqual(rows.length, 2);
+  assert.strictEqual(rows[0].tampered, false);
+  assert.strictEqual(rows[1].tampered, false);
+  assert.strictEqual(rows[1].text, 'Ödəniş 10');
+  const file = path.join(dir, 'journal', key + '.jsonl');
+  const raw = fs.readFileSync(file, 'utf8');
+  fs.writeFileSync(file, raw.replace('Ödəniş 10', 'Silindi 00'));
+  const bad = journal.readDay(key);
+  assert.strictEqual(bad[1].tampered, true);
+  if (prev) {
+    process.env.ARPOS_DATA_DIR = prev;
+  } else {
+    delete process.env.ARPOS_DATA_DIR;
+  }
 });
 
 test('porsiya mayası əlavə xammalı sayır', function () {
@@ -71,6 +138,29 @@ test('porsiya mayası əlavə xammalı sayır', function () {
     modifiers: [{ ingredients: [{ itemId: 2, qty: 0.05, unit: 'kq' }] }]
   });
   assert.strictEqual(withMod, 1.2);
+});
+
+test('anbar satış sqlite-də qalığı azaldır', function () {
+  withTempDb(function () {
+    stock.writeStock({
+      nextItemId: 2,
+      nextMoveId: 1,
+      nextPurchaseId: 1,
+      items: [{ id: 1, name: 'Ət', unit: 'kq', buyPrice: 10, qty: 5, minQty: 0 }],
+      moves: [],
+      purchases: [],
+      suppliers: []
+    });
+    const catalogStore = {
+      products: [{ id: 1, ingredients: [{ itemId: 1, qty: 0.2, unit: 'kq' }] }]
+    };
+    const warns = stock.deductLines(catalogStore, [{ productId: 1, qty: 2 }], { orderId: 9 });
+    assert.strictEqual(warns.length, 0);
+    const after = stock.readStock();
+    assert.strictEqual(after.items[0].qty, 4.6);
+    assert.strictEqual(after.moves.length, 1);
+    assert.strictEqual(after.moves[0].type, 'sale');
+  });
 });
 
 test('növbə yalnız öz terminalını sayır', function () {
@@ -106,6 +196,27 @@ test('növbə nağd çıxarışı gözləniləndən düşür', function () {
   assert.strictEqual(packed.expectedCash, 60);
 });
 
+test('növbə geri nağdı gözləniləndən düşür', function () {
+  const at = '2026-09-07T12:00:00';
+  const row = {
+    terminalId: 1,
+    startingCash: 50,
+    openedAt: '2026-09-07T10:00:00',
+    drops: []
+  };
+  const list = [
+    {
+      status: 'refunded',
+      terminalId: 1,
+      payment: { at: at, cashAmount: 30, cardAmount: 0, prepaid: 0, total: 30 },
+      refund: { at: '2026-09-07T13:00:00', cashAmount: 10, cardAmount: 0 }
+    }
+  ];
+  const packed = shifts.withExpected(row, list, { reservations: [] });
+  assert.strictEqual(packed.expectedCash, 70);
+  assert.strictEqual(packed.totals.refundCash, 10);
+});
+
 test('ödənilib hədiyyəni sayır', function () {
   const order = {
     payments: [
@@ -114,6 +225,19 @@ test('ödənilib hədiyyəni sayır', function () {
     ]
   };
   assert.strictEqual(orders.paidTotal(order), 12);
+});
+
+test('ödəniş qalığı açıq sətirlə paidTotal-dan ayrıdır', function () {
+  const order = {
+    items: [
+      { id: 1, salePrice: 10, qty: 1 },
+      { id: 2, salePrice: 5, qty: 1, settled: true }
+    ],
+    payments: [{ cashAmount: 3, cardAmount: 0, giftAmount: 0 }]
+  };
+  assert.strictEqual(orders.openTotal(order), 10);
+  assert.strictEqual(orders.orderTotal(order), 15);
+  assert.strictEqual(orders.paidTotal(order), 3);
 });
 
 test('növbə açıq masanı yalnız öz terminalında görür', function () {
@@ -194,6 +318,18 @@ test('ayarlarda filial və sms sahəsi var', function () {
   assert.strictEqual(typeof cfg.branchName, 'string');
   assert.ok(cfg.sms);
   assert.strictEqual(typeof cfg.sms.reserveText, 'string');
+  assert.strictEqual(typeof cfg.vatPercent, 'number');
+  assert.strictEqual(typeof cfg.branchCode, 'string');
+});
+
+test('filial qiyməti və hesabat filtri', function () {
+  assert.strictEqual(settings.matchesBranch({ branchCode: 'M1' }, 'M1'), true);
+  assert.strictEqual(settings.matchesBranch({ payment: { branchName: 'A' } }, 'B'), false);
+  assert.strictEqual(settings.matchesBranch({ payment: { branchName: 'A' } }, ''), true);
+  const prev = settings.readSettings();
+  settings.writeSettings({ branchCode: 'M1' });
+  assert.strictEqual(catalog.salePriceNow({ salePrice: 10, prices: { M1: 12 } }), 12);
+  settings.writeSettings({ branchCode: prev.branchCode || '' });
 });
 
 test('lisenziya imzası saxta kodu keçirmir', function () {
@@ -318,6 +454,84 @@ test('mühasib: ödəniş və kassa kitabı', function () {
   assert.strictEqual(data.ledger[0].drops, 5);
 });
 
+test('FIFO köhnə partiyanı əvvəl çıxır', function () {
+  const item = { qty: 0, buyPrice: 0, lots: [] };
+  stock.fifoAdd(item, 2, 10, 'a');
+  stock.fifoAdd(item, 2, 20, 'b');
+  assert.strictEqual(stock.fifoConsume(item, 3), 40);
+  assert.strictEqual(item.qty, 1);
+  assert.strictEqual(stock.fifoAvg(item), 20);
+});
+
+test('kreditor köhnə alışları ödənilib sayır', function () {
+  const cred = stock.creditorsAsOf([
+    { at: '2026-09-01T10:00:00', supplier: 'Market', total: 50 },
+    { at: '2026-09-02T10:00:00', supplier: 'Market', total: 30, credit: true },
+    {
+      at: '2026-09-03T10:00:00',
+      supplier: 'Market',
+      total: 20,
+      payments: [{ at: '2026-09-04T10:00:00', amount: 5 }]
+    }
+  ], new Date('2026-09-10T23:59:59'));
+  assert.strictEqual(cred.due, 45);
+  assert.strictEqual(cred.suppliers[0].count, 2);
+});
+
+test('inventar tarixə FIFO dəyəri', function () {
+  const inv = stock.inventoryAsOf({
+    items: [{ id: 1, name: 'Un', unit: 'kq', buyPrice: 0, qty: 0, lots: [] }],
+    purchases: [{ id: 1, lines: [{ itemId: 1, buyPrice: 10 }] }],
+    moves: [
+      { id: 1, itemId: 1, type: 'in', qty: 5, purchaseId: 1, at: '2026-09-01T10:00:00' },
+      { id: 2, itemId: 1, type: 'sale', qty: 2, at: '2026-09-02T10:00:00' }
+    ]
+  }, new Date('2026-09-02T23:59:59'));
+  assert.strictEqual(inv.items[0].qty, 3);
+  assert.strictEqual(inv.total, 30);
+});
+
+test('əməkhaqqı saat × tarif', function () {
+  const rows = clock.payroll(
+    [{ id: 1, name: 'Ali', hourlyWage: 10 }],
+    new Date('2026-09-10T00:00:00'),
+    new Date('2026-09-10T23:59:59'),
+    [{ userId: 1, inAt: '2026-09-10T08:00:00', outAt: '2026-09-10T12:00:00' }]
+  );
+  assert.strictEqual(rows[0].hours, 4);
+  assert.strictEqual(rows[0].amount, 40);
+});
+
+test('mühasib ƏDV satışdan çıxır', function () {
+  const data = books.build({
+    from: new Date('2026-09-10T00:00:00'),
+    to: new Date('2026-09-10T23:59:59.999'),
+    vatPercent: 18,
+    showCost: false,
+    showStock: false,
+    terminals: [],
+    book: { reservations: [] },
+    catalog: { products: [] },
+    stock: { items: [], moves: [], purchases: [] },
+    shifts: [],
+    orders: [{
+      status: 'paid',
+      terminalId: 1,
+      items: [{ productId: 1, qty: 1, salePrice: 30 }],
+      payment: {
+        at: '2026-09-10T12:00:00',
+        method: 'cash',
+        cashAmount: 30,
+        cardAmount: 0,
+        giftAmount: 0,
+        prepaid: 0,
+        total: 30
+      }
+    }]
+  });
+  assert.strictEqual(data.pnl.vat, 4.58);
+});
+
 test('sqlite canlı sifariş müddəti', function () {
   assert.strictEqual(db.isLiveOrder({ status: 'open' }), true);
   assert.strictEqual(db.isLiveOrder({
@@ -380,6 +594,68 @@ test('sqlite json köçürür və ödəniş qalır', function () {
   } else {
     delete process.env.ARPOS_DATA_DIR;
   }
+});
+
+test('sqlite ofis json köçürür', function () {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arpos-off-'));
+  const prev = process.env.ARPOS_DATA_DIR;
+  process.env.ARPOS_DATA_DIR = dir;
+  db.close();
+  fs.writeFileSync(path.join(dir, 'users.json'), JSON.stringify({
+    nextUserId: 3,
+    nextRoleId: 8,
+    roles: [{ id: 1, name: 'Admin', permissions: ['reports.view'] }],
+    users: [{ id: 2, name: 'OfisTest', roleId: 1, active: true }]
+  }));
+  fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({ vatPercent: 18, branchName: 'Filial A' }));
+  fs.writeFileSync(path.join(dir, 'shifts.json'), JSON.stringify({
+    nextId: 2,
+    shifts: [{ id: 1, terminalId: 1, status: 'open', openedAt: '2026-09-10T10:00:00', startingCash: 20 }]
+  }));
+  fs.writeFileSync(path.join(dir, 'terminals.json'), JSON.stringify({
+    nextId: 2,
+    terminals: [{ id: 1, name: 'Kassa X', active: true }]
+  }));
+  assert.strictEqual(db.open(), true);
+  const mig = db.migrateJson();
+  assert.ok(mig.ok, mig.error || 'köçürmə');
+  assert.ok(db.officeReady());
+  assert.strictEqual(fs.existsSync(path.join(dir, 'users.json')), false);
+  assert.strictEqual(users.readStore().users[0].name, 'OfisTest');
+  assert.strictEqual(settings.readSettings().vatPercent, 18);
+  assert.strictEqual(settings.readSettings().branchName, 'Filial A');
+  settings.writeSettings({ vatPercent: 7 });
+  assert.strictEqual(settings.readSettings().vatPercent, 7);
+  assert.strictEqual(terminals.listAll()[0].name, 'Kassa X');
+  assert.strictEqual(shifts.readStore().shifts[0].startingCash, 20);
+  db.close();
+  if (prev) {
+    process.env.ARPOS_DATA_DIR = prev;
+  } else {
+    delete process.env.ARPOS_DATA_DIR;
+  }
+});
+
+test('totp və istifadəçi kilidi', function () {
+  assert.strictEqual(totp.totpAt('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 59000), '287082');
+  const secret = totp.makeSecret();
+  const code = totp.totpAt(secret, Date.now());
+  assert.strictEqual(code.length, 6);
+  assert.strictEqual(totp.verify(secret, code), true);
+  withTempDb(function () {
+    const store = users.readStore();
+    const user = store.users[0];
+    const started = users.startTotp(user);
+    const okCode = totp.totpAt(started.secret, Date.now());
+    assert.strictEqual(users.confirmTotp(user, okCode), true);
+    assert.strictEqual(user.totpEnabled, true);
+    assert.ok(!Object.prototype.hasOwnProperty.call(users.publicUser(user), 'totpSecret'));
+    user.locked = true;
+    users.writeStore(store);
+    assert.strictEqual(users.findStaff(user.id), null);
+    settings.writeSettings({ tillLocked: true });
+    assert.strictEqual(settings.readSettings().tillLocked, true);
+  });
 });
 
 console.log('Bütün testlər keçdi.');

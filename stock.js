@@ -55,25 +55,289 @@ function recipeStockQty(ing, item) {
   return toStockQty(ing.qty, from, item.unit);
 }
 
+function lotQty(lots) {
+  return qtyOf((lots || []).reduce(function (sum, lot) {
+    return sum + (Number(lot.qty) || 0);
+  }, 0));
+}
+
+function fifoValue(item) {
+  ensureLots(item);
+  return money((item.lots || []).reduce(function (sum, lot) {
+    return sum + (Number(lot.qty) || 0) * (Number(lot.buyPrice) || 0);
+  }, 0));
+}
+
+function fifoAvg(item) {
+  const qty = lotQty(item && item.lots);
+  if (qty <= 0) {
+    return money(item && item.buyPrice);
+  }
+  return money(fifoValue(item) / qty);
+}
+
+function ensureLots(item) {
+  if (!item) {
+    return item;
+  }
+  if (!Array.isArray(item.lots)) {
+    item.lots = [];
+  }
+  if (!item.lots.length) {
+    const qty = qtyOf(item.qty);
+    if (qty > 0) {
+      item.lots = [{ qty: qty, buyPrice: money(item.buyPrice), at: '' }];
+    }
+  }
+  return item;
+}
+
+function fifoAdd(item, qty, price, at) {
+  const add = qtyOf(qty);
+  if (!item || add <= 0) {
+    return;
+  }
+  ensureLots(item);
+  item.lots.push({
+    qty: add,
+    buyPrice: money(price),
+    at: at || ''
+  });
+  item.qty = lotQty(item.lots);
+  item.buyPrice = fifoAvg(item);
+}
+
+function fifoConsume(item, qty) {
+  let need = qtyOf(qty);
+  let cost = 0;
+  if (!item || need <= 0) {
+    return 0;
+  }
+  ensureLots(item);
+  while (need > 0 && item.lots.length) {
+    const lot = item.lots[0];
+    const take = qtyOf(Math.min(qtyOf(lot.qty), need));
+    cost += take * money(lot.buyPrice);
+    lot.qty = qtyOf(lot.qty - take);
+    need = qtyOf(need - take);
+    if (lot.qty <= 0) {
+      item.lots.shift();
+    }
+  }
+  item.qty = lotQty(item.lots);
+  item.buyPrice = fifoAvg(item);
+  return money(cost);
+}
+
+function fifoSetQty(item, qty) {
+  const next = qtyOf(qty);
+  const price = fifoAvg(item);
+  item.lots = next > 0 ? [{ qty: next, buyPrice: price, at: '' }] : [];
+  item.qty = next;
+  item.buyPrice = price;
+}
+
+function paidOf(row, to) {
+  const total = money(row && row.total);
+  const limit = to ? new Date(to) : null;
+  if (limit && Number.isNaN(limit.getTime())) {
+    return 0;
+  }
+  if (Array.isArray(row && row.payments) && row.payments.length) {
+    let paid = 0;
+    row.payments.forEach(function (pay) {
+      if (limit && new Date(pay.at) > limit) {
+        return;
+      }
+      paid += Number(pay.amount) || 0;
+    });
+    return money(Math.min(total, paid));
+  }
+  if (row && row.paidAmount != null && Number.isFinite(Number(row.paidAmount))) {
+    if (limit && new Date(row.at) > limit) {
+      return 0;
+    }
+    return money(Math.min(total, Number(row.paidAmount)));
+  }
+  if (row && row.credit) {
+    return 0;
+  }
+  if (limit && row && new Date(row.at) > limit) {
+    return 0;
+  }
+  return total;
+}
+
+function dueOf(row, to) {
+  return money(Math.max(0, money(row && row.total) - paidOf(row, to)));
+}
+
+function creditorsAsOf(purchases, to) {
+  const by = {};
+  const open = [];
+  (purchases || []).forEach(function (row) {
+    if (to && new Date(row.at) > new Date(to)) {
+      return;
+    }
+    const due = dueOf(row, to);
+    if (due <= 0) {
+      return;
+    }
+    const paid = paidOf(row, to);
+    const total = money(row.total);
+    const name = String(row.supplier || '').trim() || '—';
+    if (!by[name]) {
+      by[name] = { supplier: name, total: 0, paid: 0, due: 0, count: 0 };
+    }
+    by[name].total = money(by[name].total + total);
+    by[name].paid = money(by[name].paid + paid);
+    by[name].due = money(by[name].due + due);
+    by[name].count += 1;
+    open.push({
+      id: row.id || 0,
+      at: row.at || '',
+      supplier: name,
+      docNo: row.docNo || '',
+      total: total,
+      paid: paid,
+      due: due
+    });
+  });
+  const suppliers = Object.keys(by).sort().map(function (key) {
+    return by[key];
+  });
+  const due = money(suppliers.reduce(function (sum, row) {
+    return sum + row.due;
+  }, 0));
+  open.sort(function (a, b) {
+    return String(a.at) < String(b.at) ? 1 : -1;
+  });
+  return { suppliers: suppliers, open: open.slice(0, 80), due: due };
+}
+
+function purchaseLinePrice(purchases, purchaseId, itemId) {
+  const doc = (purchases || []).find(function (row) {
+    return Number(row.id) === Number(purchaseId);
+  });
+  if (!doc) {
+    return null;
+  }
+  const line = (doc.lines || []).find(function (row) {
+    return Number(row.itemId) === Number(itemId);
+  });
+  return line ? money(line.buyPrice) : null;
+}
+
+function inventoryAsOf(stockStore, at) {
+  const to = at instanceof Date ? at : new Date(at);
+  const items = (stockStore.items || []).map(function (row) {
+    return {
+      id: row.id,
+      name: row.name,
+      unit: row.unit || 'əd',
+      minQty: row.minQty,
+      buyPrice: money(row.buyPrice),
+      qty: 0,
+      lots: []
+    };
+  });
+  const byId = {};
+  items.forEach(function (item) {
+    byId[item.id] = item;
+  });
+  const moved = {};
+  (stockStore.moves || []).filter(function (move) {
+    const stamp = new Date(move.at);
+    return !Number.isNaN(stamp.getTime()) && stamp <= to;
+  }).sort(function (a, b) {
+    const cmp = String(a.at).localeCompare(String(b.at));
+    return cmp !== 0 ? cmp : (Number(a.id) || 0) - (Number(b.id) || 0);
+  }).forEach(function (move) {
+    const item = byId[Number(move.itemId)];
+    if (!item) {
+      return;
+    }
+    moved[item.id] = true;
+    const qty = qtyOf(move.qty);
+    if (move.type === 'in' || move.type === 'void') {
+      let price = money(item.buyPrice);
+      if (move.purchaseId) {
+        const fromBuy = purchaseLinePrice(stockStore.purchases, move.purchaseId, item.id);
+        if (fromBuy != null) {
+          price = fromBuy;
+        }
+      } else if (move.buyPrice != null) {
+        price = money(move.buyPrice);
+      }
+      fifoAdd(item, qty, price, move.at);
+    } else if (move.type === 'sale' || move.type === 'out') {
+      fifoConsume(item, qty);
+    } else if (move.type === 'count' || move.type === 'adjust') {
+      fifoSetQty(item, qty);
+    }
+  });
+  items.forEach(function (item) {
+    if (moved[item.id]) {
+      return;
+    }
+    const src = (stockStore.items || []).find(function (row) {
+      return row.id === item.id;
+    });
+    if (!src) {
+      return;
+    }
+    item.qty = qtyOf(src.qty);
+    item.lots = JSON.parse(JSON.stringify(src.lots || []));
+    ensureLots(item);
+    item.qty = lotQty(item.lots);
+    item.buyPrice = fifoAvg(item);
+  });
+  const rows = items.map(function (item) {
+    return {
+      id: item.id,
+      name: item.name,
+      unit: item.unit,
+      qty: qtyOf(item.qty),
+      buyPrice: fifoAvg(item),
+      value: fifoValue(item)
+    };
+  }).filter(function (row) {
+    return row.qty > 0 || row.value > 0;
+  });
+  const total = money(rows.reduce(function (sum, row) {
+    return sum + row.value;
+  }, 0));
+  return {
+    at: Number.isNaN(to.getTime()) ? '' : to.toISOString(),
+    items: rows,
+    total: total
+  };
+}
+
 function defaults() {
   return { nextItemId: 1, nextMoveId: 1, nextPurchaseId: 1, items: [], moves: [], purchases: [], suppliers: [] };
 }
 
+function packStock(raw) {
+  return {
+    nextItemId: Number(raw.nextItemId) || 1,
+    nextMoveId: Number(raw.nextMoveId) || 1,
+    nextPurchaseId: Number(raw.nextPurchaseId) || 1,
+    items: (Array.isArray(raw.items) ? raw.items : []).map(function (item) {
+      return ensureLots(item);
+    }),
+    moves: Array.isArray(raw.moves) ? raw.moves : [],
+    purchases: Array.isArray(raw.purchases) ? raw.purchases : [],
+    suppliers: Array.isArray(raw.suppliers) ? raw.suppliers : []
+  };
+}
+
 function readStock() {
   if (db.migrated()) {
-    return db.loadStock();
+    return packStock(db.loadStock());
   }
   try {
-    const raw = store.readJson(FILE);
-    return {
-      nextItemId: Number(raw.nextItemId) || 1,
-      nextMoveId: Number(raw.nextMoveId) || 1,
-      nextPurchaseId: Number(raw.nextPurchaseId) || 1,
-      items: Array.isArray(raw.items) ? raw.items : [],
-      moves: Array.isArray(raw.moves) ? raw.moves : [],
-      purchases: Array.isArray(raw.purchases) ? raw.purchases : [],
-      suppliers: Array.isArray(raw.suppliers) ? raw.suppliers : []
-    };
+    return packStock(store.readJson(FILE));
   } catch (error) {
     return defaults();
   }
@@ -134,7 +398,7 @@ function recipeCost(product, stockStore) {
     if (item) {
       const conv = recipeStockQty(line, item);
       if (!conv.error) {
-        sum += money(item.buyPrice) * conv.qty;
+        sum += fifoAvg(item) * conv.qty;
       }
     }
   });
@@ -152,7 +416,7 @@ function lineCost(product, stockStore, line) {
       }
       const conv = recipeStockQty(ing, item);
       if (!conv.error) {
-        sum += money(item.buyPrice) * conv.qty;
+        sum += fifoAvg(item) * conv.qty;
       }
     });
     return money(sum);
@@ -213,7 +477,8 @@ function upsertItem(body, current) {
       unit: unit,
       qty: body && body.qty != null ? qtyOf(body.qty) : (current ? qtyOf(current.qty) : 0),
       minQty: body && body.minQty != null ? qtyOf(body.minQty) : (current ? qtyOf(current.minQty) : 0),
-      buyPrice: body && body.buyPrice != null ? money(body.buyPrice) : (current ? money(current.buyPrice) : 0)
+      buyPrice: body && body.buyPrice != null ? money(body.buyPrice) : (current ? money(current.buyPrice) : 0),
+      lots: current && Array.isArray(current.lots) ? current.lots : []
     }
   };
 }
@@ -347,24 +612,23 @@ function moveStock(itemId, type, amount, note) {
     return { error: 'Xammal tapılmadı.' };
   }
   item.touched = true;
+  ensureLots(item);
   if (type === 'in') {
-    item.qty = qtyOf(item.qty + qty);
+    fifoAdd(item, qty, item.buyPrice, new Date().toISOString());
   } else if (type === 'out') {
     if (qtyOf(item.qty) < qty) {
       return { error: item.name + ' çatmır. Qalıq: ' + item.qty + ' ' + item.unit };
     }
-    item.qty = qtyOf(item.qty - qty);
+    fifoConsume(item, qty);
   } else {
-    item.qty = qty;
-    if (type === 'count') {
-      type = 'count';
-    }
+    fifoSetQty(item, qty);
   }
   box.moves.push({
     id: box.nextMoveId,
     itemId: item.id,
     type: type,
     qty: qty,
+    buyPrice: money(item.buyPrice),
     note: String(note || '').trim().slice(0, 80),
     at: new Date().toISOString()
   });
@@ -380,6 +644,9 @@ function publicPurchase(row) {
     supplier: row.supplier || '',
     docNo: row.docNo || '',
     total: money(row.total),
+    paid: paidOf(row),
+    due: dueOf(row),
+    credit: dueOf(row) > 0,
     by: row.by || '',
     lines: (row.lines || []).map(function (line) {
       return {
@@ -416,17 +683,11 @@ function addPurchase(body, who) {
   let total = 0;
   const at = new Date().toISOString();
   const purchaseId = box.nextPurchaseId;
+  const credit = body.credit === true || body.credit === 1 || body.credit === '1';
   lines.forEach(function (line) {
     const item = line.item;
-    const oldQty = qtyOf(item.qty);
-    const oldPrice = money(item.buyPrice);
     const lineTotal = money(line.qty * line.buyPrice);
-    if (oldQty > 0) {
-      item.buyPrice = money((oldQty * oldPrice + line.qty * line.buyPrice) / (oldQty + line.qty));
-    } else {
-      item.buyPrice = line.buyPrice;
-    }
-    item.qty = qtyOf(oldQty + line.qty);
+    fifoAdd(item, line.qty, line.buyPrice, at);
     item.touched = true;
     total += lineTotal;
     saved.push({
@@ -442,18 +703,23 @@ function addPurchase(body, who) {
       itemId: item.id,
       type: 'in',
       qty: line.qty,
+      buyPrice: line.buyPrice,
       note: ('Alış' + (docNo ? ' ' + docNo : '')).slice(0, 80),
       purchaseId: purchaseId,
       at: at
     });
     box.nextMoveId += 1;
   });
+  const paid = credit ? 0 : money(total);
   const purchase = {
     id: purchaseId,
     at: at,
     supplier: supplier,
     docNo: docNo,
     total: money(total),
+    paidAmount: paid,
+    credit: credit,
+    payments: paid > 0 ? [{ at: at, amount: paid, by: String(who || '').trim().slice(0, 40) }] : [],
     by: String(who || '').trim().slice(0, 40),
     lines: saved
   };
@@ -462,6 +728,38 @@ function addPurchase(body, who) {
   rememberSupplier(box, supplier);
   writeStock(box);
   return { purchase: publicPurchase(purchase) };
+}
+
+function payPurchase(id, amount, who) {
+  const box = readStock();
+  const row = (box.purchases || []).find(function (item) {
+    return Number(item.id) === Number(id);
+  });
+  if (!row) {
+    return { error: 'Alış tapılmadı.' };
+  }
+  const due = dueOf(row);
+  if (due <= 0) {
+    return { error: 'Bu sənəd ödənilib.' };
+  }
+  const pay = amount == null || amount === '' ? due : money(amount);
+  if (!Number.isFinite(pay) || pay <= 0) {
+    return { error: 'Məbləğ düzgün deyil.' };
+  }
+  const take = money(Math.min(due, pay));
+  if (!Array.isArray(row.payments) || !row.payments.length) {
+    const already = paidOf(row);
+    row.payments = already > 0 ? [{ at: row.at, amount: already, by: row.by || '' }] : [];
+  }
+  row.payments.push({
+    at: new Date().toISOString(),
+    amount: take,
+    by: String(who || '').trim().slice(0, 40)
+  });
+  row.paidAmount = paidOf(row);
+  row.credit = dueOf(row) > 0;
+  writeStock(box);
+  return { purchase: publicPurchase(row) };
 }
 
 function collectNeed(catalogStore, lines) {
@@ -553,16 +851,23 @@ function changeLines(catalogStore, lines, sign, meta) {
         warns.push(item.name + ' çatmır');
         return;
       }
-      item.qty = qtyOf(Number(item.qty) - need * sign);
+      const at = new Date().toISOString();
+      const price = fifoAvg(item);
+      if (sign > 0) {
+        fifoConsume(item, need);
+      } else {
+        fifoAdd(item, need, price, at);
+      }
       item.touched = true;
       box.moves.push({
         id: box.nextMoveId,
         itemId: item.id,
         type: sign > 0 ? 'sale' : 'void',
         qty: need,
+        buyPrice: price,
         orderId: meta && meta.orderId,
         productId: product.id,
-        at: new Date().toISOString()
+        at: at
       });
       box.nextMoveId += 1;
       if (qtyOf(item.minQty) > 0 && item.qty <= qtyOf(item.minQty)) {
@@ -606,6 +911,14 @@ module.exports = {
   removeItem: removeItem,
   moveStock: moveStock,
   addPurchase: addPurchase,
+  payPurchase: payPurchase,
+  fifoAdd: fifoAdd,
+  fifoConsume: fifoConsume,
+  fifoAvg: fifoAvg,
+  inventoryAsOf: inventoryAsOf,
+  creditorsAsOf: creditorsAsOf,
+  paidOf: paidOf,
+  dueOf: dueOf,
   lowItems: lowItems,
   deductLines: deductLines,
   restockLines: restockLines,

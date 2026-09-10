@@ -1,9 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const store = require('./store');
 const num = require('./num');
-
-const FILE = path.join(__dirname, 'data', 'settings.json');
+const db = require('./db');
 
 function defaultBackupFolder() {
   return path.join(__dirname, 'data', 'backups');
@@ -39,10 +37,13 @@ function defaults() {
     opsMode: 'full',
     listenLan: true,
     branchName: '',
+    branchCode: '',
     sms: emptySms(),
     update: emptyUpdate(),
     backupGithub: emptyBackupGithub(),
-    orderCardScale: 2
+    orderCardScale: 2,
+    vatPercent: 0,
+    tillLocked: false
   };
 }
 
@@ -117,6 +118,54 @@ function cleanUpdate(raw, prev) {
 
 function cleanBranch(value) {
   return String(value || '').replace(/<[^>]*>/g, '').trim().slice(0, 60);
+}
+
+function cleanBranchCode(value) {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9\-]/g, '').slice(0, 12);
+}
+
+function branchStamp(cfg) {
+  const row = cfg || readSettings();
+  return {
+    code: cleanBranchCode(row.branchCode),
+    name: cleanBranch(row.branchName)
+  };
+}
+
+function orderBranch(order) {
+  const pay = (order && order.payment) || {};
+  return {
+    code: String((order && order.branchCode) || pay.branchCode || '').trim(),
+    name: String((order && order.branchName) || pay.branchName || '').trim()
+  };
+}
+
+function matchesBranch(order, want) {
+  const w = String(want || '').trim();
+  if (!w) {
+    return true;
+  }
+  const b = orderBranch(order);
+  return b.code === w || b.name === w;
+}
+
+function collectBranches(orderList) {
+  const map = {};
+  (orderList || []).forEach(function (order) {
+    const b = orderBranch(order);
+    const key = b.code || b.name;
+    if (!key) {
+      return;
+    }
+    map[key] = b.name || b.code;
+  });
+  const live = branchStamp();
+  if (live.code || live.name) {
+    map[live.code || live.name] = live.name || live.code;
+  }
+  return Object.keys(map).sort().map(function (key) {
+    return { id: key, name: map[key] };
+  });
 }
 
 function cleanListenLan(value) {
@@ -207,16 +256,19 @@ function normalize(raw, prev) {
       ? cleanListenLan(raw.listenLan)
       : true,
     branchName: cleanBranch(raw && raw.branchName),
+    branchCode: cleanBranchCode(raw && raw.branchCode),
     sms: cleanSms(raw, prev || raw),
     update: cleanUpdate(raw, prev || raw),
     backupGithub: cleanBackupGithub(raw, prev || raw),
-    orderCardScale: clampScale(raw && raw.orderCardScale != null ? raw.orderCardScale : 2)
+    orderCardScale: clampScale(raw && raw.orderCardScale != null ? raw.orderCardScale : 2),
+    vatPercent: clampPercent(raw && raw.vatPercent),
+    tillLocked: raw && (raw.tillLocked === true || raw.tillLocked === 1 || raw.tillLocked === '1' || raw.tillLocked === 'true')
   };
 }
 
 function readSettings() {
   try {
-    return normalize(store.readJson(FILE));
+    return normalize(db.readOffice('settings.json'));
   } catch (error) {
     return defaults();
   }
@@ -232,10 +284,13 @@ function writeSettings(data) {
     opsMode: data.opsMode !== undefined ? data.opsMode : prev.opsMode,
     listenLan: data.listenLan !== undefined ? data.listenLan : prev.listenLan,
     branchName: data.branchName !== undefined ? data.branchName : prev.branchName,
+    branchCode: data.branchCode !== undefined ? data.branchCode : prev.branchCode,
     sms: data.sms !== undefined ? data.sms : prev.sms,
     update: data.update !== undefined ? data.update : prev.update,
     backupGithub: data.backupGithub !== undefined ? data.backupGithub : prev.backupGithub,
-    orderCardScale: data.orderCardScale !== undefined ? data.orderCardScale : prev.orderCardScale
+    orderCardScale: data.orderCardScale !== undefined ? data.orderCardScale : prev.orderCardScale,
+    vatPercent: data.vatPercent !== undefined ? data.vatPercent : prev.vatPercent,
+    tillLocked: data.tillLocked !== undefined ? data.tillLocked : prev.tillLocked
   }, prev);
   if (next.backupFolder !== prev.backupFolder) {
     try {
@@ -244,7 +299,7 @@ function writeSettings(data) {
       throw new Error('Ehtiyat yeri yazılmır: ' + next.backupFolder);
     }
   }
-  store.writeJson(FILE, next);
+  db.writeOffice('settings.json', next);
   return next;
 }
 
@@ -294,5 +349,9 @@ module.exports = {
   money: money,
   isStockMode: isStockMode,
   listenHost: listenHost,
-  lanUrls: lanUrls
+  lanUrls: lanUrls,
+  branchStamp: branchStamp,
+  matchesBranch: matchesBranch,
+  collectBranches: collectBranches,
+  cleanBranchCode: cleanBranchCode
 };

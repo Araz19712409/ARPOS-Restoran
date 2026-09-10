@@ -20,6 +20,8 @@
     }
     return origFetch.call(this, input, init).then(function (res) {
       var url = typeof input === 'string' ? input : (input && input.url) || '';
+      var method = String((init && init.method) || 'GET').toUpperCase();
+      var off = window.PosOffline;
       setNetOk(true);
       if (res.status === 401 && String(url).indexOf('/api/login') === -1) {
         var had = window.sessionStorage.getItem('posWaiter');
@@ -37,11 +39,68 @@
           return null;
         });
       }
+      if (res.status === 423) {
+        res.clone().json().then(function (body) {
+          if (body && body.tillLocked) {
+            banner(body.message || 'Kassa bağlanıb.', 'stay');
+            try {
+              var savedTill = JSON.parse(window.sessionStorage.getItem('posWaiter') || 'null');
+              if (savedTill && savedTill.user && Number(savedTill.user.roleId) !== 1) {
+                window.sessionStorage.removeItem('posWaiter');
+                window.dispatchEvent(new Event('pos-auth-lost'));
+              }
+            } catch (err) {
+              return null;
+            }
+          }
+        }).catch(function () {
+          return null;
+        });
+      }
+      if (off && off.isCacheGet(method, url) && res.ok) {
+        res.clone().json().then(function (body) {
+          if (body && body.success) {
+            saveSnap(off.snapPath(url), body);
+          }
+        }).catch(function () {
+          return null;
+        });
+      }
+      var loginUrl = String(url);
+      if (method === 'POST' && /\/api\/login\/?(\?|$)/.test(loginUrl) && loginUrl.indexOf('totp') === -1 && res.ok) {
+        return res.clone().json().then(function (body) {
+          if (body && body.success && body.data && body.data.needTotp) {
+            return askTotp(body.data.totpToken).then(function (full) {
+              return jsonRes(full);
+            });
+          }
+          return res;
+        });
+      }
       return res;
     }).catch(function (error) {
       var url = typeof input === 'string' ? input : (input && input.url) || '';
       var method = String((init && init.method) || 'GET').toUpperCase();
+      var off = window.PosOffline;
       setNetOk(false);
+      if (off && off.isCacheGet(method, url)) {
+        var snap = readSnap(off.snapPath(url));
+        if (snap) {
+          banner('Oflayn. Son məlumat göstərilir. Növbə: ' + readQueue().length, 'stay');
+          return jsonRes(snap);
+        }
+      }
+      if (off && off.shouldQueue(method, url)) {
+        var queued = queueWrite(url, init);
+        banner('Oflayn. Əməliyyat növbədə (' + readQueue().length + ').', 'stay');
+        var payload = {};
+        try {
+          payload = JSON.parse((init && init.body) || '{}');
+        } catch (err) {
+          payload = {};
+        }
+        return jsonRes(off.fakeResult(url, payload, queued));
+      }
       if ((method === 'POST' || method === 'PUT') &&
           (/\/api\/orders\/(accept|pay|fire|move|guests|run-status)\b/.test(url) ||
             /\/api\/kitchen\/(done|serve)\b/.test(url))) {
@@ -55,6 +114,115 @@
   };
 
   var QKEY = 'posOfflineQ';
+  var SNAPKEY = 'posSnap';
+
+  function jsonRes(obj) {
+    return new Response(JSON.stringify(obj), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  function askTotp(totpToken) {
+    return new Promise(function (resolve) {
+      var box = document.getElementById('totp-lock');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = 'totp-lock';
+        box.className = 'pin-lock';
+        box.style.zIndex = '40';
+        box.innerHTML = '<div class="pin-card"><p class="eyebrow">İkinci addım</p><h2>Tətbiq kodu</h2><p id="totp-dots" class="pin-dots"></p><p id="totp-error" class="message"></p><div id="totp-pad" class="pin-pad"></div></div>';
+        document.body.appendChild(box);
+      }
+      box.classList.remove('hidden');
+      var buf = '';
+      var dots = document.getElementById('totp-dots');
+      var err = document.getElementById('totp-error');
+      var pad = document.getElementById('totp-pad');
+      err.textContent = '';
+      function draw() {
+        dots.textContent = buf.replace(/./g, '●');
+      }
+      function send() {
+        origFetch.call(window, '/api/login/totp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ totpToken: totpToken, code: buf })
+        }).then(function (res) {
+          return res.json().then(function (body) {
+            if (!res.ok || !body.success) {
+              err.textContent = (body && body.message) || 'Kod səhvdir.';
+              buf = '';
+              draw();
+              return;
+            }
+            box.classList.add('hidden');
+            resolve(body);
+          });
+        }).catch(function () {
+          err.textContent = 'Şəbəkə yoxdur.';
+          buf = '';
+          draw();
+        });
+      }
+      pad.innerHTML = '';
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 'C', 0, 'OK'].forEach(function (key) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = String(key);
+        btn.addEventListener('click', function () {
+          if (key === 'C') {
+            buf = '';
+            draw();
+            return;
+          }
+          if (key === 'OK') {
+            if (buf.length === 6) {
+              send();
+            }
+            return;
+          }
+          if (buf.length >= 6) {
+            return;
+          }
+          buf += String(key);
+          draw();
+          if (buf.length === 6) {
+            send();
+          }
+        });
+        pad.appendChild(btn);
+      });
+      draw();
+    });
+  }
+
+  function readSnap(path) {
+    try {
+      var all = JSON.parse(window.localStorage.getItem(SNAPKEY) || '{}');
+      return all[path] || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function saveSnap(path, body) {
+    try {
+      var all = JSON.parse(window.localStorage.getItem(SNAPKEY) || '{}');
+      all[path] = body;
+      window.localStorage.setItem(SNAPKEY, JSON.stringify(all));
+    } catch (error) {
+      return;
+    }
+  }
+
+  function patchOrdersSnap(fn) {
+    var cur = readSnap('/api/orders') || { success: true, data: { orders: [] } };
+    var data = cur.data && typeof cur.data === 'object' ? cur.data : { orders: [] };
+    cur.success = true;
+    cur.data = fn(data);
+    saveSnap('/api/orders', cur);
+  }
 
   function readQueue() {
     try {
@@ -66,56 +234,53 @@
   }
 
   function writeQueue(list) {
-    window.localStorage.setItem(QKEY, JSON.stringify(list.slice(-40)));
+    window.localStorage.setItem(QKEY, JSON.stringify(list.slice(-80)));
   }
 
   function queueKeyOf(url, body) {
-    try {
-      var o = JSON.parse(body || '{}');
-      if (String(url).indexOf('/pay') >= 0) {
-        return 'pay:' + o.orderId;
-      }
-      if (String(url).indexOf('/accept') >= 0) {
-        return 'accept:' + (o.tableId || o.orderId || '');
-      }
-      if (String(url).indexOf('/fire') >= 0) {
-        return 'fire:' + o.orderId;
-      }
-      if (String(url).indexOf('/move') >= 0) {
-        return 'move:' + o.orderId;
-      }
-      if (String(url).indexOf('/guests') >= 0) {
-        return 'guests:' + (o.tableId || o.orderId || '');
-      }
-      if (String(url).indexOf('/run-status') >= 0) {
-        return 'run:' + o.orderId;
-      }
-      if (String(url).indexOf('/kitchen/') >= 0) {
-        return 'kit:' + (o.orderId || '') + ':' + (o.itemId || '');
-      }
-    } catch (error) {
-      return String(url);
+    if (window.PosOffline && window.PosOffline.queueKeyOf) {
+      return window.PosOffline.queueKeyOf(url, body);
     }
     return String(url);
   }
 
   function queueWrite(url, init) {
     var body = init && init.body ? String(init.body) : '';
+    var off = window.PosOffline;
     var key = queueKeyOf(url, body);
     var list = readQueue().filter(function (row) { return row.key !== key; });
     var headers = {};
     if (init && init.headers && typeof init.headers === 'object' && !init.headers.forEach) {
       headers = init.headers;
     }
-    list.push({
+    var payload = {};
+    try {
+      payload = JSON.parse(body || '{}');
+    } catch (error) {
+      payload = {};
+    }
+    var row = {
       key: key,
       url: url,
       method: String((init && init.method) || 'POST'),
       headers: headers,
       body: body,
       at: Date.now()
-    });
+    };
+    if (off && String(url).indexOf('/accept') >= 0) {
+      row.tempOrderId = -Date.now();
+      patchOrdersSnap(function (data) {
+        return off.applyAccept(data, payload, row.tempOrderId);
+      });
+    }
+    if (off && String(url).indexOf('/pay') >= 0) {
+      patchOrdersSnap(function (data) {
+        return off.applyPay(data, payload);
+      });
+    }
+    list.push(row);
     writeQueue(list);
+    return row;
   }
 
   var flushing = false;
@@ -123,6 +288,9 @@
 
   function setNetOk(ok) {
     if (ok === lastNetOk) {
+      if (ok) {
+        flushQueue();
+      }
       return;
     }
     lastNetOk = ok;
@@ -150,7 +318,12 @@
         if (!body || !body.success) {
           throw new Error((body && body.message) || 'Növbə göndərilmədi.');
         }
-        writeQueue(list.slice(1));
+        var rest = list.slice(1);
+        var realId = body.data && body.data.order && body.data.order.id;
+        if (window.PosOffline && row.tempOrderId && realId) {
+          rest = window.PosOffline.remapQueue(rest, row.tempOrderId, realId);
+        }
+        writeQueue(rest);
         flushing = false;
         if (readQueue().length) {
           flushQueue();
@@ -164,6 +337,11 @@
   }
 
   window.addEventListener('online', flushQueue);
+  window.setInterval(function () {
+    if (readQueue().length) {
+      flushQueue();
+    }
+  }, 8000);
 
   function session() {
     try {
@@ -606,16 +784,19 @@
     if (isLoginPrompt(msg) && (pinLockOpen() || !session())) {
       return;
     }
-    if (kind !== 'ok' && kind !== 'err' && kind !== 'warn') {
+    if (kind !== 'ok' && kind !== 'err' && kind !== 'warn' && kind !== 'stay') {
       kind = 'ok';
     }
     var el = ensureBanner();
-    el.className = 'pos-banner pos-banner-' + kind;
+    el.className = 'pos-banner pos-banner-' + (kind === 'stay' ? 'warn' : kind);
     document.getElementById('pos-banner-text').textContent = msg;
     document.body.classList.add('has-banner');
     if (bannerTimer) {
       window.clearTimeout(bannerTimer);
       bannerTimer = 0;
+    }
+    if (kind === 'stay') {
+      return;
     }
     if (kind === 'ok') {
       bannerTimer = window.setTimeout(hideBanner, 4000);

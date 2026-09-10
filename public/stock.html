@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="products.css">
   <link rel="stylesheet" href="reports.css">
 </head>
-<body class="catalog-page report-page" data-need="stock.view" data-ops="full">
+<body class="catalog-page report-page dense-office" data-need="stock.view" data-ops="full">
   <header class="top">
     <div>
       <h1>Anbar</h1>
@@ -51,7 +51,7 @@
           Az qalanlar
         </label>
       </div>
-      <button id="stock-open-add" class="gold" type="button">+ Yeni xammal</button>
+      <button id="stock-open-add" class="gold" type="button">+ Xammal</button>
     </div>
     <p id="stock-low-banner" class="hint hidden"></p>
 
@@ -62,8 +62,8 @@
             <tr>
               <th>Ad</th>
               <th>Qalıq</th>
-              <th>Min qalıq</th>
-              <th>Alış, 1 vahid</th>
+              <th>Min</th>
+              <th>1 vahid</th>
               <th>Cəm</th>
               <th></th>
             </tr>
@@ -74,7 +74,7 @@
     </section>
 
     <section id="stock-buy-box" class="hidden">
-      <p class="hint">Qalıq artır, alış qiyməti orta çəkili yenilənir.</p>
+      <p class="hint">Qalıq FIFO ilə artır. Kreditə işarələsəniz, borc Mühasibdə görünür.</p>
       <form id="stock-buy-form">
         <div class="report-toolbar">
           <label>Təchizatçı
@@ -83,6 +83,10 @@
           </label>
           <label>Sənəd №
             <input id="buy-doc" type="text" maxlength="20">
+          </label>
+          <label class="check-line">
+            <input id="buy-credit" type="checkbox">
+            Kreditə
           </label>
         </div>
         <div id="buy-lines" class="buy-lines"></div>
@@ -105,7 +109,10 @@
               <th>Sənəd</th>
               <th>Sətir</th>
               <th>Cəm</th>
+              <th>Ödənilib</th>
+              <th>Borc</th>
               <th>Kim</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="buy-body"></tbody>
@@ -237,6 +244,7 @@
 
   <script src="log-client.js"></script>
   <script src="confirm.js"></script>
+  <script src="offline.js"></script>
   <script src="nav.js"></script>
   <script src="stock-ui.js"></script>
 </body>

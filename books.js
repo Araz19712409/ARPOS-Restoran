@@ -1,10 +1,12 @@
 const catalog = require('./catalog');
+const clock = require('./clock');
 const orders = require('./orders');
 const reservations = require('./reservations');
 const settings = require('./settings');
 const shifts = require('./shifts');
 const stock = require('./stock');
 const terminals = require('./terminals');
+const users = require('./users');
 
 const WASTE_KEYS = ['xarab', 'töküldü', 'ev', 'digər'];
 
@@ -80,6 +82,11 @@ function build(input) {
   const stockStore = input.stock || { items: [], moves: [], purchases: [] };
   const book = input.book || { reservations: [] };
   const termList = input.terminals || [];
+  const vatPercent = Number.isFinite(Number(input.vatPercent))
+    ? Number(input.vatPercent)
+    : 0;
+  const userList = input.users || [];
+  const punches = input.punches || [];
 
   function termName(id) {
     const row = termList.find(function (item) {
@@ -336,6 +343,13 @@ function build(input) {
     };
   });
 
+  const cred = stock.creditorsAsOf(stockStore.purchases, to);
+  const inv = stock.inventoryAsOf(stockStore, to);
+  const payRows = clock.payroll(userList, from, to, punches);
+  const wageTotal = payRows.reduce(function (sum, row) {
+    return sum + (Number(row.amount) || 0);
+  }, 0);
+
   const pnl = {
     sales: pay.total,
     cost: showCost ? money(cost) : null,
@@ -345,7 +359,12 @@ function build(input) {
     discount: money(discountTotal),
     complimentary: money(compTotal),
     refund: money(pay.refundCash + pay.refundCard),
-    profit: showCost ? money(pay.total - cost - (showStock ? wasteTotal : 0)) : null
+    vatRate: vatPercent,
+    vat: vatPercent > 0 ? money(pay.total * vatPercent / (100 + vatPercent)) : 0,
+    wages: money(wageTotal),
+    inventory: showStock ? inv.total : null,
+    creditors: showStock ? cred.due : null,
+    profit: showCost ? money(pay.total - cost - (showStock ? wasteTotal : 0) - wageTotal) : null
   };
 
   return {
@@ -358,25 +377,36 @@ function build(input) {
     days: dayList,
     ledger: ledger,
     pnl: pnl,
-    waste: wasteRows.slice(0, 80)
+    waste: wasteRows.slice(0, 80),
+    creditors: showStock ? cred : { suppliers: [], open: [], due: 0 },
+    inventory: showStock ? inv : { items: [], total: null, at: to.toISOString() },
+    payroll: { rows: payRows, total: money(wageTotal) }
   };
 }
 
 function report(from, to, opts) {
   const showCost = !!(opts && opts.showCost) && settings.isStockMode();
   const showStock = !!(opts && opts.showStock) && settings.isStockMode();
-  return build({
+  const all = orders.readAllOrders().orders || [];
+  const data = build({
     from: from,
     to: to,
     showCost: showCost,
     showStock: showStock,
-    orders: orders.readAllOrders().orders,
+    orders: all.filter(function (order) {
+      return settings.matchesBranch(order, opts && opts.branch);
+    }),
     shifts: shifts.readStore().shifts,
     catalog: catalog.readCatalog(),
     stock: stock.readStock(),
     book: reservations.readReservations(),
-    terminals: terminals.listAll()
+    terminals: terminals.listAll(),
+    vatPercent: settings.readSettings().vatPercent || 0,
+    users: users.readStore().users.map(users.publicUser),
+    punches: clock.readStore().punches
   });
+  data.branches = settings.collectBranches(all);
+  return data;
 }
 
 module.exports = {

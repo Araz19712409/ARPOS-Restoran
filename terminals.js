@@ -1,7 +1,4 @@
-const path = require('path');
-const store = require('./store');
-
-const FILE = path.join(__dirname, 'data', 'terminals.json');
+const db = require('./db');
 const LOCK_MS = 60 * 1000;
 const locks = {};
 const focus = {};
@@ -15,11 +12,17 @@ function defaults() {
 
 function readStore() {
   try {
-    const raw = store.readJson(FILE);
-    return {
+    const raw = db.readOffice('terminals.json');
+    const packed = {
       nextId: Number(raw.nextId) || 1,
       terminals: Array.isArray(raw.terminals) ? raw.terminals : []
     };
+    if (!packed.terminals.length) {
+      const row = defaults();
+      writeStore(row);
+      return row;
+    }
+    return packed;
   } catch (error) {
     const row = defaults();
     writeStore(row);
@@ -28,7 +31,7 @@ function readStore() {
 }
 
 function writeStore(data) {
-  store.writeJson(FILE, data);
+  db.writeOffice('terminals.json', data);
 }
 
 function listAll() {

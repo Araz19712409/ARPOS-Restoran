@@ -25,6 +25,7 @@ const JSON_FILES = [
   'print-queue.json', 'pin-lock.json'
 ];
 const MOVE_FILES = ['catalog.json', 'orders.json', 'stock.json'];
+const OFFICE_FILES = ['users.json', 'settings.json', 'shifts.json', 'terminals.json'];
 const KEEP_MS = 14 * 24 * 60 * 60 * 1000;
 
 let Database;
@@ -433,7 +434,7 @@ function migrateJson() {
     return { ok: false, skipped: true };
   }
   if (metaGet('json_migrated') === '1') {
-    return { ok: true, existed: true };
+    return migrateOffice();
   }
   try {
     tx(function () {
@@ -483,6 +484,55 @@ function migrateJson() {
         }
       });
     }
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+  return migrateOffice();
+}
+
+function officeReady() {
+  return available() && metaGet('office_migrated') === '1';
+}
+
+function readOffice(name) {
+  if (officeReady()) {
+    const raw = kvGet('file:' + name, null);
+    return raw && typeof raw === 'object' ? raw : {};
+  }
+  return readJsonFile(name) || {};
+}
+
+function writeOffice(name, data) {
+  if (officeReady()) {
+    kvSet('file:' + name, data);
+    return;
+  }
+  store.writeJson(path.join(dataDir(), name), data);
+}
+
+function migrateOffice() {
+  if (!available()) {
+    return { ok: false, skipped: true };
+  }
+  if (metaGet('office_migrated') === '1') {
+    return { ok: true, existed: true };
+  }
+  try {
+    tx(function () {
+      OFFICE_FILES.forEach(function (name) {
+        const disk = readJsonFile(name);
+        if (disk) {
+          kvSet('file:' + name, disk);
+        } else if (kvGet('file:' + name, null) == null) {
+          kvSet('file:' + name, {});
+        }
+      });
+      metaSet('office_migrated', '1');
+    });
+    OFFICE_FILES.forEach(function (name) {
+      moveToMigrated(name);
+      moveToMigrated(name + '.bak');
+    });
     return { ok: true };
   } catch (error) {
     return { ok: false, error: error.message };
@@ -526,6 +576,9 @@ module.exports = {
   loadAllOrders: loadAllOrders,
   saveLiveOrders: saveLiveOrders,
   migrateJson: migrateJson,
+  officeReady: officeReady,
+  readOffice: readOffice,
+  writeOffice: writeOffice,
   close: close,
   dbFile: dbFile,
   dataDir: dataDir,

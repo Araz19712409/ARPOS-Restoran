@@ -9,11 +9,11 @@
   <link rel="stylesheet" href="reports.css">
   <link rel="stylesheet" href="dates.css">
 </head>
-<body class="catalog-page report-page" data-need="reports.view">
+<body class="catalog-page report-page dense-office" data-need="reports.view">
   <header class="top">
     <div>
       <h1>Mühasib</h1>
-      <p id="waiter-line">Kassa kitabı, ödəniş, P&L, 1C müxabirə.</p>
+      <p id="waiter-line">Kassa, ödəniş, P&L, borc, qalıq, maaş.</p>
     </div>
     <nav class="app-nav waiter-nav">
       <a href="/orders.html">Sifariş</a>
@@ -54,6 +54,11 @@
       <label>Son
         <input id="rep-to" type="date">
       </label>
+      <label>Filial
+        <select id="rep-branch">
+          <option value="">Hamısı</option>
+        </select>
+      </label>
       <button id="rep-load" class="gold" type="button">Göstər</button>
       <button id="rep-csv" class="gold" type="button">CSV</button>
     </div>
@@ -62,6 +67,9 @@
       <button type="button" data-tab="pay">Ödəniş</button>
       <button type="button" data-tab="pnl">P&L</button>
       <button type="button" data-tab="ledger">1C</button>
+      <button type="button" data-tab="debt">Borc</button>
+      <button type="button" data-tab="inv">Qalıq</button>
+      <button type="button" data-tab="payr">Maaş</button>
     </div>
     <p id="message" class="message"></p>
     <div id="report-kpis" class="report-kpis"></div>
@@ -74,13 +82,13 @@
             <tr>
               <th>Açılıb</th>
               <th>Kassa</th>
-              <th>Başlanğıc</th>
+              <th>Başl.</th>
               <th>Nağd</th>
               <th>Kart</th>
               <th>Hədiyyə</th>
               <th>Çıxarış</th>
-              <th>Gözlənilən</th>
-              <th>Sayılan</th>
+              <th>Gözl.</th>
+              <th>Sayım</th>
               <th>Fərq</th>
             </tr>
           </thead>
@@ -180,6 +188,78 @@
         </table>
       </div>
     </section>
+
+    <section id="tab-debt" class="books-panel hidden">
+      <h2>Təchizatçı borcu</h2>
+      <p class="hint">Son tarixə açıq alış. Ödəniş Anbar → Tarix-dən.</p>
+      <div class="report-table-wrap">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Təchizatçı</th>
+              <th>Sənəd</th>
+              <th>Alış</th>
+              <th>Ödənilib</th>
+              <th>Borc</th>
+            </tr>
+          </thead>
+          <tbody id="debt-sum-body"></tbody>
+        </table>
+      </div>
+      <h2>Açıq sənədlər</h2>
+      <div class="report-table-wrap">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Vaxt</th>
+              <th>Təchizatçı</th>
+              <th>Sənəd</th>
+              <th>Cəm</th>
+              <th>Ödənilib</th>
+              <th>Borc</th>
+            </tr>
+          </thead>
+          <tbody id="debt-open-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-inv" class="books-panel hidden">
+      <h2>İnventar (FIFO)</h2>
+      <p class="hint">Son tarixə qalıq dəyəri.</p>
+      <div class="report-table-wrap">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Xammal</th>
+              <th>Qalıq</th>
+              <th>Vahid</th>
+              <th>Qiymət</th>
+              <th>AZN</th>
+            </tr>
+          </thead>
+          <tbody id="inv-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-payr" class="books-panel hidden">
+      <h2>Əməkhaqqı</h2>
+      <p class="hint">Giriş/çıxış saatı × istifadəçidəki saat haqqı.</p>
+      <div class="report-table-wrap">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Ad</th>
+              <th>Saat</th>
+              <th>1 saat</th>
+              <th>Cəm</th>
+            </tr>
+          </thead>
+          <tbody id="payr-body"></tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
   <div id="pin-lock" class="pin-lock">
@@ -193,6 +273,7 @@
   </div>
 
   <script src="log-client.js"></script>
+  <script src="offline.js"></script>
   <script src="nav.js"></script>
   <script src="dates.js"></script>
   <script src="books-ui.js"></script>

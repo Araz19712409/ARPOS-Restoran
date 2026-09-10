@@ -173,15 +173,21 @@
         }
         rows.slice().reverse().forEach(function (row) {
           var tr = document.createElement('tr');
+          if (row.tampered) {
+            tr.className = 'jr-bad';
+          }
           tr.innerHTML = '<td></td><td></td><td></td><td></td>';
           var cells = tr.querySelectorAll('td');
           cells[0].textContent = formatWhen(row.at);
           cells[1].textContent = row.userName || '—';
           cells[2].textContent = kindLabel(row.kind);
-          cells[3].textContent = row.text || '';
+          cells[3].textContent = row.text || (row.tampered ? 'Pozulub' : '');
           box.appendChild(tr);
         });
-        say(rows.length + ' əməliyyat.');
+        var broken = rows.filter(function (row) { return row.tampered; }).length;
+        say(broken
+          ? rows.length + ' əməliyyat. ' + broken + ' sətir pozulub.'
+          : rows.length + ' əməliyyat.', broken ? 'err' : '');
       })
       .catch(function (error) {
         say(error.message, 'err');

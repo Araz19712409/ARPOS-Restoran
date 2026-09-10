@@ -1,8 +1,9 @@
 const path = require('path');
 const crypto = require('crypto');
 const fileStore = require('./store');
+const db = require('./db');
+const totp = require('./totp');
 
-const USERS_FILE = path.join(__dirname, 'data', 'users.json');
 const LOCK_FILE = path.join(__dirname, 'data', 'pin-lock.json');
 const FAIL_LIMIT = 5;
 const LOCK_MS = 2 * 60 * 1000;
@@ -175,7 +176,7 @@ function defaultAdmin() {
 
 // Anbarı oxuyuruq, boşdursa toxum əkirik
 function readStore() {
-  const raw = fileStore.readJson(USERS_FILE);
+  const raw = db.readOffice('users.json');
   const store = {
     nextUserId: Number(raw.nextUserId) || 1,
     nextRoleId: Number(raw.nextRoleId) || 1,
@@ -271,7 +272,7 @@ function canUser(userId, key) {
 function findStaff(userId) {
   const store = readStore();
   const user = store.users.find(function (item) {
-    return item.id === Number(userId) && item.active !== false;
+    return item.id === Number(userId) && item.active !== false && !item.locked;
   });
   if (!user) {
     return null;
@@ -298,7 +299,7 @@ function forbiddenPin(pin) {
 }
 
 function writeStore(data) {
-  fileStore.writeJson(USERS_FILE, data);
+  db.writeOffice('users.json', data);
 }
 
 // İstifadəçini API-yə çıxarırıq — PIN hash getmir
@@ -350,8 +351,19 @@ function publicUser(user) {
     active: user.active !== false,
     system: Boolean(user.system),
     hasPin: Boolean(user.pinHash),
-    schedule: user.schedule || { days: [], from: '', to: '' }
+    locked: Boolean(user.locked),
+    totpEnabled: Boolean(user.totpEnabled && user.totpSecret),
+    schedule: user.schedule || { days: [], from: '', to: '' },
+    hourlyWage: moneyWage(user.hourlyWage)
   };
+}
+
+function moneyWage(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) {
+    return 0;
+  }
+  return Number(Math.min(9999, n).toFixed(2));
 }
 
 function hasPermission(role, key) {
@@ -365,6 +377,76 @@ function cleanPins(list) {
   return list.filter(function (key) {
     return PERMISSIONS.some(function (item) { return item.key === key; });
   });
+}
+
+const pendingTotp = {};
+
+function sweepPendingTotp() {
+  const now = Date.now();
+  Object.keys(pendingTotp).forEach(function (token) {
+    if (now - pendingTotp[token].at > 180000) {
+      delete pendingTotp[token];
+    }
+  });
+}
+
+function putPendingTotp(userId) {
+  sweepPendingTotp();
+  const token = crypto.randomBytes(16).toString('hex');
+  pendingTotp[token] = { userId: Number(userId), at: Date.now() };
+  return token;
+}
+
+function takePendingTotp(token) {
+  sweepPendingTotp();
+  const key = String(token || '');
+  const row = pendingTotp[key];
+  delete pendingTotp[key];
+  if (!row) {
+    return null;
+  }
+  return row.userId;
+}
+
+function startTotp(user) {
+  const secret = totp.makeSecret();
+  user.totpPending = secret;
+  return {
+    secret: secret,
+    otpauth: totp.otpauth(user.name, secret)
+  };
+}
+
+function confirmTotp(user, code) {
+  if (!user.totpPending || !totp.verify(user.totpPending, code)) {
+    return false;
+  }
+  user.totpSecret = user.totpPending;
+  user.totpEnabled = true;
+  delete user.totpPending;
+  return true;
+}
+
+function offTotp(user, code) {
+  if (!user.totpEnabled || !user.totpSecret || !totp.verify(user.totpSecret, code)) {
+    return false;
+  }
+  user.totpEnabled = false;
+  delete user.totpSecret;
+  delete user.totpPending;
+  return true;
+}
+
+function adminIds() {
+  return readStore().users.filter(function (item) {
+    return item.roleId === 1 && item.active !== false && !item.locked;
+  }).map(function (item) {
+    return item.id;
+  });
+}
+
+function isAdminUser(user) {
+  return Boolean(user && Number(user.roleId) === 1);
 }
 
 module.exports = {
@@ -388,5 +470,13 @@ module.exports = {
   isDefaultPin: isDefaultPin,
   needsPinChange: needsPinChange,
   forbiddenPin: forbiddenPin,
-  scheduleOk: scheduleOk
+  scheduleOk: scheduleOk,
+  moneyWage: moneyWage,
+  putPendingTotp: putPendingTotp,
+  takePendingTotp: takePendingTotp,
+  startTotp: startTotp,
+  confirmTotp: confirmTotp,
+  offTotp: offTotp,
+  adminIds: adminIds,
+  isAdminUser: isAdminUser
 };
