@@ -51,7 +51,23 @@ function wasteKind(note) {
 }
 
 function emptyPayDay() {
-  return { date: '', cash: 0, card: 0, gift: 0, prepaid: 0, total: 0, refundCash: 0, refundCard: 0, count: 0 };
+  return {
+    date: '', cash: 0, card: 0, gift: 0, prepaid: 0, total: 0,
+    refundCash: 0, refundCard: 0, count: 0,
+    discount: 0, complimentary: 0, waste: 0, purchases: 0,
+    drops: 0, difference: 0, cost: 0
+  };
+}
+
+function ensureDay(days, dk) {
+  if (!dk) {
+    return null;
+  }
+  if (!days[dk]) {
+    days[dk] = emptyPayDay();
+    days[dk].date = dk;
+  }
+  return days[dk];
 }
 
 function build(input) {
@@ -72,6 +88,7 @@ function build(input) {
     return (row && row.name) || ('Kassa ' + id);
   }
 
+  const days = {};
   const cashbook = [];
   (input.shifts || []).forEach(function (row) {
     const opened = new Date(row.openedAt);
@@ -105,6 +122,13 @@ function build(input) {
       counted: row.countedCash == null ? null : money(row.countedCash),
       difference: packed.difference
     });
+    const day = ensureDay(days, dayKey(row.closedAt || row.openedAt));
+    if (day) {
+      day.drops += dropSum;
+      if (packed.difference != null) {
+        day.difference += packed.difference;
+      }
+    }
   });
   cashbook.sort(function (a, b) {
     return String(a.openedAt) < String(b.openedAt) ? 1 : -1;
@@ -142,7 +166,6 @@ function build(input) {
     prepaid: { method: 'prepaid', count: 0, total: 0 }
   };
   const pay = { count: 0, cash: 0, card: 0, gift: 0, prepaid: 0, total: 0, refundCash: 0, refundCard: 0, refundCount: 0 };
-  const days = {};
   let cost = 0;
   let compTotal = 0;
   let discountTotal = 0;
@@ -153,13 +176,10 @@ function build(input) {
       pay.refundCash += Number(order.refund.cashAmount) || 0;
       pay.refundCard += Number(order.refund.cardAmount) || 0;
       const dk = dayKey(order.refund.at);
-      if (dk) {
-        if (!days[dk]) {
-          days[dk] = emptyPayDay();
-          days[dk].date = dk;
-        }
-        days[dk].refundCash += Number(order.refund.cashAmount) || 0;
-        days[dk].refundCard += Number(order.refund.cardAmount) || 0;
+      const refundDay = ensureDay(days, dk);
+      if (refundDay) {
+        refundDay.refundCash += Number(order.refund.cashAmount) || 0;
+        refundDay.refundCard += Number(order.refund.cardAmount) || 0;
       }
     }
     if ((order.status !== 'paid' && order.status !== 'refunded') || !payRow) {
@@ -180,7 +200,8 @@ function build(input) {
     pay.gift += gift;
     pay.prepaid += prepaid;
     pay.total += total;
-    discountTotal += Number(payRow.discountAmount) || 0;
+    const disc = Number(payRow.discountAmount) || 0;
+    discountTotal += disc;
     const key = payRow.method === 'card' || payRow.method === 'gift' ||
       payRow.method === 'mixed' || payRow.method === 'prepaid'
       ? payRow.method
@@ -190,17 +211,15 @@ function build(input) {
       methods[key].total += total;
     }
     const dk = dayKey(at);
-    if (dk) {
-      if (!days[dk]) {
-        days[dk] = emptyPayDay();
-        days[dk].date = dk;
-      }
-      days[dk].count += 1;
-      days[dk].cash += cash;
-      days[dk].card += card;
-      days[dk].gift += gift;
-      days[dk].prepaid += prepaid;
-      days[dk].total += total;
+    const saleDay = ensureDay(days, dk);
+    if (saleDay) {
+      saleDay.count += 1;
+      saleDay.cash += cash;
+      saleDay.card += card;
+      saleDay.gift += gift;
+      saleDay.prepaid += prepaid;
+      saleDay.total += total;
+      saleDay.discount += disc;
     }
     (order.items || []).forEach(function (item) {
       if (item.voided) {
@@ -208,14 +227,22 @@ function build(input) {
       }
       if (item.complimentary) {
         const base = Number(item.basePrice != null ? item.basePrice : item.salePrice) || 0;
-        compTotal += base * (Number(item.qty) || 0);
+        const comp = base * (Number(item.qty) || 0);
+        compTotal += comp;
+        if (saleDay) {
+          saleDay.complimentary += comp;
+        }
       }
       if (showCost) {
         const product = catalogStore.products.find(function (row) {
           return row.id === Number(item.productId);
         });
         const unit = item.costPrice != null ? Number(item.costPrice) : stock.lineCost(product, stockStore, item);
-        cost += unit * (Number(item.qty) || 0);
+        const lineCost = unit * (Number(item.qty) || 0);
+        cost += lineCost;
+        if (saleDay) {
+          saleDay.cost += lineCost;
+        }
       }
     });
   });
@@ -229,20 +256,6 @@ function build(input) {
       method: key,
       count: methods[key].count,
       total: money(methods[key].total)
-    };
-  });
-  const dayList = Object.keys(days).sort().reverse().map(function (key) {
-    const row = days[key];
-    return {
-      date: row.date,
-      count: row.count,
-      cash: money(row.cash),
-      card: money(row.card),
-      gift: money(row.gift),
-      prepaid: money(row.prepaid),
-      total: money(row.total),
-      refundCash: money(row.refundCash),
-      refundCard: money(row.refundCard)
     };
   });
 
@@ -264,6 +277,10 @@ function build(input) {
       const kind = wasteKind(move.note);
       wasteTotal += amount;
       wasteBy[kind] = money((wasteBy[kind] || 0) + amount);
+      const wasteDay = ensureDay(days, dayKey(move.at));
+      if (wasteDay) {
+        wasteDay.waste += amount;
+      }
       wasteRows.push({
         at: move.at,
         name: (item && item.name) || ('#' + move.itemId),
@@ -278,9 +295,46 @@ function build(input) {
     (stockStore.purchases || []).forEach(function (row) {
       if (inRange(row.at, from, to)) {
         purchaseTotal += Number(row.total) || 0;
+        const buyDay = ensureDay(days, dayKey(row.at));
+        if (buyDay) {
+          buyDay.purchases += Number(row.total) || 0;
+        }
       }
     });
   }
+
+  const dayList = Object.keys(days).sort().reverse().map(function (key) {
+    const row = days[key];
+    return {
+      date: row.date,
+      count: row.count,
+      cash: money(row.cash),
+      card: money(row.card),
+      gift: money(row.gift),
+      prepaid: money(row.prepaid),
+      total: money(row.total),
+      refundCash: money(row.refundCash),
+      refundCard: money(row.refundCard)
+    };
+  });
+  const ledger = Object.keys(days).sort().reverse().map(function (key) {
+    const row = days[key];
+    return {
+      date: row.date,
+      cash: money(row.cash),
+      card: money(row.card),
+      gift: money(row.gift),
+      prepaid: money(row.prepaid),
+      refundCash: money(row.refundCash),
+      refundCard: money(row.refundCard),
+      drops: money(row.drops),
+      purchases: showStock ? money(row.purchases) : null,
+      waste: showStock ? money(row.waste) : null,
+      discount: money(row.discount),
+      complimentary: money(row.complimentary),
+      difference: money(row.difference)
+    };
+  });
 
   const pnl = {
     sales: pay.total,
@@ -302,6 +356,7 @@ function build(input) {
     payments: pay,
     methods: methodList,
     days: dayList,
+    ledger: ledger,
     pnl: pnl,
     waste: wasteRows.slice(0, 80)
   };

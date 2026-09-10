@@ -13,7 +13,7 @@
   <header class="top">
     <div>
       <h1>Mühasib</h1>
-      <p id="waiter-line">Kassa kitabı, ödəniş üsulu, dövr mənfəəti.</p>
+      <p id="waiter-line">Kassa kitabı, ödəniş, P&L, 1C müxabirə.</p>
     </div>
     <nav class="app-nav waiter-nav">
       <a href="/orders.html">Sifariş</a>
@@ -61,6 +61,7 @@
       <button type="button" data-tab="cash" class="active">Kassa</button>
       <button type="button" data-tab="pay">Ödəniş</button>
       <button type="button" data-tab="pnl">P&L</button>
+      <button type="button" data-tab="ledger">1C</button>
     </div>
     <p id="message" class="message"></p>
     <div id="report-kpis" class="report-kpis"></div>
@@ -149,6 +150,33 @@
             </tr>
           </thead>
           <tbody id="waste-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-ledger" class="books-panel hidden">
+      <h2>Günlük müxabirə</h2>
+      <p class="hint">Excel / 1C üçün. Rəsmi e-kassa deyil.</p>
+      <div class="report-table-wrap">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Tarix</th>
+              <th>Nağd</th>
+              <th>Kart</th>
+              <th>Hədiyyə</th>
+              <th>İlkin</th>
+              <th>Geri N</th>
+              <th>Geri K</th>
+              <th>Çıxarış</th>
+              <th>Alış</th>
+              <th>Zay</th>
+              <th>Endirim</th>
+              <th>Pulsuz</th>
+              <th>Kəsir</th>
+            </tr>
+          </thead>
+          <tbody id="ledger-body"></tbody>
         </table>
       </div>
     </section>

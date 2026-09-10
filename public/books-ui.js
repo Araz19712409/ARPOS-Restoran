@@ -91,6 +91,7 @@
     document.getElementById('tab-cash').classList.toggle('hidden', name !== 'cash');
     document.getElementById('tab-pay').classList.toggle('hidden', name !== 'pay');
     document.getElementById('tab-pnl').classList.toggle('hidden', name !== 'pnl');
+    document.getElementById('tab-ledger').classList.toggle('hidden', name !== 'ledger');
   }
 
   function fillTable(id, cols, rows, emptyText) {
@@ -197,6 +198,31 @@
     fillTable('waste-body', 5, waste, 'Zay yoxdur.');
   }
 
+  function dash(value) {
+    return value == null ? '—' : Number(value).toFixed(2);
+  }
+
+  function drawLedger(data) {
+    var rows = (data.ledger || []).map(function (row) {
+      return [
+        row.date,
+        Number(row.cash).toFixed(2),
+        Number(row.card).toFixed(2),
+        Number(row.gift).toFixed(2),
+        Number(row.prepaid).toFixed(2),
+        Number(row.refundCash).toFixed(2),
+        Number(row.refundCard).toFixed(2),
+        Number(row.drops).toFixed(2),
+        dash(row.purchases),
+        dash(row.waste),
+        Number(row.discount).toFixed(2),
+        Number(row.complimentary).toFixed(2),
+        Number(row.difference).toFixed(2)
+      ];
+    });
+    fillTable('ledger-body', 13, rows, 'Bu aralıqda sətir yoxdur.');
+  }
+
   function setWaiter(data) {
     waiter = data;
     if (data) {
@@ -277,6 +303,7 @@
         drawCash(lastReport);
         drawPay(lastReport);
         drawPnl(lastReport);
+        drawLedger(lastReport);
       })
       .catch(function (error) {
         say(error.message, 'err');
@@ -370,6 +397,17 @@
     var from = document.getElementById('rep-from').value;
     var to = document.getElementById('rep-to').value;
     var rows;
+    if (tab === 'ledger') {
+      rows = [['Tarix', 'Nağd', 'Kart', 'Hədiyyə', 'İlkin', 'Geri nağd', 'Geri kart', 'Çıxarış', 'Alış', 'Zay', 'Endirim', 'Pulsuz', 'Kəsir']];
+      (lastReport.ledger || []).forEach(function (row) {
+        rows.push([
+          row.date, row.cash, row.card, row.gift, row.prepaid, row.refundCash, row.refundCard,
+          row.drops, row.purchases, row.waste, row.discount, row.complimentary, row.difference
+        ]);
+      });
+      downloadCsv('1c-' + from + '-' + to + '.csv', rows);
+      return;
+    }
     if (tab === 'pay') {
       rows = [['Tarix', 'Çek', 'Nağd', 'Kart', 'Hədiyyə', 'İlkin', 'Cəm', 'Geri nağd', 'Geri kart']];
       (lastReport.days || []).forEach(function (row) {

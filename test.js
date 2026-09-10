@@ -308,6 +308,11 @@ test('mühasib: ödəniş və kassa kitabı', function () {
   assert.strictEqual(data.cashbook[0].difference, 20);
   assert.strictEqual(data.pnl.waste, 6);
   assert.strictEqual(data.pnl.purchases, 40);
+  assert.strictEqual(data.ledger.length, 1);
+  assert.strictEqual(data.ledger[0].cash, 10);
+  assert.strictEqual(data.ledger[0].waste, 6);
+  assert.strictEqual(data.ledger[0].purchases, 40);
+  assert.strictEqual(data.ledger[0].drops, 5);
 });
 
 console.log('Bütün testlər keçdi.');
