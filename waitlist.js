@@ -1,11 +1,13 @@
-const path = require('path');
+const db = require('./db');
 const store = require('./store');
 
-const FILE = path.join(__dirname, 'data', 'waitlist.json');
+function file() {
+  return db.dataFile('waitlist.json');
+}
 
 function readStore() {
   try {
-    const raw = store.readJson(FILE);
+    const raw = store.readJson(file());
     return {
       nextId: Number(raw.nextId) || 1,
       items: Array.isArray(raw.items) ? raw.items : []
@@ -17,7 +19,7 @@ function readStore() {
 
 function writeStore(data) {
   data.items = (data.items || []).slice(-80);
-  store.writeJson(FILE, data);
+  store.writeJson(file(), data);
 }
 
 function waiting(box) {

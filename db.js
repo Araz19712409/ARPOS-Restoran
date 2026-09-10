@@ -14,6 +14,10 @@ function dbFile() {
   return path.join(dataDir(), 'arpos.sqlite');
 }
 
+function dataFile(name) {
+  return path.join(dataDir(), name);
+}
+
 function migratedDir() {
   return path.join(dataDir(), 'migrated');
 }
@@ -227,9 +231,16 @@ function loadStock() {
     purchases: conn.prepare('SELECT json FROM stock_purchases ORDER BY id').all().map(function (row) {
       return parseJson(row.json, {});
     }),
-    suppliers: conn.prepare('SELECT json FROM stock_suppliers ORDER BY name').all().map(function (row) {
-      return parseJson(row.json, {});
-    })
+    suppliers: conn.prepare('SELECT name, json FROM stock_suppliers ORDER BY name').all().map(function (row) {
+      const parsed = parseJson(row.json, null);
+      if (typeof parsed === 'string' && parsed.trim()) {
+        return parsed.trim();
+      }
+      if (parsed && parsed.name) {
+        return String(parsed.name).trim();
+      }
+      return String(row.name || '').trim();
+    }).filter(Boolean),
   };
 }
 
@@ -257,11 +268,18 @@ function saveStock(data) {
     (data.purchases || []).forEach(function (row) {
       insP.run(row.id, row.at || '', row.supplier || '', row.docNo || '', Number(row.total) || 0, row.by || '', jsonText(row));
     });
+    const seen = {};
     (data.suppliers || []).forEach(function (row) {
-      const name = typeof row === 'string' ? row : (row && row.name) || '';
-      if (name) {
-        insS.run(name, jsonText(typeof row === 'string' ? { name: row } : row));
+      const name = typeof row === 'string' ? String(row).trim() : String((row && row.name) || '').trim();
+      if (!name) {
+        return;
       }
+      const key = name.toLowerCase();
+      if (seen[key]) {
+        return;
+      }
+      seen[key] = true;
+      insS.run(name.slice(0, 40), jsonText({ name: name.slice(0, 40) }));
     });
   });
 }
@@ -555,12 +573,9 @@ function close() {
   usable = false;
 }
 
-function dbFilePath() {
-  return dbFile();
-}
-
 module.exports = {
   dataDir: dataDir,
+  dataFile: dataFile,
   dbFile: dbFile,
   open: open,
   available: available,
@@ -580,7 +595,5 @@ module.exports = {
   readOffice: readOffice,
   writeOffice: writeOffice,
   close: close,
-  dbFile: dbFile,
-  dataDir: dataDir,
   isLiveOrder: isLiveOrder
 };

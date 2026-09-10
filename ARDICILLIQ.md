@@ -160,6 +160,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 136. [x] 1.2.0 — SQLite baza
 137. [x] 1.2.1 — KEEP_MS sqlite xətası
 146. [x] 1.2.2 — Mühasib, sqlite ofis, jurnal, oflayn, filial, 2FA, 1366 UX
+147. [x] 1.2.3 — Təchizatçı siyahısı, 86 qalır, ehtiyat/data yolu
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı

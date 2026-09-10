@@ -3,8 +3,13 @@ const path = require('path');
 const store = require('./store');
 const db = require('./db');
 
-const ORDERS_FILE = path.join(__dirname, 'data', 'orders.json');
-const ARCHIVE_DIR = path.join(__dirname, 'data', 'orders-archive');
+function ordersFile() {
+  return path.join(db.dataDir(), 'orders.json');
+}
+
+function archiveDir() {
+  return path.join(db.dataDir(), 'orders-archive');
+}
 const KEEP_MS = 14 * 24 * 60 * 60 * 1000;
 
 function pad(n) {
@@ -29,7 +34,7 @@ function isLive(order) {
 
 function readArchiveMonth(key) {
   try {
-    const raw = store.readJson(path.join(ARCHIVE_DIR, key + '.json'));
+    const raw = store.readJson(path.join(archiveDir(), key + '.json'));
     return Array.isArray(raw.orders) ? raw.orders : [];
   } catch (error) {
     return [];
@@ -37,13 +42,13 @@ function readArchiveMonth(key) {
 }
 
 function writeArchiveMonth(key, list) {
-  fs.mkdirSync(ARCHIVE_DIR, { recursive: true });
-  store.writeJson(path.join(ARCHIVE_DIR, key + '.json'), { orders: list });
+  fs.mkdirSync(archiveDir(), { recursive: true });
+  store.writeJson(path.join(archiveDir(), key + '.json'), { orders: list });
 }
 
 function listArchiveKeys() {
   try {
-    return fs.readdirSync(ARCHIVE_DIR).filter(function (name) {
+    return fs.readdirSync(archiveDir()).filter(function (name) {
       return name.slice(-5) === '.json';
     }).map(function (name) {
       return name.slice(0, -5);
@@ -87,7 +92,7 @@ function readOrders() {
   if (db.migrated()) {
     return db.loadLiveOrders();
   }
-  const raw = store.readJson(ORDERS_FILE);
+  const raw = store.readJson(ordersFile());
   return {
     nextOrderId: Number(raw.nextOrderId) || 1,
     nextItemId: Number(raw.nextItemId) || 1,
@@ -101,7 +106,7 @@ function writeOrders(data) {
     return;
   }
   prune(data);
-  store.writeJson(ORDERS_FILE, data);
+  store.writeJson(ordersFile(), data);
 }
 
 function readAllOrders() {
@@ -292,7 +297,7 @@ function paidTotal(order) {
 }
 
 module.exports = {
-  ARCHIVE_DIR: ARCHIVE_DIR,
+  ARCHIVE_DIR: archiveDir,
   readOrders: readOrders,
   writeOrders: writeOrders,
   readAllOrders: readAllOrders,

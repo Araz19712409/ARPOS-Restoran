@@ -1,10 +1,16 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const db = require('./db');
 const store = require('./store');
 
-const FILE = path.join(__dirname, 'data', 'sessions.json');
-const KEY_FILE = path.join(__dirname, 'data', 'session.key');
+function file() {
+  return db.dataFile('sessions.json');
+}
+
+function keyFile() {
+  return db.dataFile('session.key');
+}
 const MAX_IDLE_MS = 12 * 60 * 60 * 1000;
 const SAVE_EVERY_MS = 15 * 1000;
 
@@ -15,7 +21,7 @@ let key = null;
 
 function loadKey() {
   try {
-    const buf = fs.readFileSync(KEY_FILE);
+    const buf = fs.readFileSync(keyFile());
     if (buf.length === 32) {
       return buf;
     }
@@ -23,8 +29,8 @@ function loadKey() {
     // ilk dəfə açar yazılır
   }
   const next = crypto.randomBytes(32);
-  fs.mkdirSync(path.dirname(KEY_FILE), { recursive: true });
-  fs.writeFileSync(KEY_FILE, next);
+  fs.mkdirSync(path.dirname(keyFile()), { recursive: true });
+  fs.writeFileSync(keyFile(), next);
   return next;
 }
 
@@ -65,7 +71,7 @@ function load() {
   key = loadKey();
   let migrated = false;
   try {
-    const raw = store.readJson(FILE);
+    const raw = store.readJson(file());
     migrated = !isEncrypted(raw);
     const box = parseStore(raw);
     const rows = box && box.sessions && typeof box.sessions === 'object' ? box.sessions : {};
@@ -93,7 +99,7 @@ function save(force) {
   if (!force && now - lastSave < SAVE_EVERY_MS) {
     return;
   }
-  store.writeJson(FILE, encryptPayload({ sessions: sessions }));
+  store.writeJson(file(), encryptPayload({ sessions: sessions }));
   lastSave = now;
   dirty = false;
 }

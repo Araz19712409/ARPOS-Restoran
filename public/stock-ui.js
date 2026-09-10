@@ -470,8 +470,12 @@
     }
     list.innerHTML = '';
     suppliers.forEach(function (name) {
+      var text = typeof name === 'string' ? name : (name && name.name) || '';
+      if (!text) {
+        return;
+      }
       var opt = document.createElement('option');
-      opt.value = name;
+      opt.value = text;
       list.appendChild(opt);
     });
   }

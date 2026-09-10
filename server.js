@@ -34,7 +34,9 @@ db.migrateJson();
 const app = express();
 const PORT = 3004;
 const LIVE_HOST = settings.listenHost();
-const DATA_FILE = path.join(__dirname, 'data', 'layout.json');
+function layoutFile() {
+  return db.dataFile('layout.json');
+}
 
 app.use(express.json({ limit: '6mb' }));
 app.use(function (req, res, next) {
@@ -167,7 +169,7 @@ function sanitizeGroupIcon(value) {
 
 // Çertyoj faylını oxuyuruq
 function readLayout() {
-  const raw = store.readJson(DATA_FILE);
+  const raw = store.readJson(layoutFile());
   return {
     nextFloorId: Number(raw.nextFloorId) || 1,
     nextRoomId: Number(raw.nextRoomId) || 1,
@@ -180,7 +182,7 @@ function readLayout() {
 
 // Çertyoj faylını yazırıq
 function writeLayout(data) {
-  store.writeJson(DATA_FILE, data);
+  store.writeJson(layoutFile(), data);
 }
 
 const GRID = 32;
@@ -578,8 +580,8 @@ app.get('/api/stock', function (req, res) {
         items: box.items.map(function (item) {
           return stock.publicItemLinked(item, box, catalogStore);
         }),
-        moves: box.moves.slice(-40).reverse(),
-        purchases: (box.purchases || []).slice(-40).reverse().map(stock.publicPurchase),
+        moves: box.moves.slice(-80).reverse(),
+        purchases: stock.listPurchasesForApi(box),
         suppliers: box.suppliers || [],
         permissions: req.staff && req.staff.permissions ? req.staff.permissions : []
       }
@@ -1056,10 +1058,16 @@ app.put('/api/products/:id', function (req, res) {
       product.happyPrice = body.happyPrice === '' ? null : stock.parseDec(body.happyPrice);
     }
     if (body.happyFrom != null) {
-      product.happyFrom = body.happyFrom === '' ? null : Number(body.happyFrom);
+      product.happyFrom = body.happyFrom === '' ? null : stock.parseDec(body.happyFrom);
+      if (!Number.isFinite(product.happyFrom)) {
+        product.happyFrom = null;
+      }
     }
     if (body.happyTo != null) {
-      product.happyTo = body.happyTo === '' ? null : Number(body.happyTo);
+      product.happyTo = body.happyTo === '' ? null : stock.parseDec(body.happyTo);
+      if (!Number.isFinite(product.happyTo)) {
+        product.happyTo = null;
+      }
     }
     if (body.comboIds != null) {
       product.comboIds = catalog.parseComboIds(body.comboIds);
@@ -4725,5 +4733,5 @@ app.listen(PORT, LIVE_HOST, function () {
   }
   console.log('Məhsullar: http://127.0.0.1:' + PORT + '/products.html');
   console.log('Sifariş: http://127.0.0.1:' + PORT + '/orders.html');
-  console.log('Loqlar: ' + path.join(__dirname, 'data', 'logs'));
+  console.log('Loqlar: ' + path.join(db.dataDir(), 'logs'));
 });

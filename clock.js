@@ -1,7 +1,9 @@
-const path = require('path');
+const db = require('./db');
 const store = require('./store');
 
-const FILE = path.join(__dirname, 'data', 'clock.json');
+function file() {
+  return db.dataFile('clock.json');
+}
 
 function money(value) {
   return Number((Number(value) || 0).toFixed(2));
@@ -9,7 +11,7 @@ function money(value) {
 
 function readStore() {
   try {
-    const raw = store.readJson(FILE);
+    const raw = store.readJson(file());
     return {
       nextId: Number(raw.nextId) || 1,
       punches: Array.isArray(raw.punches) ? raw.punches : []
@@ -21,7 +23,7 @@ function readStore() {
 
 function writeStore(data) {
   data.punches = (data.punches || []).slice(-4000);
-  store.writeJson(FILE, data);
+  store.writeJson(file(), data);
 }
 
 function dayStart() {

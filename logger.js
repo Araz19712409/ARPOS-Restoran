@@ -1,11 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 
-const LOG_DIR = path.join(__dirname, 'data', 'logs');
+const db = require('./db');
 
-// Loq qovluğunu hazırlayırıq
+function logDir() {
+  return path.join(db.dataDir(), 'logs');
+}
+
 function ensureDir() {
-  fs.mkdirSync(LOG_DIR, { recursive: true });
+  fs.mkdirSync(logDir(), { recursive: true });
 }
 
 // Tarix və saati loq formatında yazırıq
@@ -50,7 +53,7 @@ function write(level, info) {
   }
   line += '\n';
   const fileName = level === 'ERROR' ? dayFile('error') : dayFile('app');
-  fs.appendFileSync(path.join(LOG_DIR, fileName), line, 'utf8');
+  fs.appendFileSync(path.join(logDir(), fileName), line, 'utf8');
   if (level === 'ERROR') {
     console.error(line.trim());
   }
@@ -69,7 +72,7 @@ function info(info) {
 }
 
 module.exports = {
-  LOG_DIR: LOG_DIR,
+  logDir: logDir,
   error: error,
   warn: warn,
   info: info

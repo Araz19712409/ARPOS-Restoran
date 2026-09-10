@@ -6,8 +6,13 @@ const { execFileSync } = require('child_process');
 const store = require('./store');
 const version = require('./version');
 
-const FILE = path.join(__dirname, 'data', 'license.json');
-const STAMP_FILE = path.join(__dirname, 'data', 'machine.json');
+function file() {
+  return path.join(require('./db').dataDir(), 'license.json');
+}
+
+function stampFile() {
+  return path.join(require('./db').dataDir(), 'machine.json');
+}
 const PUB_FILE = path.join(__dirname, 'license-public.pem');
 
 function publicKeyPem() {
@@ -63,7 +68,7 @@ function legacyMacId() {
 
 function readStamp() {
   try {
-    const row = store.readJson(STAMP_FILE);
+    const row = store.readJson(stampFile());
     return row && row.bound && row.live ? row : null;
   } catch (error) {
     return null;
@@ -72,7 +77,7 @@ function readStamp() {
 
 function rememberBinding(tokenM) {
   const live = liveId();
-  store.writeJson(STAMP_FILE, {
+  store.writeJson(stampFile(), {
     bound: String(tokenM || live).toLowerCase(),
     live: live
   });
@@ -143,7 +148,7 @@ function decodeToken(raw) {
 
 function readLicense() {
   try {
-    return store.readJson(FILE);
+    return store.readJson(file());
   } catch (error) {
     return null;
   }
@@ -240,7 +245,7 @@ function activate(raw) {
     activatedAt: new Date().toISOString(),
     version: version.current()
   };
-  store.writeJson(FILE, row);
+  store.writeJson(file(), row);
   version.record('license', 'Lisenziya aktiv oldu');
   return { ok: true, status: status() };
 }

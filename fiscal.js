@@ -1,12 +1,14 @@
-const path = require('path');
+const db = require('./db');
 const store = require('./store');
 const settings = require('./settings');
 
-const FILE = path.join(__dirname, 'data', 'fiscal-queue.json');
+function file() {
+  return db.dataFile('fiscal-queue.json');
+}
 
 function readQueue() {
   try {
-    const raw = store.readJson(FILE);
+    const raw = store.readJson(file());
     return {
       nextId: Number(raw.nextId) || 1,
       jobs: Array.isArray(raw.jobs) ? raw.jobs : []
@@ -18,7 +20,7 @@ function readQueue() {
 
 function writeQueue(data) {
   data.jobs = (data.jobs || []).slice(-80);
-  store.writeJson(FILE, data);
+  store.writeJson(file(), data);
 }
 
 // Operator yoxdur — vergiyə göndərilmir, yalnız növbə saxlanır

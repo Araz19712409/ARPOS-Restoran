@@ -4,7 +4,7 @@ const num = require('./num');
 const db = require('./db');
 
 function defaultBackupFolder() {
-  return path.join(__dirname, 'data', 'backups');
+  return path.join(db.dataDir(), 'backups');
 }
 
 function emptyEkassa() {

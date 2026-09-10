@@ -1,10 +1,12 @@
-const path = require('path');
+const db = require('./db');
 const store = require('./store');
 
-const FILE = path.join(__dirname, 'data', 'reservations.json');
+function file() {
+  return db.dataFile('reservations.json');
+}
 
 function readReservations() {
-  const raw = store.readJson(FILE);
+  const raw = store.readJson(file());
   return {
     nextReservationId: Number(raw.nextReservationId) || 1,
     reservations: Array.isArray(raw.reservations) ? raw.reservations : []
@@ -12,7 +14,7 @@ function readReservations() {
 }
 
 function writeReservations(data) {
-  store.writeJson(FILE, data);
+  store.writeJson(file(), data);
 }
 
 function activeForTable(store, tableId) {

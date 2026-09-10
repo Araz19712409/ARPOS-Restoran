@@ -4,7 +4,6 @@ const store = require('./store');
 const stock = require('./stock');
 const db = require('./db');
 
-const CATALOG_FILE = path.join(__dirname, 'data', 'catalog.json');
 const UPLOAD_DIR = path.join(__dirname, 'public', 'uploads', 'products');
 
 // Hazır stansiyalar: sifariş bura gedəcək
@@ -23,10 +22,10 @@ function readCatalog() {
     if (!data.stations || !data.stations.length) {
       data.stations = defaultStations();
     }
-    applySoldOutDay(data);
+    persistSoldOutRoll(data);
     return data;
   }
-  const raw = store.readJson(CATALOG_FILE);
+  const raw = store.readJson(db.dataFile('catalog.json'));
   const stations = Array.isArray(raw.stations) && raw.stations.length
     ? raw.stations
     : defaultStations();
@@ -39,8 +38,21 @@ function readCatalog() {
     stations: stations,
     products: Array.isArray(raw.products) ? raw.products : []
   };
-  applySoldOutDay(data);
+  persistSoldOutRoll(data);
   return data;
+}
+
+function persistSoldOutRoll(data) {
+  const before = data.soldOutDay || '';
+  applySoldOutDay(data);
+  if ((data.soldOutDay || '') === before) {
+    return;
+  }
+  try {
+    writeCatalog(data);
+  } catch (error) {
+    return;
+  }
 }
 
 function todayKey() {
@@ -68,7 +80,7 @@ function writeCatalog(data) {
     db.saveCatalog(data);
     return;
   }
-  store.writeJson(CATALOG_FILE, data);
+  store.writeJson(db.dataFile('catalog.json'), data);
 }
 
 // Yüklənən şəkil qovluğunu hazırlayırıq

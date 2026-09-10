@@ -3,7 +3,9 @@ const path = require('path');
 const store = require('./store');
 
 const PKG = path.join(__dirname, 'package.json');
-const FILE = path.join(__dirname, 'data', 'versions.json');
+function histFile() {
+  return path.join(require('./db').dataDir(), 'versions.json');
+}
 const LOG = path.join(__dirname, 'VERSIONS.md');
 
 function current() {
@@ -16,7 +18,7 @@ function current() {
 
 function readHistory() {
   try {
-    const raw = store.readJson(FILE);
+    const raw = store.readJson(histFile());
     return {
       current: String(raw.current || current()),
       history: Array.isArray(raw.history) ? raw.history : []
@@ -64,7 +66,7 @@ function record(reason, note) {
     at: new Date().toISOString()
   });
   box.history = box.history.slice(-80);
-  store.writeJson(FILE, box);
+  store.writeJson(histFile(), box);
   if (reason === 'update' || reason === 'release') {
     try {
       appendMarkdown(ver, note || reason);

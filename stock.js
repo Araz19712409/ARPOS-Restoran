@@ -3,7 +3,9 @@ const store = require('./store');
 const num = require('./num');
 const db = require('./db');
 
-const FILE = path.join(__dirname, 'data', 'stock.json');
+function stockFile() {
+  return path.join(db.dataDir(), 'stock.json');
+}
 
 function money(value) {
   const n = num.parseDec(value);
@@ -328,7 +330,7 @@ function packStock(raw) {
     }),
     moves: Array.isArray(raw.moves) ? raw.moves : [],
     purchases: Array.isArray(raw.purchases) ? raw.purchases : [],
-    suppliers: Array.isArray(raw.suppliers) ? raw.suppliers : []
+    suppliers: cleanSuppliers(raw.suppliers)
   };
 }
 
@@ -337,20 +339,33 @@ function readStock() {
     return packStock(db.loadStock());
   }
   try {
-    return packStock(store.readJson(FILE));
+    return packStock(store.readJson(stockFile()));
   } catch (error) {
     return defaults();
   }
 }
 
 function writeStock(data) {
+  data.suppliers = cleanSuppliers(data && data.suppliers);
   if (db.migrated()) {
     db.saveStock(data);
     return;
   }
+  const all = data.purchases || [];
+  const byId = {};
+  all.slice(-80).forEach(function (row) {
+    if (row && row.id != null) {
+      byId[row.id] = row;
+    }
+  });
+  all.forEach(function (row) {
+    if (row && row.id != null && dueOf(row) > 0) {
+      byId[row.id] = row;
+    }
+  });
+  data.purchases = Object.keys(byId).map(function (id) { return byId[id]; });
   data.moves = (data.moves || []).slice(-300);
-  data.purchases = (data.purchases || []).slice(-80);
-  store.writeJson(FILE, data);
+  store.writeJson(stockFile(), data);
 }
 
 function parseRecipe(list) {
@@ -526,16 +541,36 @@ function recipeLockText(recipes) {
   return 'Reseptdədir: ' + names + more + '. Əvvəl tərkibdən çıxarın.';
 }
 
+function supplierNameOf(row) {
+  if (typeof row === 'string') {
+    return row.trim().slice(0, 40);
+  }
+  if (row && typeof row === 'object' && row.name) {
+    return String(row.name).trim().slice(0, 40);
+  }
+  return '';
+}
+
+function cleanSuppliers(list) {
+  const out = [];
+  const seen = {};
+  (Array.isArray(list) ? list : []).forEach(function (row) {
+    const n = supplierNameOf(row);
+    if (!n) {
+      return;
+    }
+    const key = n.toLowerCase();
+    if (seen[key]) {
+      return;
+    }
+    seen[key] = true;
+    out.push(n);
+  });
+  return out;
+}
+
 function rememberSupplier(box, name) {
-  const n = String(name || '').trim().slice(0, 40);
-  if (!n) {
-    return;
-  }
-  box.suppliers = Array.isArray(box.suppliers) ? box.suppliers : [];
-  const low = n.toLowerCase();
-  if (!box.suppliers.some(function (row) { return String(row).toLowerCase() === low; })) {
-    box.suppliers.push(n);
-  }
+  box.suppliers = cleanSuppliers((box.suppliers || []).concat([name]));
 }
 
 function createItem(body, who) {
@@ -879,6 +914,27 @@ function changeLines(catalogStore, lines, sign, meta) {
   return warns;
 }
 
+function listPurchasesForApi(box, limit) {
+  const cap = Number(limit) || 80;
+  const all = box.purchases || [];
+  const byId = {};
+  all.slice(-40).forEach(function (row) {
+    if (row && row.id != null) {
+      byId[row.id] = row;
+    }
+  });
+  all.forEach(function (row) {
+    if (row && row.id != null && dueOf(row) > 0) {
+      byId[row.id] = row;
+    }
+  });
+  return Object.keys(byId).map(function (id) {
+    return byId[id];
+  }).sort(function (a, b) {
+    return String(a.at) < String(b.at) ? 1 : -1;
+  }).slice(0, cap).map(publicPurchase);
+}
+
 function lowItems() {
   return readStock().items.map(publicItem).filter(function (item) {
     return item.low;
@@ -904,6 +960,7 @@ module.exports = {
   publicItem: publicItem,
   publicItemLinked: publicItemLinked,
   publicPurchase: publicPurchase,
+  listPurchasesForApi: listPurchasesForApi,
   upsertItem: upsertItem,
   itemLinks: itemLinks,
   createItem: createItem,

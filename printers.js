@@ -2,8 +2,15 @@ const net = require('net');
 const path = require('path');
 const logger = require('./logger');
 const store = require('./store');
+const db = require('./db');
 
-const PRINTERS_FILE = path.join(__dirname, 'data', 'printers.json');
+function printersFile() {
+  return db.dataFile('printers.json');
+}
+
+function queueFile() {
+  return db.dataFile('print-queue.json');
+}
 
 // Azərbaycan hərflərini termal printer üçün oxunaqlı edirik
 function toPrinterText(value) {
@@ -31,7 +38,7 @@ function isHost(value) {
 
 // Printer anbarını oxuyuruq
 function readStore() {
-  const raw = store.readJson(PRINTERS_FILE);
+  const raw = store.readJson(printersFile());
   return {
     nextPrinterId: Number(raw.nextPrinterId) || 1,
     printers: Array.isArray(raw.printers) ? raw.printers : []
@@ -40,7 +47,7 @@ function readStore() {
 
 // Printer anbarını yazırıq
 function writeStore(data) {
-  store.writeJson(PRINTERS_FILE, data);
+  store.writeJson(printersFile(), data);
 }
 
 // Printer məlumatını təmizləyirik
@@ -393,14 +400,13 @@ function buildOrderTicket(printer, payload) {
   return ticketBytes(printer, payload.stationName || 'SIFARIS', lines);
 }
 
-const QUEUE_FILE = path.join(__dirname, 'data', 'print-queue.json');
 const QUEUE_MAX_TRIES = 8;
 const QUEUE_WAIT_MS = 15 * 1000;
 let queueBusy = false;
 
 function readQueue() {
   try {
-    const raw = store.readJson(QUEUE_FILE);
+    const raw = store.readJson(queueFile());
     return {
       nextId: Number(raw.nextId) || 1,
       jobs: Array.isArray(raw.jobs) ? raw.jobs : []
@@ -414,7 +420,7 @@ function writeQueue(data) {
   const wait = data.jobs.filter(function (job) { return job.status !== 'fail'; });
   const fail = data.jobs.filter(function (job) { return job.status === 'fail'; }).slice(-20);
   data.jobs = wait.concat(fail);
-  store.writeJson(QUEUE_FILE, data);
+  store.writeJson(queueFile(), data);
 }
 
 function publicJob(job) {

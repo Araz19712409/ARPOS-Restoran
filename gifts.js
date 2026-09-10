@@ -1,7 +1,9 @@
-const path = require('path');
+const db = require('./db');
 const store = require('./store');
 
-const FILE = path.join(__dirname, 'data', 'gifts.json');
+function file() {
+  return db.dataFile('gifts.json');
+}
 
 function money(value) {
   return Number((Number(value) || 0).toFixed(2));
@@ -9,7 +11,7 @@ function money(value) {
 
 function readStore() {
   try {
-    const raw = store.readJson(FILE);
+    const raw = store.readJson(file());
     return {
       nextId: Number(raw.nextId) || 1,
       cards: Array.isArray(raw.cards) ? raw.cards : []
@@ -20,7 +22,7 @@ function readStore() {
 }
 
 function writeStore(data) {
-  store.writeJson(FILE, data);
+  store.writeJson(file(), data);
 }
 
 function cleanCode(value) {

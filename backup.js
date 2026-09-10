@@ -2,9 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFile } = require('child_process');
+const db = require('./db');
 const settings = require('./settings');
 
-const DATA_DIR = path.join(__dirname, 'data');
+function dataRoot() {
+  return db.dataDir();
+}
 const KEEP = 14;
 const FILES = [
   'layout.json',
@@ -17,7 +20,14 @@ const FILES = [
   'tables.json',
   'terminals.json',
   'stock.json',
-  'fiscal-queue.json'
+  'fiscal-queue.json',
+  'gifts.json',
+  'clock.json',
+  'waitlist.json',
+  'pin-lock.json',
+  'sessions.json',
+  'session.key',
+  'versions.json'
 ];
 const SQLITE_FILES = ['arpos.sqlite', 'arpos.sqlite-wal', 'arpos.sqlite-shm'];
 
@@ -33,7 +43,7 @@ function stamp(date) {
 
 function backupDir() {
   const folder = settings.readSettings().backupFolder;
-  return folder || path.join(DATA_DIR, 'backups');
+  return folder || path.join(dataRoot(), 'backups');
 }
 
 function ensureDir() {
@@ -63,6 +73,20 @@ function listBackups() {
       at: meta.at || '',
       reason: meta.reason || ''
     };
+  });
+}
+
+function copyJournal(fromRoot, toRoot) {
+  const src = path.join(fromRoot, 'journal');
+  if (!fs.existsSync(src)) {
+    return;
+  }
+  const dest = path.join(toRoot, 'journal');
+  fs.mkdirSync(dest, { recursive: true });
+  fs.readdirSync(src).forEach(function (name) {
+    if (/\.(json|jsonl)$/.test(name)) {
+      fs.copyFileSync(path.join(src, name), path.join(dest, name));
+    }
   });
 }
 
@@ -113,18 +137,19 @@ function createBackup(reason) {
   const dest = path.join(root, id);
   fs.mkdirSync(dest);
   FILES.forEach(function (file) {
-    const src = path.join(DATA_DIR, file);
+    const src = path.join(dataRoot(), file);
     if (fs.existsSync(src)) {
       fs.copyFileSync(src, path.join(dest, file));
     }
   });
   SQLITE_FILES.forEach(function (file) {
-    const src = path.join(DATA_DIR, file);
+    const src = path.join(dataRoot(), file);
     if (fs.existsSync(src)) {
       fs.copyFileSync(src, path.join(dest, file));
     }
   });
-  copyArchive(DATA_DIR, dest);
+  copyArchive(dataRoot(), dest);
+  copyJournal(dataRoot(), dest);
   const row = {
     id: id,
     at: new Date().toISOString(),
@@ -318,7 +343,7 @@ function restoreBackup(id) {
   if (hasSql) {
     SQLITE_FILES.forEach(function (file) {
       const from = path.join(src, file);
-      const to = path.join(DATA_DIR, file);
+      const to = path.join(dataRoot(), file);
       if (fs.existsSync(from)) {
         fs.copyFileSync(from, to);
       } else if (fs.existsSync(to)) {
@@ -327,7 +352,7 @@ function restoreBackup(id) {
     });
   } else {
     SQLITE_FILES.forEach(function (file) {
-      const to = path.join(DATA_DIR, file);
+      const to = path.join(dataRoot(), file);
       if (fs.existsSync(to)) {
         try { fs.unlinkSync(to); } catch (error) { /* keç */ }
       }
@@ -336,10 +361,11 @@ function restoreBackup(id) {
   FILES.forEach(function (file) {
     const from = path.join(src, file);
     if (fs.existsSync(from)) {
-      fs.copyFileSync(from, path.join(DATA_DIR, file));
+      fs.copyFileSync(from, path.join(dataRoot(), file));
     }
   });
-  copyArchive(src, DATA_DIR);
+  copyArchive(src, dataRoot());
+  copyJournal(src, dataRoot());
   return { ok: true, id: safe };
 }
 

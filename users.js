@@ -4,7 +4,9 @@ const fileStore = require('./store');
 const db = require('./db');
 const totp = require('./totp');
 
-const LOCK_FILE = path.join(__dirname, 'data', 'pin-lock.json');
+function lockFile() {
+  return db.dataFile('pin-lock.json');
+}
 const FAIL_LIMIT = 5;
 const LOCK_MS = 2 * 60 * 1000;
 const PIN_SCHEME = 'pbkdf2';
@@ -74,7 +76,7 @@ function clientKey(ip) {
 
 function readLocks() {
   try {
-    const raw = fileStore.readJson(LOCK_FILE);
+    const raw = fileStore.readJson(lockFile());
     return raw && raw.fails && typeof raw.fails === 'object' ? raw.fails : {};
   } catch (error) {
     return {};
@@ -90,7 +92,7 @@ function writeLocks(fails) {
       clean[key] = row;
     }
   });
-  fileStore.writeJson(LOCK_FILE, { fails: clean });
+  fileStore.writeJson(lockFile(), { fails: clean });
 }
 
 function pinWait(ip) {

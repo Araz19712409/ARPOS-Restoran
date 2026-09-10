@@ -369,6 +369,35 @@ test('ping kilidsiz masanı yenidən götürür', function () {
   terminals.release(99, term.id);
 });
 
+test('86 yeni gündə sıfırlanır və qalır', function () {
+  withTempDb(function () {
+    const cat = catalog.readCatalog();
+    if (!cat.products.length) {
+      cat.products.push({
+        id: cat.nextProductId,
+        name: '86Test',
+        salePrice: 1,
+        soldOut: true,
+        groupId: 1,
+        stationId: 1
+      });
+      cat.nextProductId += 1;
+    } else {
+      cat.products[0].soldOut = true;
+      cat.products[0].name = '86Test';
+    }
+    cat.soldOutDay = '2020-01-01';
+    db.saveCatalog(cat);
+    const again = catalog.readCatalog();
+    const p = again.products.find(function (row) { return row.name === '86Test'; });
+    assert.ok(p);
+    assert.strictEqual(p.soldOut, false);
+    assert.notStrictEqual(again.soldOutDay, '2020-01-01');
+    const third = catalog.readCatalog();
+    assert.strictEqual(third.products.find(function (row) { return row.name === '86Test'; }).soldOut, false);
+  });
+});
+
 test('az qalıq yalnız min yazılanda', function () {
   const emptyMin = stock.publicItem({ id: 1, name: 'Su', unit: 'l', qty: 0, minQty: 0, buyPrice: 1 });
   const low = stock.publicItem({ id: 2, name: 'Un', unit: 'kq', qty: 0.5, minQty: 2, buyPrice: 1 });
@@ -476,6 +505,59 @@ test('kreditor köhnə alışları ödənilib sayır', function () {
   ], new Date('2026-09-10T23:59:59'));
   assert.strictEqual(cred.due, 45);
   assert.strictEqual(cred.suppliers[0].count, 2);
+});
+
+test('təchizatçı siyahısı sətir qalır', function () {
+  withTempDb(function () {
+    stock.writeStock({
+      nextItemId: 2,
+      nextMoveId: 1,
+      nextPurchaseId: 1,
+      items: [{ id: 1, name: 'Un', unit: 'kq', qty: 0, minQty: 0, buyPrice: 1, lots: [] }],
+      moves: [],
+      purchases: [],
+      suppliers: [{ name: 'Market' }, 'Market', '  Bazar  ']
+    });
+    const names = stock.readStock().suppliers.slice().sort();
+    assert.deepStrictEqual(names, ['Bazar', 'Market']);
+    names.forEach(function (n) {
+      assert.strictEqual(typeof n, 'string');
+    });
+    const first = stock.addPurchase({
+      supplier: 'Market',
+      lines: [{ itemId: 1, qty: 1, buyPrice: 2 }]
+    }, 'test');
+    assert.ok(!first.error, first.error);
+    const again = stock.addPurchase({
+      supplier: 'market',
+      lines: [{ itemId: 1, qty: 1, buyPrice: 2 }]
+    }, 'test');
+    assert.ok(!again.error, again.error);
+    const after = stock.readStock().suppliers.filter(function (n) {
+      return String(n).toLowerCase() === 'market';
+    });
+    assert.strictEqual(after.length, 1);
+  });
+});
+
+test('açıq borc alış siyahısından düşmür', function () {
+  const box = {
+    purchases: [{ id: 1, at: '2026-01-01T10:00:00', supplier: 'Kohne', total: 15, credit: true }]
+  };
+  var i;
+  for (i = 2; i <= 41; i += 1) {
+    box.purchases.push({
+      id: i,
+      at: '2026-02-01T10:00:00',
+      supplier: 'Yeni',
+      total: 1,
+      paidAmount: 1
+    });
+  }
+  const list = stock.listPurchasesForApi(box);
+  const old = list.filter(function (row) { return row.id === 1; })[0];
+  assert.ok(old);
+  assert.ok(old.due > 0);
 });
 
 test('inventar tarixə FIFO dəyəri', function () {
