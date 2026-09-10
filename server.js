@@ -1410,8 +1410,8 @@ app.get('/api/reports/sales', function (req, res) {
 
 app.get('/api/reports/books', function (req, res) {
   try {
-    const staff = users.canUser(Number(req.query.waiterId), 'reports.view');
-    if (!staff || !staff.ok) {
+    const staff = req.staff;
+    if (!staff || !users.hasPermission(staff.role, 'reports.view')) {
       res.status(403).json({
         success: false,
         message: staff ? 'Hesabata icazəniz yoxdur.' : 'PIN ilə daxil olun.'
@@ -1424,8 +1424,8 @@ app.get('/api/reports/books', function (req, res) {
       res.status(400).json({ success: false, message: 'Tarix aralığı səhvdir.' });
       return;
     }
-    const showCost = users.hasPermission(req.staff && req.staff.role, 'cost.view');
-    const showStock = showCost || users.hasPermission(req.staff && req.staff.role, 'stock.view');
+    const showCost = users.hasPermission(staff.role, 'cost.view');
+    const showStock = showCost || users.hasPermission(staff.role, 'stock.view');
     res.json({
       success: true,
       data: books.report(from, to, { showCost: showCost, showStock: showStock })

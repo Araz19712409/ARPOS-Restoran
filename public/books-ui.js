@@ -269,7 +269,8 @@
       to = document.getElementById('rep-to').value;
     }
     say('');
-    api('/api/reports/books?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to))
+    api('/api/reports/books?waiterId=' + waiter.user.id +
+      '&from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to))
       .then(function (body) {
         lastReport = body.data;
         drawKpis(lastReport);
