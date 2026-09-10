@@ -1,5 +1,6 @@
 # Arpos Restoran — versiyalar
 
+- **1.2.0** — 2026-09-10 — SQLite baza, JSON köçürmə
 - **1.1.17** — 2026-09-10 — Mühasib 1C günlük müxabirə
 - **1.1.16** — 2026-09-10 — Mühasib PIN sessiyası
 - **1.1.15** — 2026-09-10 — Mühasib: kassa kitabı, ödəniş, P&L

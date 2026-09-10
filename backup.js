@@ -19,6 +19,7 @@ const FILES = [
   'stock.json',
   'fiscal-queue.json'
 ];
+const SQLITE_FILES = ['arpos.sqlite', 'arpos.sqlite-wal', 'arpos.sqlite-shm'];
 
 function pad(n) {
   return (n < 10 ? '0' : '') + n;
@@ -95,7 +96,7 @@ function prune() {
   const root = backupDir();
   list.slice(KEEP).forEach(function (item) {
     const dir = path.join(root, item.id);
-    FILES.concat(['meta.json']).forEach(function (file) {
+    FILES.concat(SQLITE_FILES).concat(['meta.json']).forEach(function (file) {
       const full = path.join(dir, file);
       if (fs.existsSync(full)) {
         fs.unlinkSync(full);
@@ -112,6 +113,12 @@ function createBackup(reason) {
   const dest = path.join(root, id);
   fs.mkdirSync(dest);
   FILES.forEach(function (file) {
+    const src = path.join(DATA_DIR, file);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(dest, file));
+    }
+  });
+  SQLITE_FILES.forEach(function (file) {
     const src = path.join(DATA_DIR, file);
     if (fs.existsSync(src)) {
       fs.copyFileSync(src, path.join(dest, file));
@@ -302,6 +309,30 @@ function restoreBackup(id) {
     return { error: 'Nüsxə tapılmadı.' };
   }
   createBackup('before-restore');
+  try {
+    require('./db').close();
+  } catch (error) {
+    /* keç */
+  }
+  const hasSql = fs.existsSync(path.join(src, 'arpos.sqlite'));
+  if (hasSql) {
+    SQLITE_FILES.forEach(function (file) {
+      const from = path.join(src, file);
+      const to = path.join(DATA_DIR, file);
+      if (fs.existsSync(from)) {
+        fs.copyFileSync(from, to);
+      } else if (fs.existsSync(to)) {
+        try { fs.unlinkSync(to); } catch (error) { /* keç */ }
+      }
+    });
+  } else {
+    SQLITE_FILES.forEach(function (file) {
+      const to = path.join(DATA_DIR, file);
+      if (fs.existsSync(to)) {
+        try { fs.unlinkSync(to); } catch (error) { /* keç */ }
+      }
+    });
+  }
   FILES.forEach(function (file) {
     const from = path.join(src, file);
     if (fs.existsSync(from)) {

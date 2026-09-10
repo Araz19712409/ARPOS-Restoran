@@ -25,6 +25,10 @@ const updater = require('./updater');
 const license = require('./license');
 const version = require('./version');
 const books = require('./books');
+const db = require('./db');
+
+db.open();
+db.migrateJson();
 
 const app = express();
 const PORT = 3004;
@@ -4404,6 +4408,11 @@ app.listen(PORT, LIVE_HOST, function () {
   }, 15 * 1000);
   version.ensure();
   console.log('Arpos Restoran ' + version.current());
+  if (db.migrated()) {
+    console.log('Baza: SQLite');
+  } else {
+    console.log('Baza: JSON');
+  }
   if (!license.isLicensed()) {
     console.log('Lisenziya: gözləyir. Maşın: ' + license.machineText());
   }

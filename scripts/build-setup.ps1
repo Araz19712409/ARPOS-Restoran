@@ -14,9 +14,19 @@ if (-not (Test-Path $csc)) {
 }
 
 $nodeExe = Join-Path $cache 'node.exe'
-if (-not (Test-Path $nodeExe)) {
+$nodeVer = 'v22.14.0'
+$needNode = $true
+if (Test-Path $nodeExe) {
+  try {
+    $have = (& $nodeExe -v).Trim()
+    if ($have -eq $nodeVer) { $needNode = $false }
+  } catch {
+    $needNode = $true
+  }
+}
+if ($needNode) {
   Write-Host 'Node.exe endirilir...'
-  Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.18.1/win-x64/node.exe' -OutFile $nodeExe
+  Invoke-WebRequest -Uri ('https://nodejs.org/dist/' + $nodeVer + '/win-x64/node.exe') -OutFile $nodeExe
 }
 
 $ver = (Get-Content (Join-Path $root 'package.json') -Raw | ConvertFrom-Json).version

@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const store = require('./store');
 const stock = require('./stock');
+const db = require('./db');
 
 const CATALOG_FILE = path.join(__dirname, 'data', 'catalog.json');
 const UPLOAD_DIR = path.join(__dirname, 'public', 'uploads', 'products');
@@ -17,6 +18,14 @@ function defaultStations() {
 
 // Kataloq faylını oxuyuruq
 function readCatalog() {
+  if (db.migrated()) {
+    const data = db.loadCatalog();
+    if (!data.stations || !data.stations.length) {
+      data.stations = defaultStations();
+    }
+    applySoldOutDay(data);
+    return data;
+  }
   const raw = store.readJson(CATALOG_FILE);
   const stations = Array.isArray(raw.stations) && raw.stations.length
     ? raw.stations
@@ -55,6 +64,10 @@ function applySoldOutDay(data) {
 // Kataloq faylını yazırıq
 function writeCatalog(data) {
   applySoldOutDay(data);
+  if (db.migrated()) {
+    db.saveCatalog(data);
+    return;
+  }
   store.writeJson(CATALOG_FILE, data);
 }
 

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const store = require('./store');
+const db = require('./db');
 
 const ORDERS_FILE = path.join(__dirname, 'data', 'orders.json');
 const ARCHIVE_DIR = path.join(__dirname, 'data', 'orders-archive');
@@ -83,6 +84,9 @@ function prune(data) {
 }
 
 function readOrders() {
+  if (db.migrated()) {
+    return db.loadLiveOrders();
+  }
   const raw = store.readJson(ORDERS_FILE);
   return {
     nextOrderId: Number(raw.nextOrderId) || 1,
@@ -92,11 +96,18 @@ function readOrders() {
 }
 
 function writeOrders(data) {
+  if (db.migrated()) {
+    db.saveLiveOrders(data);
+    return;
+  }
   prune(data);
   store.writeJson(ORDERS_FILE, data);
 }
 
 function readAllOrders() {
+  if (db.migrated()) {
+    return db.loadAllOrders();
+  }
   const live = readOrders();
   const seen = {};
   const all = [];

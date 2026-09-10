@@ -13,6 +13,9 @@ const version = require('./version');
 const store = require('./store');
 const terminals = require('./terminals');
 const books = require('./books');
+const db = require('./db');
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 function test(name, fn) {
@@ -313,6 +316,62 @@ test('mühasib: ödəniş və kassa kitabı', function () {
   assert.strictEqual(data.ledger[0].waste, 6);
   assert.strictEqual(data.ledger[0].purchases, 40);
   assert.strictEqual(data.ledger[0].drops, 5);
+});
+
+test('sqlite json köçürür və ödəniş qalır', function () {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arpos-db-'));
+  const prev = process.env.ARPOS_DATA_DIR;
+  process.env.ARPOS_DATA_DIR = dir;
+  db.close();
+  const now = new Date().toISOString();
+  fs.writeFileSync(path.join(dir, 'orders.json'), JSON.stringify({
+    nextOrderId: 2,
+    nextItemId: 2,
+    orders: [{
+      id: 1,
+      status: 'paid',
+      tableId: 1,
+      tableName: 'A',
+      channel: 'dine',
+      createdAt: now,
+      updatedAt: now,
+      items: [{ id: 1, productId: 9, name: 'Çay', qty: 1, salePrice: 2 }],
+      payments: [{ cashAmount: 2, cardAmount: 0, giftAmount: 0, total: 2, method: 'cash', at: now }],
+      payment: { total: 2, cashAmount: 2, at: now, method: 'cash' }
+    }]
+  }));
+  fs.writeFileSync(path.join(dir, 'stock.json'), JSON.stringify({
+    nextItemId: 2, nextMoveId: 1, nextPurchaseId: 1,
+    items: [{ id: 1, name: 'Çay yarpağı', unit: 'kq', qty: 3, minQty: 0, buyPrice: 4 }],
+    moves: [], purchases: [], suppliers: []
+  }));
+  fs.writeFileSync(path.join(dir, 'catalog.json'), JSON.stringify({
+    nextGroupId: 1, nextProductId: 2, nextStationId: 4,
+    products: [{ id: 1, name: 'Çay', salePrice: 2, groupId: 1 }],
+    groups: [{ id: 1, name: 'İçki' }],
+    stations: [{ id: 1, name: 'Bar' }]
+  }));
+  assert.strictEqual(db.open(), true);
+  const mig = db.migrateJson();
+  assert.ok(mig.ok, mig.error || 'köçürmə');
+  const all = db.loadAllOrders();
+  assert.strictEqual(all.orders.length, 1);
+  assert.strictEqual(all.orders[0].items[0].name, 'Çay');
+  assert.strictEqual(all.orders[0].payments[0].total, 2);
+  const st = db.loadStock();
+  assert.strictEqual(st.items[0].name, 'Çay yarpağı');
+  const cat = db.loadCatalog();
+  assert.strictEqual(cat.products[0].name, 'Çay');
+  all.orders[0].payment.total = 2;
+  db.saveLiveOrders({ nextOrderId: 3, nextItemId: 3, orders: all.orders });
+  const again = db.loadAllOrders();
+  assert.strictEqual(again.orders[0].payments[0].cashAmount, 2);
+  db.close();
+  if (prev) {
+    process.env.ARPOS_DATA_DIR = prev;
+  } else {
+    delete process.env.ARPOS_DATA_DIR;
+  }
 });
 
 console.log('Bütün testlər keçdi.');

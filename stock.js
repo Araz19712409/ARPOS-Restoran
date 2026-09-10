@@ -1,6 +1,7 @@
 const path = require('path');
 const store = require('./store');
 const num = require('./num');
+const db = require('./db');
 
 const FILE = path.join(__dirname, 'data', 'stock.json');
 
@@ -59,6 +60,9 @@ function defaults() {
 }
 
 function readStock() {
+  if (db.migrated()) {
+    return db.loadStock();
+  }
   try {
     const raw = store.readJson(FILE);
     return {
@@ -76,6 +80,10 @@ function readStock() {
 }
 
 function writeStock(data) {
+  if (db.migrated()) {
+    db.saveStock(data);
+    return;
+  }
   data.moves = (data.moves || []).slice(-300);
   data.purchases = (data.purchases || []).slice(-80);
   store.writeJson(FILE, data);

@@ -157,6 +157,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 133. [x] 1.1.15 — Mühasib: kassa kitabı, ödəniş üsulu, P&L
 134. [x] 1.1.16 — Mühasib PIN sessiyası
 135. [x] 1.1.17 — Mühasib 1C günlük müxabirə
+136. [x] 1.2.0 — SQLite baza
 
 ### Professional (9.09)
 121. [x] Növbə bağlananda çap olunan Z (nağd/kart/hədiyyə/çıxarış)
