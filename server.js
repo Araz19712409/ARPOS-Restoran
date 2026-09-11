@@ -1865,7 +1865,6 @@ app.post('/api/login', function (req, res) {
       });
       return;
     }
-    const pinText = String((req.body && req.body.pin) || '').replace(/\D/g, '');
     res.json({ success: true, data: issueLogin(user, pinText) });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
@@ -4737,7 +4736,11 @@ process.on('unhandledRejection', function (reason) {
   logger.error({ message: error.message, stack: error.stack, path: 'unhandledRejection' });
 });
 
-http.createServer(app).listen(PORT, '127.0.0.1', function () {
+const httpServer = http.createServer(app);
+httpServer.on('error', function (error) {
+  console.log('HTTP açılmadı: ' + error.message);
+});
+httpServer.listen(PORT, '127.0.0.1', function () {
   backup.ensureDaily();
   setInterval(function () {
     backup.ensureDaily();
