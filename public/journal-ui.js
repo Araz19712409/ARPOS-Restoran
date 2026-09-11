@@ -3,6 +3,10 @@
   var pinBuffer = '';
   var mode = 'day';
 
+  function inHub() {
+    return !!document.getElementById('report-hub');
+  }
+
   function api(url, options) {
     return fetch(url, options).then(function (res) {
       return res.json().then(function (body) {
@@ -127,6 +131,12 @@
   }
 
   function bounds() {
+    if (inHub()) {
+      return {
+        from: document.getElementById('rep-from').value,
+        to: document.getElementById('rep-to').value
+      };
+    }
     if (mode === 'month') {
       var month = document.getElementById('jr-month').value;
       if (!/^\d{4}-\d{2}$/.test(month)) {
@@ -150,6 +160,9 @@
   }
 
   function loadJournal() {
+    if (!waiter || !can('logs.view')) {
+      return;
+    }
     var range;
     try {
       range = bounds();
@@ -215,6 +228,15 @@
         drawPin();
       }
     });
+  }
+
+  window.PosJournal = {
+    load: loadJournal,
+    setWaiter: function (data) { waiter = data; }
+  };
+
+  if (inHub()) {
+    return;
   }
 
   var pad = document.getElementById('pin-pad');

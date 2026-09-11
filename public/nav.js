@@ -383,42 +383,25 @@
 
   function ensureJournalLink() {
     var lists = document.querySelectorAll('.more-nav-list');
+    var path = window.location.pathname;
+    var onHub = path === '/reports.html' || path === '/reports' ||
+      path === '/books.html' || path === '/books' ||
+      path === '/journal.html' || path === '/journal' ||
+      path === '/waiter-report.html' || path === '/waiter-report';
     for (var i = 0; i < lists.length; i++) {
       var list = lists[i];
       var reports = list.querySelector('a[href="/reports.html"]');
       if (!reports) {
         continue;
       }
-      if (!list.querySelector('a[href="/books.html"]')) {
-        var books = document.createElement('a');
-        books.href = '/books.html';
-        books.setAttribute('data-need', 'reports.view');
-        books.textContent = 'Mühasib';
-        var here = window.location.pathname;
-        if (here === '/books.html' || here === '/books') {
-          books.className = 'active';
-        }
-        if (reports.nextSibling) {
-          list.insertBefore(books, reports.nextSibling);
-        } else {
-          list.appendChild(books);
-        }
+      reports.textContent = 'Hesabatlar';
+      reports.setAttribute('data-need', 'reports.view|logs.view');
+      if (onHub) {
+        reports.classList.add('active');
       }
-      if (!list.querySelector('a[href="/journal.html"]')) {
-        var a = document.createElement('a');
-        a.href = '/journal.html';
-        a.setAttribute('data-need', 'logs.view');
-        a.textContent = 'Jurnal';
-        var path = window.location.pathname;
-        if (path === '/journal.html' || path === '/journal') {
-          a.className = 'active';
-        }
-        var after = list.querySelector('a[href="/books.html"]') || reports;
-        if (after.nextSibling) {
-          list.insertBefore(a, after.nextSibling);
-        } else {
-          list.appendChild(a);
-        }
+      var extra = list.querySelectorAll('a[href="/waiter-report.html"], a[href="/books.html"], a[href="/journal.html"]');
+      for (var e = 0; e < extra.length; e++) {
+        extra[e].parentNode.removeChild(extra[e]);
       }
     }
   }

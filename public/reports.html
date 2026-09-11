@@ -3,17 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Satış hesabatı</title>
+  <title>Hesabatlar</title>
   <link rel="stylesheet" href="app.css">
   <link rel="stylesheet" href="products.css">
   <link rel="stylesheet" href="reports.css">
+  <link rel="stylesheet" href="waiter-report.css">
   <link rel="stylesheet" href="dates.css">
 </head>
-<body class="catalog-page report-page" data-need="reports.view">
+<body id="report-hub" class="catalog-page report-page report-hub" data-need="reports.view|logs.view" data-tab="satis">
   <header class="top">
     <div>
-      <h1>Satış hesabatı</h1>
-      <p id="waiter-line">Ödənilmiş satışlar, saatlıq yük, ABC, ləğv, endirim və geri.</p>
+      <h1>Hesabatlar</h1>
+      <p id="waiter-line">Soldan mövzunu seçin.</p>
     </div>
     <nav class="app-nav waiter-nav">
       <a href="/orders.html">Sifariş</a>
@@ -23,8 +24,7 @@
       <details class="more-nav">
         <summary>Ofis</summary>
         <div class="more-nav-list">
-          <a class="active" href="/reports.html" data-need="reports.view">Hesabat</a>
-          <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
+          <a class="active" href="/reports.html" data-need="reports.view|logs.view">Hesabatlar</a>
           <a href="/" data-need="layout.edit">Çertyoj</a>
           <a href="/products.html" data-need="products.edit">Məhsullar</a>
           <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
@@ -36,6 +36,15 @@
       <button id="logout" type="button">Çıxış</button>
     </nav>
   </header>
+
+  <aside class="panel catalog-side" aria-label="Hesabat mövzuları">
+    <nav class="report-tabs" id="report-tabs">
+      <button type="button" class="report-tab active" data-tab="satis" data-need="reports.view">Satış</button>
+      <button type="button" class="report-tab" data-tab="ofisiant" data-need="reports.view">Ofisiant</button>
+      <button type="button" class="report-tab" data-tab="muhasib" data-need="reports.view">Mühasib</button>
+      <button type="button" class="report-tab" data-tab="jurnal" data-need="logs.view">Jurnal</button>
+    </nav>
+  </aside>
 
   <main class="catalog-main report-main">
     <div class="report-toolbar">
@@ -53,114 +62,366 @@
       <label>Son
         <input id="rep-to" type="date">
       </label>
-      <label>Filial
+      <label id="rep-branch-wrap">Filial
         <select id="rep-branch">
           <option value="">Hamısı</option>
         </select>
       </label>
       <button id="rep-load" class="gold" type="button">Göstər</button>
       <button id="rep-csv" class="gold" type="button">CSV</button>
+      <button id="rep-print" type="button">Çap et</button>
     </div>
     <p id="message" class="message"></p>
-    <div id="report-kpis" class="report-kpis"></div>
-    <h2>Saatlıq yük</h2>
-    <p class="hint">Ödəniş saatına görə çek sayı və cəm.</p>
-    <div id="hour-strip" class="hour-strip"></div>
-    <h2>Satışlar</h2>
-    <div class="report-table-wrap">
-      <table class="report-table">
-        <thead>
-          <tr>
-            <th>Vaxt</th>
-            <th>Masa</th>
-            <th>Ofisiant</th>
-            <th>Üsul</th>
-            <th>Nağd</th>
-            <th>Kart</th>
-            <th>İlkin</th>
-            <th>Xidmət</th>
-            <th>Bonus</th>
-            <th>Cəm</th>
-          </tr>
-        </thead>
-        <tbody id="sales-body"></tbody>
-      </table>
-    </div>
-    <h2>Ofisiantlar</h2>
-    <div class="report-table-wrap">
-      <table class="report-table">
-        <thead>
-          <tr>
-            <th>Ofisiant</th>
-            <th>Satış</th>
-            <th>Cəm</th>
-            <th>Xidmət</th>
-            <th>Bonus</th>
-          </tr>
-        </thead>
-        <tbody id="waiter-body"></tbody>
-      </table>
-    </div>
-    <h2>Məhsullar</h2>
-    <div class="report-table-wrap">
-      <table class="report-table">
-        <thead>
-          <tr>
-            <th>Məhsul</th>
-            <th>Sinif</th>
-            <th>Say</th>
-            <th>Cəm</th>
-            <th>Pay</th>
-          </tr>
-        </thead>
-        <tbody id="product-body"></tbody>
-      </table>
-    </div>
-    <h2>Ləğvlər</h2>
-    <div class="report-table-wrap">
-      <table class="report-table">
-        <thead>
-          <tr>
-            <th>Vaxt</th>
-            <th>Masa</th>
-            <th>Məhsul</th>
-            <th>Say</th>
-            <th>Məbləğ</th>
-            <th>Kim</th>
-          </tr>
-        </thead>
-        <tbody id="void-body"></tbody>
-      </table>
-    </div>
-    <h2>Endirimlər</h2>
-    <div class="report-table-wrap">
-      <table class="report-table">
-        <thead>
-          <tr>
-            <th>Vaxt</th>
-            <th>Masa</th>
-            <th>Ofisiant</th>
-            <th>Məbləğ</th>
-            <th>Səbəb</th>
-          </tr>
-        </thead>
-        <tbody id="discount-body"></tbody>
-      </table>
-    </div>
-    <h2>Qaytarmalar</h2>
-    <div class="report-table-wrap">
-      <table class="report-table">
-        <thead>
-          <tr>
-            <th>Vaxt</th>
-            <th>Masa</th>
-            <th>Ofisiant</th>
-            <th>Məbləğ</th>
-            <th>Səbəb</th>
-          </tr>
-        </thead>
-        <tbody id="refund-body"></tbody>
-      </table>
+
+    <div class="report-panels">
+      <article class="report-panel" data-tab="satis">
+        <h2>Satış</h2>
+        <p class="hint">Ödənilmiş satış, saat, ABC, ləğv, endirim və geri.</p>
+        <div id="report-kpis" class="report-kpis"></div>
+        <h3>Saatlıq yük</h3>
+        <p class="hint">Ödəniş saatına görə çek sayı və cəm.</p>
+        <div id="hour-strip" class="hour-strip"></div>
+        <h3>Satışlar</h3>
+        <div class="report-table-wrap">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Vaxt</th>
+                <th>Masa</th>
+                <th>Ofisiant</th>
+                <th>Üsul</th>
+                <th>Nağd</th>
+                <th>Kart</th>
+                <th>İlkin</th>
+                <th>Xidmət</th>
+                <th>Bonus</th>
+                <th>Cəm</th>
+              </tr>
+            </thead>
+            <tbody id="sales-body"></tbody>
+          </table>
+        </div>
+        <h3>Ofisiantlar</h3>
+        <div class="report-table-wrap">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Ofisiant</th>
+                <th>Satış</th>
+                <th>Cəm</th>
+                <th>Xidmət</th>
+                <th>Bonus</th>
+              </tr>
+            </thead>
+            <tbody id="waiter-body"></tbody>
+          </table>
+        </div>
+        <h3>Məhsullar</h3>
+        <div class="report-table-wrap">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Məhsul</th>
+                <th>Sinif</th>
+                <th>Say</th>
+                <th>Cəm</th>
+                <th>Pay</th>
+              </tr>
+            </thead>
+            <tbody id="product-body"></tbody>
+          </table>
+        </div>
+        <h3>Ləğvlər</h3>
+        <div class="report-table-wrap">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Vaxt</th>
+                <th>Masa</th>
+                <th>Məhsul</th>
+                <th>Say</th>
+                <th>Məbləğ</th>
+                <th>Kim</th>
+              </tr>
+            </thead>
+            <tbody id="void-body"></tbody>
+          </table>
+        </div>
+        <h3>Endirimlər</h3>
+        <div class="report-table-wrap">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Vaxt</th>
+                <th>Masa</th>
+                <th>Ofisiant</th>
+                <th>Məbləğ</th>
+                <th>Səbəb</th>
+              </tr>
+            </thead>
+            <tbody id="discount-body"></tbody>
+          </table>
+        </div>
+        <h3>Qaytarmalar</h3>
+        <div class="report-table-wrap">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Vaxt</th>
+                <th>Masa</th>
+                <th>Ofisiant</th>
+                <th>Məbləğ</th>
+                <th>Səbəb</th>
+              </tr>
+            </thead>
+            <tbody id="refund-body"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="report-panel hidden" data-tab="ofisiant">
+        <h2>Ofisiant</h2>
+        <p class="hint">Ofisiant satış və bonus. Yeni istifadəçi İstifadəçilərdə.</p>
+        <p id="day-title" class="day-title"></p>
+        <div id="waiter-kpis" class="report-kpis"></div>
+        <div class="report-table-wrap">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Ofisiant</th>
+                <th>Satış sayı</th>
+                <th>Nağd</th>
+                <th>Kart</th>
+                <th>Xidmət</th>
+                <th>Satış cəmi</th>
+                <th>Bonus</th>
+              </tr>
+            </thead>
+            <tbody id="waiter-rep-body"></tbody>
+            <tfoot id="waiter-foot"></tfoot>
+          </table>
+        </div>
+      </article>
+
+      <article class="report-panel hidden" data-tab="muhasib">
+        <h2>Mühasib</h2>
+        <p class="hint">Kassa, ödəniş, P&amp;L, 1C, borc, qalıq, maaş.</p>
+        <div class="stock-tabs books-tabs">
+          <button type="button" data-tab="cash" class="active">Kassa</button>
+          <button type="button" data-tab="pay">Ödəniş</button>
+          <button type="button" data-tab="pnl">P&amp;L</button>
+          <button type="button" data-tab="ledger">1C</button>
+          <button type="button" data-tab="debt">Borc</button>
+          <button type="button" data-tab="inv">Qalıq</button>
+          <button type="button" data-tab="payr">Maaş</button>
+        </div>
+        <div id="books-kpis" class="report-kpis"></div>
+        <section id="tab-cash" class="books-panel">
+          <h3>Kassa kitabı</h3>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Açılıb</th>
+                  <th>Kassa</th>
+                  <th>Başl.</th>
+                  <th>Nağd</th>
+                  <th>Kart</th>
+                  <th>Hədiyyə</th>
+                  <th>Çıxarış</th>
+                  <th>Gözl.</th>
+                  <th>Sayım</th>
+                  <th>Fərq</th>
+                </tr>
+              </thead>
+              <tbody id="cash-body"></tbody>
+            </table>
+          </div>
+        </section>
+        <section id="tab-pay" class="books-panel hidden">
+          <h3>Üsul</h3>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Üsul</th>
+                  <th>Çek</th>
+                  <th>Cəm</th>
+                </tr>
+              </thead>
+              <tbody id="method-body"></tbody>
+            </table>
+          </div>
+          <h3>Günlər</h3>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Tarix</th>
+                  <th>Çek</th>
+                  <th>Nağd</th>
+                  <th>Kart</th>
+                  <th>Hədiyyə</th>
+                  <th>İlkin</th>
+                  <th>Cəm</th>
+                  <th>Geri nağd</th>
+                  <th>Geri kart</th>
+                </tr>
+              </thead>
+              <tbody id="day-body"></tbody>
+            </table>
+          </div>
+        </section>
+        <section id="tab-pnl" class="books-panel hidden">
+          <h3>Dövr</h3>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Sətir</th>
+                  <th>Məbləğ</th>
+                </tr>
+              </thead>
+              <tbody id="pnl-body"></tbody>
+            </table>
+          </div>
+          <h3>Zay</h3>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Vaxt</th>
+                  <th>Xammal</th>
+                  <th>Səbəb</th>
+                  <th>Say</th>
+                  <th>Məbləğ</th>
+                </tr>
+              </thead>
+              <tbody id="waste-body"></tbody>
+            </table>
+          </div>
+        </section>
+        <section id="tab-ledger" class="books-panel hidden">
+          <h3>Günlük müxabirə</h3>
+          <p class="hint">Excel / 1C üçün. Rəsmi e-kassa deyil.</p>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Tarix</th>
+                  <th>Nağd</th>
+                  <th>Kart</th>
+                  <th>Hədiyyə</th>
+                  <th>İlkin</th>
+                  <th>Geri N</th>
+                  <th>Geri K</th>
+                  <th>Çıxarış</th>
+                  <th>Alış</th>
+                  <th>Zay</th>
+                  <th>Endirim</th>
+                  <th>Pulsuz</th>
+                  <th>Kəsir</th>
+                </tr>
+              </thead>
+              <tbody id="ledger-body"></tbody>
+            </table>
+          </div>
+        </section>
+        <section id="tab-debt" class="books-panel hidden">
+          <h3>Təchizatçı borcu</h3>
+          <p class="hint">Son tarixə açıq alış. Ödəniş Anbar → Tarix-dən.</p>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Təchizatçı</th>
+                  <th>Sənəd</th>
+                  <th>Alış</th>
+                  <th>Ödənilib</th>
+                  <th>Borc</th>
+                </tr>
+              </thead>
+              <tbody id="debt-sum-body"></tbody>
+            </table>
+          </div>
+          <h3>Açıq sənədlər</h3>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Vaxt</th>
+                  <th>Təchizatçı</th>
+                  <th>Sənəd</th>
+                  <th>Cəm</th>
+                  <th>Ödənilib</th>
+                  <th>Borc</th>
+                </tr>
+              </thead>
+              <tbody id="debt-open-body"></tbody>
+            </table>
+          </div>
+        </section>
+        <section id="tab-inv" class="books-panel hidden">
+          <h3>İnventar (FIFO)</h3>
+          <p class="hint">Son tarixə qalıq dəyəri.</p>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Xammal</th>
+                  <th>Qalıq</th>
+                  <th>Vahid</th>
+                  <th>Qiymət</th>
+                  <th>AZN</th>
+                </tr>
+              </thead>
+              <tbody id="inv-body"></tbody>
+            </table>
+          </div>
+        </section>
+        <section id="tab-payr" class="books-panel hidden">
+          <h3>Əməkhaqqı</h3>
+          <p class="hint">Giriş/çıxış saatı × istifadəçidəki saat haqqı.</p>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Ad</th>
+                  <th>Saat</th>
+                  <th>1 saat</th>
+                  <th>Cəm</th>
+                </tr>
+              </thead>
+              <tbody id="payr-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </article>
+
+      <article class="report-panel hidden" data-tab="jurnal">
+        <h2>Jurnal</h2>
+        <p class="hint">Kim, nə vaxt, nə etdi. Sətirlər silinmir.</p>
+        <div class="hidden" aria-hidden="true">
+          <span id="jr-day-wrap"><input id="jr-day" type="date"></span>
+          <span id="jr-month-wrap"><input id="jr-month" type="month"></span>
+          <span id="jr-from-wrap"><input id="jr-from" type="date"></span>
+          <span id="jr-to-wrap"><input id="jr-to" type="date"></span>
+          <button id="jr-load" type="button">Göstər</button>
+        </div>
+        <div class="report-table-wrap">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Vaxt</th>
+                <th>Kim</th>
+                <th>Növ</th>
+                <th>Əməliyyat</th>
+              </tr>
+            </thead>
+            <tbody id="jr-body"></tbody>
+          </table>
+        </div>
+      </article>
     </div>
   </main>
 
@@ -180,5 +441,9 @@
   <script src="nav.js"></script>
   <script src="dates.js"></script>
   <script src="reports-ui.js"></script>
+  <script src="waiter-report-ui.js"></script>
+  <script src="books-ui.js"></script>
+  <script src="journal-ui.js"></script>
+  <script src="reports-hub.js"></script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 # Arpos Restoran — versiyalar
 
+- **1.2.10** — 2026-09-11 — Hesabatlar hub: 4 tab, bir toolbar
 - **1.2.9** — 2026-09-11 — Ayarlar: 8 tab, bir Yadda saxla
 - **1.2.8** — 2026-09-11 — XSS: mətn innerHTML-ə düşmür
 - **1.2.7** — 2026-09-11 — Qəpik hesab, updater SHA-256 + təsdiq

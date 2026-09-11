@@ -3,6 +3,10 @@
   var pinBuffer = '';
   var rangeKey = 'today';
 
+  function inHub() {
+    return !!document.getElementById('report-hub');
+  }
+
   function api(url, options) {
     return fetch(url, options).then(function (res) {
       return res.json().then(function (body) {
@@ -190,7 +194,7 @@
         foot.bonus += row.bonus;
       });
 
-      window.PosDom.kpis(document.getElementById('report-kpis'), [
+      window.PosDom.kpis(document.getElementById('waiter-kpis') || document.getElementById('report-kpis'), [
         { label: 'Ofisiant', value: String(rows.length) },
         { label: 'Satış', value: String(foot.count) },
         { label: 'Cəm', value: money(foot.total) },
@@ -198,7 +202,7 @@
         { label: 'Bonus', value: money(foot.bonus) }
       ]);
 
-      var box = document.getElementById('waiter-body');
+      var box = document.getElementById('waiter-rep-body') || document.getElementById('waiter-body');
       box.innerHTML = '';
       if (!rows.length) {
         box.innerHTML = '<tr><td colspan="7">Bu aralıqda ofisiant satışı yoxdur.</td></tr>';
@@ -259,6 +263,15 @@
         drawPin();
       }
     });
+  }
+
+  window.PosWaiterRep = {
+    load: loadReport,
+    setWaiter: function (data) { waiter = data; }
+  };
+
+  if (inHub()) {
+    return;
   }
 
   var pinPad = document.getElementById('pin-pad');

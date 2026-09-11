@@ -4,6 +4,10 @@
   var rangeKey = 'today';
   var lastReport = null;
 
+  function inHub() {
+    return !!document.getElementById('report-hub');
+  }
+
   function api(url, options) {
     return fetch(url, options).then(function (res) {
       return res.json().then(function (body) {
@@ -369,6 +373,16 @@
     });
   }
 
+  window.PosSales = {
+    load: loadReport,
+    csv: downloadSalesCsv,
+    setWaiter: function (data) { waiter = data; }
+  };
+
+  if (inHub()) {
+    return;
+  }
+
   var pad = document.getElementById('pin-pad');
   ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'OK'].forEach(function (key) {
     var btn = document.createElement('button');
@@ -419,7 +433,7 @@
     }, 1000);
   }
 
-  document.getElementById('rep-csv').addEventListener('click', function () {
+  function downloadSalesCsv() {
     if (!lastReport || !lastReport.sales) {
       say('Əvvəl Göstər basın.', 'warn');
       return;
@@ -446,8 +460,9 @@
     rows.push(['Cəm', '', '', '', Number(sum.cash || 0).toFixed(2), Number(sum.card || 0).toFixed(2), Number(sum.prepaid || 0).toFixed(2), '', '', Number(sum.total || 0).toFixed(2)]);
     downloadCsv('satis-' + from + '-' + to + '.csv', rows);
     say('CSV yükləndi.', 'ok');
-  });
+  }
 
+  document.getElementById('rep-csv').addEventListener('click', downloadSalesCsv);
   document.getElementById('rep-load').addEventListener('click', function () {
     rangeKey = '';
     document.querySelectorAll('.report-presets button').forEach(function (btn) {

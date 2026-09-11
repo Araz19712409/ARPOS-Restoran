@@ -5,6 +5,10 @@
   var lastReport = null;
   var tab = 'cash';
 
+  function inHub() {
+    return !!document.getElementById('report-hub');
+  }
+
   function api(url, options) {
     return fetch(url, options).then(function (res) {
       return res.json().then(function (body) {
@@ -123,7 +127,7 @@
     var pay = data.payments || {};
     var pnl = data.pnl || {};
     var sum = data.cashSum || {};
-    window.PosDom.kpis(document.getElementById('report-kpis'), [
+    window.PosDom.kpis(document.getElementById('books-kpis') || document.getElementById('report-kpis'), [
       { label: 'Satış', value: money(pay.total) },
       { label: 'Nağd', value: money(pay.cash) },
       { label: 'Kart', value: money(pay.card) },
@@ -438,6 +442,22 @@
     });
   }
 
+  document.querySelectorAll('.books-tabs button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      showTab(btn.getAttribute('data-tab'));
+    });
+  });
+
+  window.PosBooks = {
+    load: loadReport,
+    csv: downloadBooksCsv,
+    setWaiter: function (data) { waiter = data; }
+  };
+
+  if (inHub()) {
+    return;
+  }
+
   var pad = document.getElementById('pin-pad');
   ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'OK'].forEach(function (key) {
     var btn = document.createElement('button');
@@ -466,13 +486,9 @@
       loadReport();
     });
   });
-  document.querySelectorAll('.books-tabs button').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      showTab(btn.getAttribute('data-tab'));
-    });
-  });
   document.getElementById('rep-load').addEventListener('click', loadReport);
-  document.getElementById('rep-csv').addEventListener('click', function () {
+  document.getElementById('rep-csv').addEventListener('click', downloadBooksCsv);
+  function downloadBooksCsv() {
     if (!lastReport) {
       say('Əvvəl Göstər basın.', 'warn');
       return;
@@ -553,7 +569,7 @@
       ]);
     });
     downloadCsv('kassa-' + from + '-' + to + '.csv', rows);
-  });
+  }
   ['rep-from', 'rep-to'].forEach(function (id) {
     document.getElementById(id).addEventListener('change', function () {
       rangeKey = '';
