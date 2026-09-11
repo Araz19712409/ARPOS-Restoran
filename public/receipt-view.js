@@ -45,8 +45,8 @@
     var refunded = order.status === 'refunded' || !!order.refund;
     var branch = (order.branchName || pay.branchName || '').trim();
     root.innerHTML =
-      '<p class="rc-brand">' + (branch || 'ÇEK') + '</p>' +
-      '<p class="rc-id">#' + order.id + '</p>' +
+      '<p class="rc-brand"></p>' +
+      '<p class="rc-id"></p>' +
       (refunded ? '<p class="rc-refund">QAYTARILIB</p>' : '') +
       '<p class="rc-meta"></p>' +
       '<p class="rc-meta"></p>' +
@@ -63,6 +63,8 @@
       '<div class="rc-sum"><span>Kart</span><strong></strong></div>' +
       (gift > 0 ? '<div class="rc-sum"><span>Hədiyyə</span><strong></strong></div>' : '');
 
+    root.querySelector('.rc-brand').textContent = branch || 'ÇEK';
+    root.querySelector('.rc-id').textContent = '#' + order.id;
     var metas = root.querySelectorAll('.rc-meta');
     metas[0].textContent = 'Masa: ' + (order.tableName || order.tableId);
     metas[1].textContent = 'Ofisiant: ' + (pay.waiterName || order.waiterName || '');

@@ -20,6 +20,7 @@ const db = require('./db');
 const totp = require('./totp');
 const backup = require('./backup');
 const updater = require('./updater');
+const posDom = require('./public/dom.js');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -903,6 +904,15 @@ test('GitHub ehtiyat sessiya faylını buraxır', function () {
   backup.copyGithubTree(src, dest);
   assert.strictEqual(fs.existsSync(path.join(dest, 'session.key')), false);
   assert.strictEqual(fs.existsSync(path.join(dest, 'clock.json')), true);
+});
+
+test('HTML qaçışı etiket işlətmir', function () {
+  assert.strictEqual(
+    posDom.escapeHtml('<img onerror=alert(1)>'),
+    '&lt;img onerror=alert(1)&gt;'
+  );
+  assert.strictEqual(posDom.escapeHtml('<b>x</b>'), '&lt;b&gt;x&lt;/b&gt;');
+  assert.strictEqual(posDom.escapeHtml("a'b\"c"), 'a&#39;b&quot;c');
 });
 
 test('yeniləmə checksum və təsdiq', function () {

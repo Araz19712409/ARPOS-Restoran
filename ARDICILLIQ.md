@@ -165,6 +165,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 149. [x] 1.2.5 — LAN HTTPS (3443), PIN anti-bruteforce 15/30/60
 150. [x] 1.2.6 — 1.2.5 açılmırdı (pinText təkrarı)
 151. [x] 1.2.7 — qəpik hesab, updater SHA-256 + təsdiq
+152. [x] 1.2.8 — XSS: mətn innerHTML-ə düşmür
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı

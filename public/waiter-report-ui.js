@@ -190,12 +190,13 @@
         foot.bonus += row.bonus;
       });
 
-      document.getElementById('report-kpis').innerHTML =
-        '<div class="report-kpi"><span>Ofisiant</span><strong>' + rows.length + '</strong></div>' +
-        '<div class="report-kpi"><span>Satış</span><strong>' + foot.count + '</strong></div>' +
-        '<div class="report-kpi"><span>Cəm</span><strong>' + money(foot.total) + '</strong></div>' +
-        '<div class="report-kpi"><span>Xidmət</span><strong>' + money(foot.service) + '</strong></div>' +
-        '<div class="report-kpi"><span>Bonus</span><strong>' + money(foot.bonus) + '</strong></div>';
+      window.PosDom.kpis(document.getElementById('report-kpis'), [
+        { label: 'Ofisiant', value: String(rows.length) },
+        { label: 'Satış', value: String(foot.count) },
+        { label: 'Cəm', value: money(foot.total) },
+        { label: 'Xidmət', value: money(foot.service) },
+        { label: 'Bonus', value: money(foot.bonus) }
+      ]);
 
       var box = document.getElementById('waiter-body');
       box.innerHTML = '';
@@ -216,13 +217,22 @@
         box.appendChild(tr);
       });
 
-      document.getElementById('waiter-foot').innerHTML =
-        '<tr><td>Cəm</td><td>' + foot.count + '</td><td>' +
-        Number(foot.cash).toFixed(2) + '</td><td>' +
-        Number(foot.card).toFixed(2) + '</td><td>' +
-        Number(foot.service).toFixed(2) + '</td><td>' +
-        Number(foot.total).toFixed(2) + '</td><td>' +
-        Number(foot.bonus).toFixed(2) + '</td></tr>';
+      var footRow = document.createElement('tr');
+      [
+        'Cəm',
+        String(foot.count),
+        Number(foot.cash).toFixed(2),
+        Number(foot.card).toFixed(2),
+        Number(foot.service).toFixed(2),
+        Number(foot.total).toFixed(2),
+        Number(foot.bonus).toFixed(2)
+      ].forEach(function (cell) {
+        var td = document.createElement('td');
+        td.textContent = cell;
+        footRow.appendChild(td);
+      });
+      document.getElementById('waiter-foot').textContent = '';
+      document.getElementById('waiter-foot').appendChild(footRow);
     }).catch(function (error) {
       say(error.message, 'err');
     });

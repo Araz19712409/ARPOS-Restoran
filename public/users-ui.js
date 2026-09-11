@@ -248,20 +248,32 @@
   }
 
   function fillRoleSelect(selectedId) {
-    document.getElementById('user-role').innerHTML = store.roles.map(function (role) {
-      var chosen = role.id === selectedId ? ' selected' : '';
-      return '<option value="' + role.id + '"' + chosen + '>' + role.name + '</option>';
-    }).join('');
+    window.PosDom.fillOptions(document.getElementById('user-role'), store.roles, function (role) {
+      return {
+        value: role.id,
+        label: role.name,
+        selected: role.id === selectedId
+      };
+    });
   }
 
   function fillDays(selected) {
     var names = ['Bz', 'Be', 'Ça', 'Çə', 'Ca', 'Cü', 'Şə'];
     var box = document.getElementById('user-days');
     var pick = selected || [];
-    box.innerHTML = names.map(function (name, i) {
-      var on = pick.indexOf(i) !== -1 ? ' checked' : '';
-      return '<label><input type="checkbox" value="' + i + '"' + on + '> ' + name + '</label>';
-    }).join('');
+    box.textContent = '';
+    names.forEach(function (name, i) {
+      var lab = document.createElement('label');
+      var inp = document.createElement('input');
+      inp.type = 'checkbox';
+      inp.value = String(i);
+      if (pick.indexOf(i) !== -1) {
+        inp.checked = true;
+      }
+      lab.appendChild(inp);
+      lab.appendChild(document.createTextNode(' ' + name));
+      box.appendChild(lab);
+    });
   }
 
   function openModal(user) {

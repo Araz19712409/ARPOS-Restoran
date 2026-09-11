@@ -208,22 +208,21 @@
         if (keep) {
           branchBox.value = keep;
         }
-        document.getElementById('report-kpis').innerHTML =
-          '<div class="report-kpi"><span>Satış</span><strong>' + sum.count + '</strong></div>' +
-          '<div class="report-kpi"><span>Cəm</span><strong>' + money(sum.total) + '</strong></div>' +
-          '<div class="report-kpi"><span>Nağd</span><strong>' + money(sum.cash) + '</strong></div>' +
-          '<div class="report-kpi"><span>Kart</span><strong>' + money(sum.card) + '</strong></div>' +
-          '<div class="report-kpi"><span>İlkin</span><strong>' + money(sum.prepaid) + '</strong></div>' +
-          '<div class="report-kpi"><span>Hədiyyə</span><strong>' + money(sum.gift) + '</strong></div>' +
-          '<div class="report-kpi"><span>Xidmət</span><strong>' + money(sum.service) + '</strong></div>' +
-          '<div class="report-kpi"><span>Bonus</span><strong>' + money(sum.bonus) + '</strong></div>' +
-          (sum.cost != null
-            ? ('<div class="report-kpi"><span>Maya</span><strong>' + money(sum.cost) + '</strong></div>' +
-               '<div class="report-kpi"><span>Mənfəət</span><strong>' + money(sum.profit) + '</strong></div>')
-            : '') +
-          '<div class="report-kpi"><span>Endirim</span><strong>' + money(sum.discountTotal) + '</strong></div>' +
-          '<div class="report-kpi"><span>Ləğv</span><strong>' + money(sum.voidTotal) + '</strong></div>' +
-          '<div class="report-kpi"><span>Geri</span><strong>' + money(sum.refundTotal) + '</strong></div>';
+        window.PosDom.kpis(document.getElementById('report-kpis'), [
+          { label: 'Satış', value: String(sum.count) },
+          { label: 'Cəm', value: money(sum.total) },
+          { label: 'Nağd', value: money(sum.cash) },
+          { label: 'Kart', value: money(sum.card) },
+          { label: 'İlkin', value: money(sum.prepaid) },
+          { label: 'Hədiyyə', value: money(sum.gift) },
+          { label: 'Xidmət', value: money(sum.service) },
+          { label: 'Bonus', value: money(sum.bonus) },
+          sum.cost != null ? { label: 'Maya', value: money(sum.cost) } : null,
+          sum.cost != null ? { label: 'Mənfəət', value: money(sum.profit) } : null,
+          { label: 'Endirim', value: money(sum.discountTotal) },
+          { label: 'Ləğv', value: money(sum.voidTotal) },
+          { label: 'Geri', value: money(sum.refundTotal) }
+        ]);
 
         drawHours(data.hours);
 

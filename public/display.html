@@ -19,6 +19,7 @@
   <div id="d-lines"></div>
   <p id="d-total" class="d-total"></p>
   <script src="offline.js"></script>
+  <script src="dom.js"></script>
   <script src="nav.js"></script>
   <script>
     (function () {
@@ -38,19 +39,28 @@
       function draw() {
         fetch('/api/display?terminalId=' + encodeURIComponent(termId())).then(function (res) { return res.json(); }).then(function (body) {
           var data = body.data || {};
+          var lines = document.getElementById('d-lines');
           if (data.empty) {
             document.getElementById('d-table').textContent = 'Xoş gəlmisiniz';
             document.getElementById('d-status').textContent = '';
-            document.getElementById('d-lines').innerHTML = '';
+            lines.textContent = '';
             document.getElementById('d-total').textContent = '';
             return;
           }
           document.getElementById('d-table').textContent = data.tableName || 'Hesab';
           document.getElementById('d-status').textContent = data.status === 'paid' ? 'Ödənildi' : 'Açıq hesab';
-          document.getElementById('d-lines').innerHTML = (data.items || []).map(function (item) {
-            return '<div class="d-row"><span>' + item.qty + '× ' + item.name +
-              '</span><strong>' + money(item.salePrice * item.qty) + '</strong></div>';
-          }).join('');
+          lines.textContent = '';
+          (data.items || []).forEach(function (item) {
+            var row = document.createElement('div');
+            row.className = 'd-row';
+            var span = document.createElement('span');
+            span.textContent = item.qty + '× ' + item.name;
+            var strong = document.createElement('strong');
+            strong.textContent = money(item.salePrice * item.qty);
+            row.appendChild(span);
+            row.appendChild(strong);
+            lines.appendChild(row);
+          });
           document.getElementById('d-total').textContent = money(data.total) + ' AZN';
         }).catch(function () { return null; });
       }

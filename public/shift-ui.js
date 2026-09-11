@@ -155,10 +155,6 @@
     }
   }
 
-  function kpi(label, value) {
-    return '<div class="report-kpi"><p>' + label + '</p><strong>' + money(value) + '</strong></div>';
-  }
-
   function fillHistory(rows) {
     var box = document.getElementById('shift-history');
     box.innerHTML = '';
@@ -260,14 +256,15 @@
       document.getElementById('shift-open-meta').textContent =
         current.shift.openedByName + ' • ' + formatWhen(current.shift.openedAt) +
         (data.openTables && data.openTables.length ? ' • Açıq: ' + data.openTables.join(', ') : '');
-      document.getElementById('shift-kpis').innerHTML =
-        '<div class="report-kpi"><p>Satış</p><strong>' + (tot.count || 0) + '</strong></div>' +
-        kpi('Nağd', tot.cash) +
-        kpi('Kart', tot.card) +
-        kpi('Hədiyyə', tot.gift) +
-        kpi('İlkin', tot.prepaid) +
-        kpi('Qaytarılan nağd', tot.refundCash) +
-        kpi('Gözlənilən çekmece', current.expectedCash);
+      window.PosDom.kpis(document.getElementById('shift-kpis'), [
+        { label: 'Satış', value: String(tot.count || 0) },
+        { label: 'Nağd', value: money(tot.cash) },
+        { label: 'Kart', value: money(tot.card) },
+        { label: 'Hədiyyə', value: money(tot.gift) },
+        { label: 'İlkin', value: money(tot.prepaid) },
+        { label: 'Qaytarılan nağd', value: money(tot.refundCash) },
+        { label: 'Gözlənilən çekmece', value: money(current.expectedCash) }
+      ], 'p');
       var drops = current.drops || current.shift.drops || [];
       document.getElementById('shift-drops').textContent = drops.length
         ? ('Çıxarış: ' + drops.map(function (row) {
@@ -382,12 +379,20 @@
     }
     api('/api/clock').then(function (body) {
       var rows = (body.data && body.data.today) || [];
-      box.innerHTML = rows.length
-        ? rows.map(function (row) {
-          return row.userName + ' ' + formatWhen(row.inAt) +
-            (row.outAt ? ' → ' + formatWhen(row.outAt) : ' • işdə');
-        }).join('<br>')
-        : 'Bu gün giriş yoxdur.';
+      box.textContent = '';
+      if (!rows.length) {
+        box.textContent = 'Bu gün giriş yoxdur.';
+        return;
+      }
+      rows.forEach(function (row, i) {
+        if (i) {
+          box.appendChild(document.createElement('br'));
+        }
+        box.appendChild(document.createTextNode(
+          row.userName + ' ' + formatWhen(row.inAt) +
+            (row.outAt ? ' → ' + formatWhen(row.outAt) : ' • işdə')
+        ));
+      });
     }).catch(function () {
       box.textContent = '';
     });

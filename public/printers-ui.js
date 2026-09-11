@@ -114,10 +114,13 @@
   // Stansiya siyahısını forma üçün doldururuq
   function fillStations(selectedId) {
     var select = document.getElementById('printer-station');
-    select.innerHTML = stations.map(function (station) {
-      var chosen = station.id === selectedId ? ' selected' : '';
-      return '<option value="' + station.id + '"' + chosen + '>' + station.name + '</option>';
-    }).join('');
+    window.PosDom.fillOptions(select, stations, function (station) {
+      return {
+        value: station.id,
+        label: station.name,
+        selected: station.id === selectedId
+      };
+    });
   }
 
   // Rol dəyişəndə stansiya sahəsini göstəririk
@@ -165,9 +168,16 @@
       card.querySelector('.meta').textContent = roleText;
       card.querySelector('.status').className = 'status ' + status;
       card.querySelector('.status').textContent = statusText;
-      card.querySelector('.ip').innerHTML = '<b></b> • ' + item.paperWidth + ' mm • ' +
-        (item.charsPerLine || (item.paperWidth === 58 ? 32 : 48)) + ' simvol • ' + item.copies + ' nüsxə';
-      card.querySelector('.ip b').textContent = item.host + ':' + item.port;
+      var ipLine = card.querySelector('.ip');
+      ipLine.textContent = '';
+      var host = document.createElement('b');
+      host.textContent = item.host + ':' + item.port;
+      ipLine.appendChild(host);
+      ipLine.appendChild(document.createTextNode(
+        ' • ' + item.paperWidth + ' mm • ' +
+        (item.charsPerLine || (item.paperWidth === 58 ? 32 : 48)) + ' simvol • ' +
+        item.copies + ' nüsxə'
+      ));
       card.querySelector('.check-note').textContent = check;
 
       var actions = card.querySelector('.card-actions');

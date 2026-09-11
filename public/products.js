@@ -79,10 +79,13 @@
     row.className = 'recipe-row';
     var select = document.createElement('select');
     select.className = 'recipe-item';
-    select.innerHTML = '<option value="0">Xammal</option>' + stockItems.map(function (item) {
-      return '<option value="' + item.id + '"' + (item.id === itemId ? ' selected' : '') + '>' +
-        item.name + ' (' + item.unit + ')</option>';
-    }).join('');
+    window.PosDom.fillOptions(select, stockItems, function (item) {
+      return {
+        value: item.id,
+        label: item.name + ' (' + item.unit + ')',
+        selected: item.id === itemId
+      };
+    }, { value: '0', label: 'Xammal' });
     var qtyInput = document.createElement('input');
     qtyInput.type = 'text';
     qtyInput.setAttribute('inputmode', 'decimal');
@@ -633,10 +636,13 @@
   // Məhsul formasındakı stansiya siyahısını doldururuq
   function fillStationSelect(selectedId) {
     var select = document.getElementById('product-station');
-    select.innerHTML = (store.stations || []).map(function (station) {
-      var chosen = station.id === selectedId ? ' selected' : '';
-      return '<option value="' + station.id + '"' + chosen + '>' + station.name + '</option>';
-    }).join('');
+    window.PosDom.fillOptions(select, store.stations || [], function (station) {
+      return {
+        value: station.id,
+        label: station.name,
+        selected: station.id === selectedId
+      };
+    });
   }
 
   // Səhifəni yeniləyirik
@@ -726,7 +732,7 @@
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'icon-pick' + (item.id === selected ? ' active' : '');
-      btn.innerHTML = item.svg;
+      window.PosGroupIcons.mount(btn, item.id);
       var cap = document.createElement('span');
       cap.textContent = item.label;
       btn.appendChild(cap);

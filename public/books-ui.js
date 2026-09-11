@@ -123,15 +123,14 @@
     var pay = data.payments || {};
     var pnl = data.pnl || {};
     var sum = data.cashSum || {};
-    document.getElementById('report-kpis').innerHTML =
-      '<div class="report-kpi"><span>Satış</span><strong>' + money(pay.total) + '</strong></div>' +
-      '<div class="report-kpi"><span>Nağd</span><strong>' + money(pay.cash) + '</strong></div>' +
-      '<div class="report-kpi"><span>Kart</span><strong>' + money(pay.card) + '</strong></div>' +
-      '<div class="report-kpi"><span>Hədiyyə</span><strong>' + money(pay.gift) + '</strong></div>' +
-      '<div class="report-kpi"><span>Kəsir</span><strong>' + money(sum.difference) + '</strong></div>' +
-      (pnl.profit != null
-        ? '<div class="report-kpi"><span>Mənfəət</span><strong>' + money(pnl.profit) + '</strong></div>'
-        : '');
+    window.PosDom.kpis(document.getElementById('report-kpis'), [
+      { label: 'Satış', value: money(pay.total) },
+      { label: 'Nağd', value: money(pay.cash) },
+      { label: 'Kart', value: money(pay.card) },
+      { label: 'Hədiyyə', value: money(pay.gift) },
+      { label: 'Kəsir', value: money(sum.difference) },
+      pnl.profit != null ? { label: 'Mənfəət', value: money(pnl.profit) } : null
+    ]);
   }
 
   function drawCash(data) {

@@ -144,7 +144,11 @@
     if (!el) {
       return;
     }
-    el.innerHTML = svg(resolve(value));
+    var id = resolve(value);
+    if (!ICONS[id]) {
+      id = 'meal';
+    }
+    el.innerHTML = svg(id);
   }
 
   global.PosGroupIcons = { mount: mount, list: list, resolve: resolve, svg: svg };

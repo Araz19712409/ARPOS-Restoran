@@ -38,11 +38,7 @@
 
   // Mətni ekranda təhlükəsiz göstəririk
   function esc(value) {
-    return String(value || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+    return window.PosDom.escapeHtml(value);
   }
 
   // API sorğusu göndəririk
