@@ -1,5 +1,6 @@
 # Arpos Restoran — versiyalar
 
+- **1.2.9** — 2026-09-11 — Ayarlar: 8 tab, bir Yadda saxla
 - **1.2.8** — 2026-09-11 — XSS: mətn innerHTML-ə düşmür
 - **1.2.7** — 2026-09-11 — Qəpik hesab, updater SHA-256 + təsdiq
 - **1.2.6** — 2026-09-11 — Açılış: təkrar pinText (1.2.5)

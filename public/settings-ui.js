@@ -680,6 +680,19 @@
     });
   });
 
+  function showTab(id) {
+    var page = document.querySelector('.settings-page');
+    if (page) {
+      page.setAttribute('data-tab', id);
+    }
+    document.querySelectorAll('.settings-tab').forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-tab') === id);
+    });
+    document.querySelectorAll('.settings-panel').forEach(function (panel) {
+      panel.classList.toggle('hidden', panel.getAttribute('data-tab') !== id);
+    });
+  }
+
   function saveAll() {
     if (!waiter) {
       say('PIN ilə daxil olun.', 'err');
@@ -689,6 +702,15 @@
       say(error.message, 'err');
     });
   }
+
+  document.getElementById('settings-tabs').addEventListener('click', function (event) {
+    var btn = event.target.closest('.settings-tab');
+    if (!btn) {
+      return;
+    }
+    showTab(btn.getAttribute('data-tab'));
+  });
+  showTab('general');
 
   document.getElementById('save-settings').addEventListener('click', saveAll);
   document.getElementById('save-service').addEventListener('click', saveAll);

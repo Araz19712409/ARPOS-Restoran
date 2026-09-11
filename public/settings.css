@@ -70,40 +70,119 @@
   margin-top: 12px;
 }
 
-.settings-page .catalog-side {
-  overflow: auto;
-  padding-bottom: 16px;
+.settings-page {
+  grid-template-columns: 188px 1fr;
 }
 
-.settings-page .catalog-side section {
-  margin: 0 0 12px;
-  padding: 0 0 12px;
+.settings-page .catalog-side {
+  overflow: auto;
+  padding: 10px 8px 16px;
+}
+
+.settings-page .settings-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-page .settings-tab {
+  width: 100%;
+  text-align: left;
+  min-height: 36px;
+  padding: 6px 10px;
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: #2c261e;
+  color: #d8c7aa;
+  border: 1px solid #3d3428;
+  border-radius: 8px;
+}
+
+.settings-page .settings-tab:hover {
+  background: #3d3428;
+  color: #f6efe4;
+}
+
+.settings-page .settings-tab.active {
+  background: #3d2e1c;
+  color: #f6efe4;
+  border-color: #c9a56a;
+}
+
+.settings-page .catalog-main {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 16px 0;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.settings-page .settings-panels {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  padding-bottom: 8px;
+}
+
+.settings-page .settings-panel h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.2rem;
+  margin: 0 0 4px;
+  color: #f6efe4;
+}
+
+.settings-page .settings-panel h3 {
+  font-size: 0.9rem;
+  margin: 12px 0 4px;
+  color: #e2b65a;
+}
+
+.settings-page .settings-panel .hint {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  margin: 0 0 8px;
+}
+
+.settings-page .settings-panel section {
+  margin: 0 0 10px;
+  padding: 0 0 10px;
   border-bottom: 1px solid #3d3428;
 }
 
-.settings-page .catalog-side section:last-of-type {
+.settings-page .settings-panel section:last-of-type {
   border-bottom: 0;
 }
 
-.settings-page .catalog-side h2 {
-  font-size: 0.95rem;
-  margin: 0 0 4px;
-}
-
-.settings-page .catalog-side .hint {
-  font-size: 0.75rem;
-  line-height: 1.3;
-  margin: 0 0 6px;
-}
-
-.settings-page .catalog-side label {
+.settings-page .settings-panel label {
+  display: block;
   margin-bottom: 6px;
+  max-width: 520px;
 }
 
-.settings-page .catalog-side input,
-.settings-page .catalog-side select {
+.settings-page .settings-panel input,
+.settings-page .settings-panel select {
   min-height: 32px;
   padding: 4px 8px;
+}
+
+.settings-page .settings-sticky {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 8px 0 12px;
+  border-top: 1px solid #3d3428;
+  background: #1c1813;
+}
+
+.settings-page[data-tab="update"] #save-settings {
+  display: none;
+}
+
+.settings-page[data-tab="update"] .settings-sticky {
+  justify-content: flex-start;
 }
 
 .settings-page .side-actions {
@@ -137,7 +216,9 @@
 }
 
 .settings-page #message {
-  margin: 8px 0;
+  margin: 0;
+  flex: 1;
+  min-height: 1.2em;
 }
 
 .hidden {
@@ -194,18 +275,28 @@
   border-color: #5a4c3a;
 }
 
-.settings-page .catalog-toolbar {
-  margin-bottom: 12px;
-  align-items: center;
-}
+@media (max-width: 800px) {
+  .settings-page {
+    grid-template-columns: 1fr;
+  }
 
-.settings-page .catalog-toolbar h2,
-.settings-page .backup-title {
-  font-size: 1.15rem;
-}
+  .settings-page .catalog-side {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 10px;
+  }
 
-.backup-title {
-  margin-top: 18px;
+  .settings-page .settings-tabs {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .settings-page .settings-tab {
+    width: auto;
+    white-space: nowrap;
+  }
 }
 
 .backup-folder-label {
