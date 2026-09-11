@@ -1,4 +1,6 @@
 const express = require('express');
+const http = require('http');
+const https = require('https');
 const path = require('path');
 const store = require('./store');
 
@@ -1828,21 +1830,22 @@ function denyTillUser(user, res) {
 app.post('/api/login', function (req, res) {
   try {
     const ip = req.ip || (req.socket && req.socket.remoteAddress) || 'local';
-    const wait = users.pinWait(ip);
+    const pinText = req.body && req.body.pin;
+    const wait = users.pinWait(ip, pinText);
     if (wait > 0) {
       res.status(429).json({ success: false, message: '5 səhv. ' + wait + ' saniyə gözləyin.' });
       return;
     }
-    const user = users.verifyPin(req.body && req.body.pin);
+    const user = users.verifyPin(pinText);
     if (!user) {
-      const locked = users.failPin(ip);
+      const locked = users.failPin(ip, pinText);
       res.status(401).json({
         success: false,
         message: locked > 0 ? ('5 səhv. ' + locked + ' saniyə gözləyin.') : 'PIN səhvdir.'
       });
       return;
     }
-    users.clearPinFail(ip);
+    users.clearPinFail(ip, pinText);
     const when = users.scheduleOk(user);
     if (!when.ok) {
       res.status(403).json({ success: false, message: when.error });
@@ -4734,7 +4737,7 @@ process.on('unhandledRejection', function (reason) {
   logger.error({ message: error.message, stack: error.stack, path: 'unhandledRejection' });
 });
 
-app.listen(PORT, LIVE_HOST, function () {
+http.createServer(app).listen(PORT, '127.0.0.1', function () {
   backup.ensureDaily();
   setInterval(function () {
     backup.ensureDaily();
@@ -4755,11 +4758,29 @@ app.listen(PORT, LIVE_HOST, function () {
   }
   console.log('Admin: http://127.0.0.1:' + PORT);
   if (LIVE_HOST === '0.0.0.0') {
-    const urls = settings.lanUrls(PORT);
-    if (urls.length) {
-      console.log('Şəbəkə: ' + urls.join('  '));
-    } else {
-      console.log('Şəbəkə: http://<bu-komputer-ip>:' + PORT);
+    try {
+      const tls = settings.ensureTls();
+      const httpsServer = https.createServer({ key: tls.key, cert: tls.cert }, app);
+      httpsServer.on('error', function (error) {
+        console.log('TLS açılmadı: ' + error.message);
+        console.log('Şəbəkə bağlı qaldı (yalnız http://127.0.0.1:' + PORT + ').');
+      });
+      httpsServer.listen(tls.port, '0.0.0.0', function () {
+        if (tls.generated) {
+          console.log('TLS: yeni self-signed sertifikat yazıldı — ' + tls.certPath);
+        } else {
+          console.log('TLS: mövcud sertifikat — ' + tls.certPath);
+        }
+        const urls = settings.lanUrls(PORT);
+        if (urls.length) {
+          console.log('Şəbəkə (HTTPS): ' + urls.join('  '));
+        } else {
+          console.log('Şəbəkə (HTTPS): https://<bu-komputer-ip>:' + tls.port);
+        }
+      });
+    } catch (error) {
+      console.log('TLS açılmadı: ' + error.message);
+      console.log('Şəbəkə bağlı qaldı (yalnız http://127.0.0.1:' + PORT + ').');
     }
   } else {
     console.log('Şəbəkə bağlıdır (yalnız bu kompüter).');

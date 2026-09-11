@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const num = require('./num');
 const db = require('./db');
 
@@ -36,6 +37,7 @@ function defaults() {
     ekassa: emptyEkassa(),
     opsMode: 'full',
     listenLan: true,
+    httpsPort: 3443,
     branchName: '',
     branchCode: '',
     sms: emptySms(),
@@ -182,6 +184,174 @@ function listenHost(cfg) {
   return cleanListenLan((cfg || readSettings()).listenLan) ? '0.0.0.0' : '127.0.0.1';
 }
 
+function cleanHttpsPort(value) {
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n) || n < 1 || n > 65535 || n === 3004) {
+    return 3443;
+  }
+  return n;
+}
+
+function httpsPort(cfg) {
+  return cleanHttpsPort((cfg || readSettings()).httpsPort);
+}
+
+function derLen(n) {
+  if (n < 128) {
+    return Buffer.from([n]);
+  }
+  if (n < 256) {
+    return Buffer.from([0x81, n]);
+  }
+  return Buffer.from([0x82, (n >> 8) & 255, n & 255]);
+}
+
+function der(tag, chunks) {
+  const body = Buffer.concat(Array.isArray(chunks) ? chunks : [chunks]);
+  return Buffer.concat([Buffer.from([tag]), derLen(body.length), body]);
+}
+
+function derInt(buf) {
+  if (!Buffer.isBuffer(buf)) {
+    buf = Buffer.from(buf);
+  }
+  if (buf.length && (buf[0] & 0x80)) {
+    buf = Buffer.concat([Buffer.from([0]), buf]);
+  }
+  return der(0x02, buf);
+}
+
+function derOid(oid) {
+  const p = String(oid).split('.').map(function (x) {
+    return parseInt(x, 10);
+  });
+  const bytes = [p[0] * 40 + p[1]];
+  var i;
+  for (i = 2; i < p.length; i += 1) {
+    var v = p[i];
+    const tmp = [v & 0x7f];
+    v = Math.floor(v / 128);
+    while (v > 0) {
+      tmp.push((v & 0x7f) | 0x80);
+      v = Math.floor(v / 128);
+    }
+    var j;
+    for (j = tmp.length - 1; j >= 0; j -= 1) {
+      bytes.push(tmp[j]);
+    }
+  }
+  return der(0x06, Buffer.from(bytes));
+}
+
+function derUtc(date) {
+  function pad(n) {
+    return String(n).padStart(2, '0');
+  }
+  const s = pad(date.getUTCFullYear() % 100) + pad(date.getUTCMonth() + 1) +
+    pad(date.getUTCDate()) + pad(date.getUTCHours()) + pad(date.getUTCMinutes()) +
+    pad(date.getUTCSeconds()) + 'Z';
+  return der(0x17, Buffer.from(s));
+}
+
+function derCn(name) {
+  return der(0x30, [
+    der(0x31, der(0x30, [
+      derOid('2.5.4.3'),
+      der(0x0c, Buffer.from(String(name), 'utf8'))
+    ]))
+  ]);
+}
+
+function derAlg() {
+  return der(0x30, [derOid('1.2.840.113549.1.1.11'), Buffer.from([0x05, 0x00])]);
+}
+
+function derSan(ips) {
+  const parts = [der(0x82, Buffer.from('localhost'))];
+  function addIp(ip) {
+    const oct = String(ip).split('.').map(Number);
+    if (oct.length !== 4) {
+      return;
+    }
+    if (oct.some(function (n) {
+      return !Number.isFinite(n) || n < 0 || n > 255;
+    })) {
+      return;
+    }
+    parts.push(der(0x87, Buffer.from(oct)));
+  }
+  addIp('127.0.0.1');
+  (ips || []).forEach(addIp);
+  return der(0x30, [
+    derOid('2.5.29.17'),
+    der(0x04, der(0x30, parts))
+  ]);
+}
+
+function makeSelfSigned(ips) {
+  const pair = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const spki = pair.publicKey.export({ type: 'spki', format: 'der' });
+  const keyPem = pair.privateKey.export({ type: 'pkcs8', format: 'pem' });
+  const now = Date.now();
+  const serial = crypto.randomBytes(8);
+  serial[0] = serial[0] & 0x7f;
+  const name = derCn('Arpos Restoran');
+  const tbs = der(0x30, [
+    der(0xa0, derInt(Buffer.from([2]))),
+    derInt(serial),
+    derAlg(),
+    name,
+    der(0x30, [
+      derUtc(new Date(now - 86400000)),
+      derUtc(new Date(now + 10 * 365 * 86400000))
+    ]),
+    name,
+    spki,
+    der(0xa3, der(0x30, derSan(ips)))
+  ]);
+  const sig = crypto.sign('sha256', tbs, pair.privateKey);
+  const certDer = der(0x30, [
+    tbs,
+    derAlg(),
+    der(0x03, Buffer.concat([Buffer.from([0x00]), sig]))
+  ]);
+  const b64 = certDer.toString('base64').match(/.{1,64}/g).join('\n');
+  return {
+    keyPem: keyPem,
+    certPem: '-----BEGIN CERTIFICATE-----\n' + b64 + '\n-----END CERTIFICATE-----\n'
+  };
+}
+
+function tlsPaths() {
+  const dir = path.join(db.dataDir(), 'tls');
+  return {
+    dir: dir,
+    key: path.join(dir, 'key.pem'),
+    cert: path.join(dir, 'cert.pem')
+  };
+}
+
+function ensureTls() {
+  const files = tlsPaths();
+  fs.mkdirSync(files.dir, { recursive: true });
+  const have = fs.existsSync(files.key) && fs.existsSync(files.cert);
+  let generated = false;
+  if (!have) {
+    const made = makeSelfSigned(lanAddresses());
+    fs.writeFileSync(files.key, made.keyPem, { encoding: 'utf8', mode: 0o600 });
+    fs.writeFileSync(files.cert, made.certPem, { encoding: 'utf8', mode: 0o644 });
+    generated = true;
+  }
+  return {
+    key: fs.readFileSync(files.key),
+    cert: fs.readFileSync(files.cert),
+    port: httpsPort(),
+    generated: generated,
+    keyPath: files.key,
+    certPath: files.cert
+  };
+}
+
 function lanAddresses() {
   const os = require('os');
   const nets = os.networkInterfaces();
@@ -197,9 +367,13 @@ function lanAddresses() {
   return out;
 }
 
-function lanUrls(port) {
+function lanUrls(port, cfg) {
+  const store = cfg || readSettings();
+  const useHttps = cleanListenLan(store.listenLan);
+  const p = useHttps ? httpsPort(store) : (Number(port) || 3004);
+  const scheme = useHttps ? 'https' : 'http';
   return lanAddresses().map(function (ip) {
-    return 'http://' + ip + ':' + port;
+    return scheme + '://' + ip + ':' + p;
   });
 }
 
@@ -255,6 +429,7 @@ function normalize(raw, prev) {
     listenLan: raw && Object.prototype.hasOwnProperty.call(raw, 'listenLan')
       ? cleanListenLan(raw.listenLan)
       : true,
+    httpsPort: cleanHttpsPort(raw && raw.httpsPort),
     branchName: cleanBranch(raw && raw.branchName),
     branchCode: cleanBranchCode(raw && raw.branchCode),
     sms: cleanSms(raw, prev || raw),
@@ -283,6 +458,7 @@ function writeSettings(data) {
     ekassa: data.ekassa !== undefined ? data.ekassa : prev.ekassa,
     opsMode: data.opsMode !== undefined ? data.opsMode : prev.opsMode,
     listenLan: data.listenLan !== undefined ? data.listenLan : prev.listenLan,
+    httpsPort: data.httpsPort !== undefined ? data.httpsPort : prev.httpsPort,
     branchName: data.branchName !== undefined ? data.branchName : prev.branchName,
     branchCode: data.branchCode !== undefined ? data.branchCode : prev.branchCode,
     sms: data.sms !== undefined ? data.sms : prev.sms,
@@ -349,6 +525,8 @@ module.exports = {
   money: money,
   isStockMode: isStockMode,
   listenHost: listenHost,
+  httpsPort: httpsPort,
+  ensureTls: ensureTls,
   lanUrls: lanUrls,
   branchStamp: branchStamp,
   matchesBranch: matchesBranch,

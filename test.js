@@ -76,6 +76,89 @@ test('PIN qaydaları', function () {
   assert.strictEqual(users.forbiddenPin('0000'), true);
 });
 
+function withTempPinLock(fn) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arpos-pin-'));
+  const prev = process.env.ARPOS_DATA_DIR;
+  process.env.ARPOS_DATA_DIR = dir;
+  try {
+    fn(dir);
+  } finally {
+    if (prev) {
+      process.env.ARPOS_DATA_DIR = prev;
+    } else {
+      delete process.env.ARPOS_DATA_DIR;
+    }
+  }
+}
+
+test('PIN 5 səhvdən sonra 15 dəqiqə kilid', function () {
+  withTempPinLock(function () {
+    const ip = '10.0.0.9';
+    var i;
+    for (i = 0; i < 4; i += 1) {
+      assert.strictEqual(users.failPin(ip, '111111'), 0);
+    }
+    const wait = users.failPin(ip, '111111');
+    assert.ok(wait >= 15 * 60 - 1);
+    assert.ok(wait <= 15 * 60);
+    assert.ok(users.pinWait(ip, '111111') >= 15 * 60 - 1);
+  });
+});
+
+test('PIN kilidi eksponensial 15-30-60', function () {
+  assert.strictEqual(users.lockDurationMs(1), 15 * 60 * 1000);
+  assert.strictEqual(users.lockDurationMs(2), 30 * 60 * 1000);
+  assert.strictEqual(users.lockDurationMs(3), 60 * 60 * 1000);
+  assert.strictEqual(users.lockDurationMs(8), 60 * 60 * 1000);
+  withTempPinLock(function (dir) {
+    const ip = '10.0.0.10';
+    var i;
+    for (i = 0; i < 5; i += 1) {
+      users.failPin(ip, '222222');
+    }
+    const lockPath = path.join(dir, 'pin-lock.json');
+    const box = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+    Object.keys(box.fails).forEach(function (key) {
+      box.fails[key].until = Date.now() - 1;
+    });
+    fs.writeFileSync(lockPath, JSON.stringify(box));
+    for (i = 0; i < 4; i += 1) {
+      assert.strictEqual(users.failPin(ip, '222222'), 0);
+    }
+    const wait = users.failPin(ip, '222222');
+    assert.ok(wait >= 30 * 60 - 1);
+    assert.ok(wait <= 30 * 60);
+  });
+});
+
+test('doğru PIN-dən sonra sayğac sıfırlanır', function () {
+  withTempPinLock(function () {
+    const ip = '10.0.0.11';
+    var i;
+    for (i = 0; i < 3; i += 1) {
+      users.failPin(ip, '333333');
+    }
+    users.clearPinFail(ip, '333333');
+    assert.strictEqual(users.pinWait(ip, '333333'), 0);
+    for (i = 0; i < 4; i += 1) {
+      assert.strictEqual(users.failPin(ip, '333333'), 0);
+    }
+    assert.ok(users.failPin(ip, '333333') >= 15 * 60 - 1);
+  });
+});
+
+test('eyni IP-də fərqli PIN 5-də kilidlənir', function () {
+  withTempPinLock(function () {
+    const ip = '10.0.0.12';
+    assert.strictEqual(users.failPin(ip, '111111'), 0);
+    assert.strictEqual(users.failPin(ip, '222222'), 0);
+    assert.strictEqual(users.failPin(ip, '333333'), 0);
+    assert.strictEqual(users.failPin(ip, '444444'), 0);
+    const wait = users.failPin(ip, '555555');
+    assert.ok(wait >= 15 * 60 - 1);
+  });
+});
+
 test('oflayn növbə açarı və id dəyişməsi', function () {
   assert.strictEqual(offline.shouldQueue('POST', '/api/orders/accept'), true);
   assert.strictEqual(offline.shouldQueue('POST', '/api/orders/void'), true);

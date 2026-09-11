@@ -12,6 +12,10 @@ http://127.0.0.1:3004/orders.html
 
 Açılışda lisenziya kodu istənilir. Maşın kodunu bizə göndərin, kodu `scripts/make-license.js` ilə yazırıq.
 
+## Şəbəkə (HTTPS)
+
+Ayarlarda «Şəbəkədə aç» olanda planşet `https://IP:3443` açır. Sertifikat öz-imzalıdır: brauzerdə xəbərdarlığı bir dəfə qəbul edin. Bu kompüter həmişə `http://127.0.0.1:3004`. Şəbəkəni yandırıb-söndürəndən sonra serveri yenidən başladın.
+
 ## Quraşdırıcı
 
 Pəncərəli Setup: qovluq seçimi, qısayol, daxilində Node.

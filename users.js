@@ -3,13 +3,16 @@ const crypto = require('crypto');
 const fileStore = require('./store');
 const db = require('./db');
 const totp = require('./totp');
+const logger = require('./logger');
 
 function lockFile() {
   return db.dataFile('pin-lock.json');
 }
 const FAIL_LIMIT = 5;
-const LOCK_MS = 2 * 60 * 1000;
+const LOCK_MS = 15 * 60 * 1000;
+const LOCK_MS_MAX = 60 * 60 * 1000;
 const PIN_SCHEME = 'pbkdf2';
+// TODO: admin unlock / TOTP bu kilidi açmır — ayrıca.
 
 // Gələcək işlər üçün icazə kataloqu
 const PERMISSIONS = [
@@ -74,10 +77,73 @@ function clientKey(ip) {
   return String(ip || 'local').replace(/^::ffff:/, '').slice(0, 64);
 }
 
+function pinStamp(pin) {
+  const raw = String(pin == null ? '' : pin).replace(/\D/g, '').slice(0, 8);
+  if (!raw) {
+    return '';
+  }
+  return crypto.createHash('sha256').update('arpos-pin-lock:' + raw).digest('hex').slice(0, 16);
+}
+
+function ipLockKey(ip) {
+  return 'ip:' + clientKey(ip);
+}
+
+function pinLockKey(pin) {
+  const stamp = pinStamp(pin);
+  return stamp ? 'pin:' + stamp : '';
+}
+
+function lockDurationMs(lockCount) {
+  const n = Math.max(1, Number(lockCount) || 1);
+  const ms = LOCK_MS * Math.pow(2, n - 1);
+  return ms > LOCK_MS_MAX ? LOCK_MS_MAX : ms;
+}
+
+function waitLeft(row, now) {
+  if (!row || !row.until) {
+    return 0;
+  }
+  const left = Math.ceil((row.until - now) / 1000);
+  return left > 0 ? left : 0;
+}
+
+function lockKeys(ip, pin) {
+  const keys = [ipLockKey(ip)];
+  const pinKey = pinLockKey(pin);
+  if (pinKey) {
+    keys.push(pinKey);
+  }
+  const legacy = clientKey(ip);
+  if (legacy && keys.indexOf('ip:' + legacy) >= 0) {
+    keys.push(legacy);
+  }
+  return keys;
+}
+
+function migrateKey(key) {
+  if (String(key).indexOf('ip:') === 0 || String(key).indexOf('pin:') === 0) {
+    return key;
+  }
+  return 'ip:' + clientKey(key);
+}
+
 function readLocks() {
   try {
     const raw = fileStore.readJson(lockFile());
-    return raw && raw.fails && typeof raw.fails === 'object' ? raw.fails : {};
+    const fails = raw && raw.fails && typeof raw.fails === 'object' ? raw.fails : {};
+    const out = {};
+    Object.keys(fails).forEach(function (key) {
+      const next = migrateKey(key);
+      const row = fails[key] || {};
+      const prev = out[next] || { n: 0, until: 0, locks: 0 };
+      out[next] = {
+        n: Math.max(Number(prev.n) || 0, Number(row.n) || 0),
+        until: Math.max(Number(prev.until) || 0, Number(row.until) || 0),
+        locks: Math.max(Number(prev.locks) || 0, Number(row.locks) || 0)
+      };
+    });
+    return out;
   } catch (error) {
     return {};
   }
@@ -88,46 +154,88 @@ function writeLocks(fails) {
   const clean = {};
   Object.keys(fails).forEach(function (key) {
     const row = fails[key];
-    if (row && ((row.until && row.until > now) || Number(row.n) > 0)) {
-      clean[key] = row;
+    if (row && ((row.until && row.until > now) || Number(row.n) > 0 || Number(row.locks) > 0)) {
+      clean[key] = {
+        n: Number(row.n) || 0,
+        until: Number(row.until) || 0,
+        locks: Number(row.locks) || 0
+      };
     }
   });
   fileStore.writeJson(lockFile(), { fails: clean });
 }
 
-function pinWait(ip) {
-  const row = readLocks()[clientKey(ip)];
-  if (!row || !row.until) {
-    return 0;
-  }
-  const left = Math.ceil((row.until - Date.now()) / 1000);
-  return left > 0 ? left : 0;
-}
-
-function failPin(ip) {
-  const key = clientKey(ip);
+function pinWait(ip, pin) {
   const fails = readLocks();
   const now = Date.now();
-  const row = fails[key] || { n: 0, until: 0 };
-  if (row.until && row.until > now) {
-    return Math.ceil((row.until - now) / 1000);
-  }
-  row.n = Number(row.n || 0) + 1;
-  row.until = 0;
-  if (row.n >= FAIL_LIMIT) {
-    row.until = now + LOCK_MS;
-    row.n = 0;
-  }
-  fails[key] = row;
-  writeLocks(fails);
-  return row.until > now ? Math.ceil((row.until - now) / 1000) : 0;
+  let max = 0;
+  lockKeys(ip, pin).forEach(function (key) {
+    const left = waitLeft(fails[migrateKey(key)] || fails[key], now);
+    if (left > max) {
+      max = left;
+    }
+  });
+  return max;
 }
 
-function clearPinFail(ip) {
-  const key = clientKey(ip);
+function failPin(ip, pin) {
   const fails = readLocks();
-  if (fails[key]) {
-    delete fails[key];
+  const now = Date.now();
+  const keys = lockKeys(ip, pin).map(migrateKey).filter(function (key, i, all) {
+    return all.indexOf(key) === i;
+  });
+  let lockedWait = 0;
+  keys.forEach(function (key) {
+    const left = waitLeft(fails[key], now);
+    if (left > lockedWait) {
+      lockedWait = left;
+    }
+  });
+  if (lockedWait > 0) {
+    return lockedWait;
+  }
+  let resultWait = 0;
+  keys.forEach(function (key) {
+    const row = fails[key] || { n: 0, until: 0, locks: 0 };
+    row.n = Number(row.n || 0) + 1;
+    row.until = 0;
+    if (row.n >= FAIL_LIMIT) {
+      row.locks = Number(row.locks || 0) + 1;
+      row.until = now + lockDurationMs(row.locks);
+      row.n = 0;
+      const kind = String(key).indexOf('pin:') === 0 ? 'pin' : 'ip';
+      logger.warn({
+        path: 'pin-lock',
+        message: 'PIN seriyası bağlandı. ip=' + clientKey(ip) +
+          ' açar=' + kind + ' say=' + FAIL_LIMIT +
+          ' until=' + new Date(row.until).toISOString()
+      });
+    }
+    fails[key] = row;
+    const left = waitLeft(row, now);
+    if (left > resultWait) {
+      resultWait = left;
+    }
+  });
+  writeLocks(fails);
+  return resultWait;
+}
+
+function clearPinFail(ip, pin) {
+  const fails = readLocks();
+  let changed = false;
+  lockKeys(ip, pin).forEach(function (key) {
+    const k = migrateKey(key);
+    if (fails[k]) {
+      delete fails[k];
+      changed = true;
+    }
+    if (fails[key]) {
+      delete fails[key];
+      changed = true;
+    }
+  });
+  if (changed) {
     writeLocks(fails);
   }
 }
@@ -464,6 +572,8 @@ module.exports = {
   pinWait: pinWait,
   failPin: failPin,
   clearPinFail: clearPinFail,
+  lockDurationMs: lockDurationMs,
+  FAIL_LIMIT: FAIL_LIMIT,
   hasPermission: hasPermission,
   cleanPins: cleanPins,
   verifyPin: verifyPin,

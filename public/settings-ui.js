@@ -187,9 +187,10 @@
     if (!wantLan) {
       box.textContent = 'Yalnız http://127.0.0.1:3004';
     } else if (urls.length) {
-      box.textContent = 'Planşet: ' + urls.join('  ');
+      box.textContent = 'Planşet (HTTPS): ' + urls.join('  ') +
+        ' Brauzer öz-imzalı sertifikatı bir dəfə qəbul etsin. HTTP şəbəkəyə açıq deyil.';
     } else {
-      box.textContent = 'IP tapılmadı. Wi‑Fi yoxla.';
+      box.textContent = 'IP tapılmadı. Wi‑Fi yoxla. Şəbəkə HTTPS-dir (HTTP LAN-a verilmir).';
     }
     if (wantLan !== liveLan) {
       box.textContent += ' Saxlandıqdan sonra serveri yeniləyin.';
