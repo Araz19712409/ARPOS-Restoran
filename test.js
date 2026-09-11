@@ -15,9 +15,11 @@ const terminals = require('./terminals');
 const books = require('./books');
 const clock = require('./clock');
 const offline = require('./public/offline.js');
+const num = require('./num');
 const db = require('./db');
 const totp = require('./totp');
 const backup = require('./backup');
+const updater = require('./updater');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -67,6 +69,33 @@ test('hesab: endirim, xidmət, bonus', function () {
   assert.strictEqual(parts.serviceCharge, 9);
   assert.strictEqual(parts.total, 99);
   assert.strictEqual(parts.bonusAmount, 4.5);
+});
+
+test('qəpik 0.1+0.2 tələsi yoxdur', function () {
+  assert.notStrictEqual(0.1 + 0.2, 0.3);
+  assert.strictEqual(num.fromMinor(num.addMinor(num.toMinor(0.1), num.toMinor(0.2))), 0.3);
+  assert.strictEqual(settings.money(0.1 + 0.2), 0.3);
+});
+
+test('qəpik split 3 pay 10 AZN', function () {
+  const total = num.toMinor(10);
+  const share = Math.round(total / 3);
+  const last = num.subMinor(total, num.addMinor(share, share));
+  assert.strictEqual(num.fromMinor(share), 3.33);
+  assert.strictEqual(num.fromMinor(last), 3.34);
+  assert.strictEqual(num.fromMinor(num.addMinor(num.addMinor(share, share), last)), 10);
+});
+
+test('qəpik qismən ödəniş qalığı', function () {
+  const due = num.toMinor(10.1);
+  const paid = num.toMinor(0.2);
+  assert.strictEqual(num.fromMinor(num.subMinor(due, paid)), 9.9);
+  const order = {
+    items: [{ salePrice: 0.1, qty: 1 }, { salePrice: 0.2, qty: 1 }],
+    payments: [{ cashAmount: 0.1, cardAmount: 0, giftAmount: 0 }]
+  };
+  assert.strictEqual(orders.orderTotal(order), 0.3);
+  assert.strictEqual(orders.paidTotal(order), 0.1);
 });
 
 test('PIN qaydaları', function () {
@@ -874,6 +903,18 @@ test('GitHub ehtiyat sessiya faylını buraxır', function () {
   backup.copyGithubTree(src, dest);
   assert.strictEqual(fs.existsSync(path.join(dest, 'session.key')), false);
   assert.strictEqual(fs.existsSync(path.join(dest, 'clock.json')), true);
+});
+
+test('yeniləmə checksum və təsdiq', function () {
+  const hex = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  const map = updater.parseChecksums(hex + '  ArposRestoran-Setup.exe\n');
+  assert.strictEqual(updater.expectedHashFor('ArposRestoran-Setup.exe', map), hex);
+  const bodyMap = updater.parseChecksums('SHA256 ArposRestoran-Setup.exe ' + hex);
+  assert.strictEqual(updater.expectedHashFor('ArposRestoran-Setup.exe', bodyMap), hex);
+  assert.strictEqual(updater.hashMatches(hex, hex.toUpperCase()), true);
+  assert.strictEqual(updater.hashMatches(hex, hex.replace(/a/g, 'b')), false);
+  assert.strictEqual(updater.isConfirmed({}), false);
+  assert.strictEqual(updater.isConfirmed({ confirm: true }), true);
 });
 
 console.log('Bütün testlər keçdi.');

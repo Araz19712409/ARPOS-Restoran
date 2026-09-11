@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const crypto = require('crypto');
 const { execFile } = require('child_process');
 const settings = require('./settings');
 
@@ -33,6 +34,126 @@ function newer(remote, local) {
     }
   }
   return false;
+}
+
+function httpsText(url, token) {
+  return new Promise(function (resolve, reject) {
+    const opts = {
+      headers: {
+        'User-Agent': 'ArposRestoran',
+        Accept: 'application/octet-stream'
+      }
+    };
+    if (token) {
+      opts.headers.Authorization = 'Bearer ' + token;
+    }
+    function go(href, hops) {
+      if (hops > 5) {
+        reject(new Error('Çox yönləndirmə.'));
+        return;
+      }
+      https.get(href, opts, function (res) {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          go(res.headers.location, hops + 1);
+          return;
+        }
+        let buf = '';
+        res.on('data', function (chunk) { buf += chunk; });
+        res.on('end', function () {
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            reject(new Error('GitHub ' + res.statusCode));
+            return;
+          }
+          resolve(buf);
+        });
+      }).on('error', reject);
+    }
+    go(url, 0);
+  });
+}
+
+function parseChecksums(text) {
+  const map = {};
+  String(text || '').split(/\r?\n/).forEach(function (line) {
+    const t = line.trim();
+    if (!t || t.charAt(0) === '#') {
+      return;
+    }
+    let m = t.match(/^([a-fA-F0-9]{64})\s+\*?(.+)$/);
+    if (m) {
+      map[path.basename(m[2].trim().replace(/\\/g, '/'))] = m[1].toLowerCase();
+      return;
+    }
+    m = t.match(/^SHA256\s+(\S+)\s+([a-fA-F0-9]{64})$/i);
+    if (m) {
+      map[path.basename(m[1])] = m[2].toLowerCase();
+    }
+  });
+  return map;
+}
+
+function expectedHashFor(fileName, map) {
+  const name = path.basename(String(fileName || ''));
+  if (!name || !map) {
+    return '';
+  }
+  if (map[name]) {
+    return map[name];
+  }
+  const lower = name.toLowerCase();
+  const keys = Object.keys(map);
+  var i;
+  for (i = 0; i < keys.length; i += 1) {
+    if (keys[i].toLowerCase() === lower) {
+      return map[keys[i]];
+    }
+  }
+  return '';
+}
+
+function hashMatches(got, expected) {
+  const a = String(got || '').trim().toLowerCase();
+  const b = String(expected || '').trim().toLowerCase();
+  return a.length === 64 && b.length === 64 && a === b;
+}
+
+function fileSha256(file) {
+  return new Promise(function (resolve, reject) {
+    const h = crypto.createHash('sha256');
+    const s = fs.createReadStream(file);
+    s.on('error', reject);
+    s.on('data', function (chunk) { h.update(chunk); });
+    s.on('end', function () { resolve(h.digest('hex')); });
+  });
+}
+
+function pickAssets(json) {
+  let setup = '';
+  let setupName = '';
+  let sumsUrl = '';
+  (json.assets || []).forEach(function (asset) {
+    const n = String(asset.name || '').toLowerCase();
+    const href = asset.browser_download_url || '';
+    if (!href) {
+      return;
+    }
+    if (n.indexOf('setup') >= 0 && n.slice(-4) === '.exe') {
+      setup = href;
+      setupName = asset.name;
+    }
+    if (n === 'sha256sums.txt' || n.slice(-7) === '.sha256') {
+      sumsUrl = href;
+    }
+  });
+  return { setup: setup, setupName: setupName, sumsUrl: sumsUrl };
+}
+
+function safeUnlink(file) {
+  try {
+    fs.unlinkSync(file);
+  } catch (error) {
+    /* keç */
+  }
 }
 
 function httpsJson(url, token) {
@@ -103,20 +224,6 @@ function download(url, dest, token) {
   });
 }
 
-function runPs(args) {
-  return new Promise(function (resolve, reject) {
-    execFile('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass'].concat(args), {
-      windowsHide: true
-    }, function (error, stdout, stderr) {
-      if (error) {
-        reject(new Error(stderr || error.message));
-        return;
-      }
-      resolve(String(stdout || '').trim());
-    });
-  });
-}
-
 function check() {
   const cfg = settings.readSettings().update || {};
   const repo = String(cfg.repo || '').trim();
@@ -132,108 +239,111 @@ function check() {
   const url = 'https://api.github.com/repos/' + repo + '/releases/latest';
   return httpsJson(url, cfg.token).then(function (json) {
     const tag = json.tag_name || json.name || '';
-    const zip = json.zipball_url || '';
-    let setup = '';
-    (json.assets || []).forEach(function (asset) {
-      const n = String(asset.name || '').toLowerCase();
-      if (n.indexOf('setup') >= 0 && n.slice(-4) === '.exe' && asset.browser_download_url) {
-        setup = asset.browser_download_url;
-      }
-    });
+    const picked = pickAssets(json);
+    const checksums = parseChecksums(json.body);
+    const setupName = picked.setupName || 'ArposRestoran-Setup.exe';
+    const checksum = expectedHashFor(setupName, checksums);
     return {
       local: local,
       remote: stripV(tag),
       tag: tag,
-      zip: zip,
-      setup: setup,
+      setup: picked.setup,
+      setupName: setupName,
+      sumsUrl: picked.sumsUrl,
+      checksums: checksums,
+      checksum: checksum,
       newer: newer(tag, local),
       name: json.name || tag
     };
   });
 }
 
-function apply() {
+function loadExpectedHash(info, token) {
+  const name = info.setupName || 'ArposRestoran-Setup.exe';
+  const have = expectedHashFor(name, info.checksums || {});
+  if (have) {
+    return Promise.resolve(have);
+  }
+  if (!info.sumsUrl) {
+    return Promise.resolve('');
+  }
+  return httpsText(info.sumsUrl, token).then(function (text) {
+    return expectedHashFor(name, parseChecksums(text));
+  });
+}
+
+function isConfirmed(opts) {
+  return !!(opts && (opts.confirm === true || opts.confirm === 1 || opts.confirm === 'true'));
+}
+
+function apply(opts) {
+  // TODO: Authenticode (code signing) bu versiyada yoxdur — checksum kifayətdir.
+  if (!isConfirmed(opts)) {
+    return Promise.resolve({
+      ok: false,
+      message: 'Yeniləmə üçün təsdiq lazımdır.'
+    });
+  }
   return check().then(function (info) {
     if (!info.newer) {
       return { ok: false, message: info.message || 'Yeni versiya yoxdur.' };
     }
+    if (!info.setup) {
+      return { ok: false, message: 'Release-də Setup.exe yoxdur. Zip avtomatik yazılmır.' };
+    }
     const cfg = settings.readSettings().update || {};
-    if (info.setup) {
-      const exe = path.join(UPD_DIR, 'ArposRestoran-Setup.exe');
-      return download(info.setup, exe, cfg.token).then(function () {
-        const st = fs.statSync(exe);
-        const fd = fs.openSync(exe, 'r');
-        const head = Buffer.alloc(2);
-        fs.readSync(fd, head, 0, 2, 0);
-        fs.closeSync(fd);
-        if (st.size < 1000000 || head[0] !== 0x4d || head[1] !== 0x5a) {
-          throw new Error('GitHub-dan Setup düzgün endirilmədi.');
-        }
-        try {
-          fs.unlinkSync(exe + ':Zone.Identifier');
-        } catch (error) {
-          /* Windows blokunu açmaq mümkün olmasa da davam */
-        }
-        fs.writeFileSync(path.join(UPD_DIR, 'install-dir.txt'), ROOT, 'utf8');
-        const bat = path.join(UPD_DIR, 'start-update.cmd');
-        fs.writeFileSync(bat,
-          '@echo off\r\n' +
-          'timeout /t 1 /nobreak >nul\r\n' +
-          'start "" "' + exe.replace(/"/g, '') + '"\r\n');
-        execFile('cmd.exe', ['/c', 'start', '', bat], {
-          detached: true,
-          stdio: 'ignore',
-          windowsHide: true
-        }).unref();
-        const ver = require('./version');
-        ver.record('update', 'GitHub Setup ' + info.remote);
+    const token = cfg.token;
+    return loadExpectedHash(info, token).then(function (expected) {
+      if (!expected) {
         return {
-          ok: true,
-          local: info.local,
-          remote: info.remote,
-          setupPath: exe,
-          message: 'Yeniləmə pəncərəsi açılır. «Bəli» / «Yenilə» basın. Açılmasa: ' + exe
+          ok: false,
+          message: 'Checksum yoxdur. SHA256SUMS.txt və ya reliz mətnində SHA256 yazın.'
         };
-      });
-    }
-    if (!info.zip) {
-      return { ok: false, message: 'Release-də Setup.exe yoxdur.' };
-    }
-    const zip = path.join(UPD_DIR, 'latest.zip');
-    const extract = path.join(UPD_DIR, 'extract');
-    fs.rmSync(extract, { recursive: true, force: true });
-    fs.mkdirSync(extract, { recursive: true });
-    return download(info.zip, zip, cfg.token).then(function () {
-      return runPs([
-        '-Command',
-        "Expand-Archive -Force -Path '" + zip.replace(/'/g, "''") +
-          "' -DestinationPath '" + extract.replace(/'/g, "''") + "'"
-      ]);
-    }).then(function () {
-      const kids = fs.readdirSync(extract);
-      const inner = kids.length === 1 ? path.join(extract, kids[0]) : extract;
-      const skip = { data: true, node_modules: true, '.git': true, keys: true, dist: true };
-      fs.readdirSync(inner).forEach(function (name) {
-        if (skip[name]) {
-          return;
-        }
-        const from = path.join(inner, name);
-        const to = path.join(ROOT, name);
-        fs.cpSync(from, to, { recursive: true, force: true });
-      });
-      if (!fs.existsSync(path.join(ROOT, 'keys', 'arpos-private.pem'))) {
-        ['make-license.js', 'license-owner.js'].forEach(function (name) {
-          try { fs.unlinkSync(path.join(ROOT, 'scripts', name)); } catch (error) { /* keç */ }
-        });
       }
-      const ver = require('./version');
-      ver.record('update', 'GitHub ' + info.remote);
-      return {
-        ok: true,
-        local: info.local,
-        remote: info.remote,
-        message: 'Yeniləndi ' + info.remote + '. Serveri yeniləyin.'
-      };
+      fs.mkdirSync(UPD_DIR, { recursive: true });
+      const exe = path.join(UPD_DIR, 'ArposRestoran-Setup.exe');
+      return download(info.setup, exe, token).then(function () {
+        return fileSha256(exe).then(function (got) {
+          if (!hashMatches(got, expected)) {
+            safeUnlink(exe);
+            throw new Error('Checksum uyğun gəlmir. Quraşdırma ləğv olundu.');
+          }
+          const st = fs.statSync(exe);
+          const fd = fs.openSync(exe, 'r');
+          const head = Buffer.alloc(2);
+          fs.readSync(fd, head, 0, 2, 0);
+          fs.closeSync(fd);
+          if (st.size < 1000000 || head[0] !== 0x4d || head[1] !== 0x5a) {
+            safeUnlink(exe);
+            throw new Error('GitHub-dan Setup düzgün endirilmədi.');
+          }
+          try {
+            fs.unlinkSync(exe + ':Zone.Identifier');
+          } catch (error) {
+            /* Windows blokunu açmaq mümkün olmasa da davam */
+          }
+          fs.writeFileSync(path.join(UPD_DIR, 'install-dir.txt'), ROOT, 'utf8');
+          const bat = path.join(UPD_DIR, 'start-update.cmd');
+          fs.writeFileSync(bat,
+            '@echo off\r\n' +
+            'timeout /t 1 /nobreak >nul\r\n' +
+            'start "" "' + exe.replace(/"/g, '') + '"\r\n');
+          execFile('cmd.exe', ['/c', 'start', '', bat], {
+            detached: true,
+            stdio: 'ignore',
+            windowsHide: true
+          }).unref();
+          const ver = require('./version');
+          ver.record('update', 'GitHub Setup ' + info.remote);
+          return {
+            ok: true,
+            local: info.local,
+            remote: info.remote,
+            setupPath: exe,
+            message: 'Yeniləmə pəncərəsi açılır. «Bəli» / «Yenilə» basın. Açılmasa: ' + exe
+          };
+        });
+      });
     });
   });
 }
@@ -241,5 +351,10 @@ function apply() {
 module.exports = {
   version: version,
   check: check,
-  apply: apply
+  apply: apply,
+  isConfirmed: isConfirmed,
+  parseChecksums: parseChecksums,
+  expectedHashFor: expectedHashFor,
+  hashMatches: hashMatches
 };
+

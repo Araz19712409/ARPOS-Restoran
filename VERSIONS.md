@@ -1,5 +1,6 @@
 # Arpos Restoran — versiyalar
 
+- **1.2.7** — 2026-09-11 — Qəpik hesab, updater SHA-256 + təsdiq
 - **1.2.6** — 2026-09-11 — Açılış: təkrar pinText (1.2.5)
 - **1.2.5** — 2026-09-11 — LAN HTTPS, PIN 15/30/60 dəq kilid
 - **1.2.4** — 2026-09-10 — Maaş 16 saat, oflayn saat, 86 kilidi, alış ödənişi, GitHub sessiya

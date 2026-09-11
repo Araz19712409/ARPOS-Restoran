@@ -36,8 +36,19 @@ node scripts/make-license.js --name "Kafe Adi" --machine ABCD-EF01-2345-6789
 
 ## Yeniləmə
 
+Ayarlarda **Yoxla**, sonra **Quraşdır** (təsdiq pəncərəsi). Server `confirm` olmadan Setup işə salmır.
+
+Hər GitHub release-ə `SHA256SUMS.txt` qoyun:
+
+```
+<64-simvol-sha256>  ArposRestoran-Setup.exe
+```
+
+və ya reliz mətnində: `SHA256 ArposRestoran-Setup.exe <64-hex>`. Client endirmədən əvvəl hash oxuyur, faylı yoxlayır; uyğun gəlmirsə quraşdırma olmur. Hash yoxdursa yeniləmə rədd edilir. Token loqa yazılmır.
+
 ```
 npm run update
+node scripts/auto-update.js --confirm
 ```
 
 ## Versiya

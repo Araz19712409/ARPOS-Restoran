@@ -11,6 +11,7 @@ const users = require('./users');
 const orders = require('./orders');
 const reservations = require('./reservations');
 const settings = require('./settings');
+const minor = require('./num');
 const backup = require('./backup');
 const lock = require('./lock');
 const terminals = require('./terminals');
@@ -1770,7 +1771,7 @@ app.post('/api/update/apply', function (req, res) {
     res.status(403).json({ success: false, message: 'Yeniləməyə icazəniz yoxdur.' });
     return;
   }
-  updater.apply().then(function (out) {
+  updater.apply({ confirm: body.confirm === true }).then(function (out) {
     if (!out.ok) {
       res.status(400).json({ success: false, message: out.message || 'Yenilənmədi.' });
       return;
@@ -2913,17 +2914,20 @@ app.post('/api/orders/pay', function (req, res) {
     if (splitCount > 10) {
       splitCount = 10;
     }
-    remaining = settings.money(Math.max(0, total + tip - prepaid - already));
+    remaining = minor.fromMinor(Math.max(0, minor.subMinor(
+      minor.subMinor(minor.addMinor(minor.toMinor(total), minor.toMinor(tip)), minor.toMinor(prepaid)),
+      minor.toMinor(already)
+    )));
     if (picking) {
-      const pickSum = picked.reduce(function (sum, item) {
-        return sum + Number(item.salePrice) * Number(item.qty);
+      const pickM = picked.reduce(function (sum, item) {
+        return minor.addMinor(sum, minor.mulQty(minor.toMinor(item.salePrice), item.qty));
       }, 0);
-      const openSum = orders.openTotal(order);
+      const openM = minor.toMinor(orders.openTotal(order));
       const lastPick = picked.length === (order.items || []).filter(orders.isOpenLine).length;
-      share = lastPick || openSum <= 0
+      share = lastPick || openM <= 0
         ? remaining
-        : settings.money(remaining * pickSum / openSum);
-      if (remaining - share <= 0.01) {
+        : minor.fromMinor(Math.round(minor.toMinor(remaining) * pickM / openM));
+      if (minor.subMinor(minor.toMinor(remaining), minor.toMinor(share)) <= 1) {
         share = remaining;
       }
     } else {
@@ -2931,12 +2935,12 @@ app.post('/api/orders/pay', function (req, res) {
         splitCount = order.splitCount;
       } else if (splitCount > 1 && !order.splitCount) {
         order.splitCount = splitCount;
-        order.splitShare = settings.money(remaining / splitCount);
+        order.splitShare = minor.fromMinor(Math.round(minor.toMinor(remaining) / splitCount));
       }
       share = splitCount === 1
         ? remaining
-        : (order.splitShare || settings.money(remaining / splitCount));
-      if (remaining - share <= 0.01) {
+        : (order.splitShare || minor.fromMinor(Math.round(minor.toMinor(remaining) / splitCount)));
+      if (minor.subMinor(minor.toMinor(remaining), minor.toMinor(share)) <= 1) {
         share = remaining;
       }
     }
@@ -2945,26 +2949,33 @@ app.post('/api/orders/pay', function (req, res) {
     if (giftCode && (!Number.isFinite(giftWanted) || giftWanted < 0)) {
       giftWanted = share;
     }
-    const cashAmount = stock.parseDec(body.cashAmount);
-    const cardAmount = stock.parseDec(body.cardAmount);
-    if (!Number.isFinite(cashAmount) || !Number.isFinite(cardAmount) || cashAmount < 0 || cardAmount < 0) {
+    const cashRaw = stock.parseDec(body.cashAmount);
+    const cardRaw = stock.parseDec(body.cardAmount);
+    if (!Number.isFinite(cashRaw) || !Number.isFinite(cardRaw) || cashRaw < 0 || cardRaw < 0) {
       reject(400, 'Nağd və kart məbləği düzgün deyil.');
     }
+    const cashAmount = minor.fromMinor(minor.toMinor(cashRaw));
+    const cardAmount = minor.fromMinor(minor.toMinor(cardRaw));
     let giftOnShare = 0;
     if (giftCode) {
-      giftOnShare = settings.money(Math.min(Number.isFinite(giftWanted) ? giftWanted : share, share));
+      giftOnShare = minor.fromMinor(Math.min(
+        minor.toMinor(Number.isFinite(giftWanted) ? giftWanted : share),
+        minor.toMinor(share)
+      ));
     }
-    if (Math.abs(cashAmount + cardAmount + giftOnShare - share) > 0.009) {
+    if (minor.addMinor(minor.addMinor(minor.toMinor(cashAmount), minor.toMinor(cardAmount)), minor.toMinor(giftOnShare)) !==
+        minor.toMinor(share)) {
       reject(400, 'Nağd + kart + hədiyyə bu paya bərabər olmalıdır.');
     }
     let tendered = cashAmount;
     let change = 0;
     if (cashAmount > 0) {
-      tendered = Number(body.tendered);
-      if (!Number.isFinite(tendered) || tendered < cashAmount) {
+      const tendRaw = Number(body.tendered);
+      if (!Number.isFinite(tendRaw) || minor.toMinor(tendRaw) < minor.toMinor(cashAmount)) {
         reject(400, 'Verilən nağd, nağd hissədən az ola bilməz.');
       }
-      change = Number((tendered - cashAmount).toFixed(2));
+      tendered = minor.fromMinor(minor.toMinor(tendRaw));
+      change = minor.fromMinor(minor.subMinor(minor.toMinor(tendered), minor.toMinor(cashAmount)));
     }
     if (giftOnShare > 0) {
       const used = gifts.redeem(giftCode, giftOnShare);
@@ -2974,12 +2985,12 @@ app.post('/api/orders/pay', function (req, res) {
       order.giftCode = giftCode;
     }
     const shareRow = {
-      cashAmount: Number(cashAmount.toFixed(2)),
-      cardAmount: Number(cardAmount.toFixed(2)),
+      cashAmount: cashAmount,
+      cardAmount: cardAmount,
       giftAmount: giftOnShare,
       giftCode: giftOnShare ? giftCode : '',
       tipAmount: tip,
-      tendered: Number(tendered.toFixed(2)),
+      tendered: tendered,
       change: change,
       share: share,
       at: new Date().toISOString(),
@@ -2997,17 +3008,17 @@ app.post('/api/orders/pay', function (req, res) {
     }
     const stillOpen = (order.items || []).some(orders.isOpenLine);
     const left = picking
-      ? (stillOpen ? settings.money(Math.max(0, remaining - share)) : 0)
-      : settings.money(Math.max(0, remaining - share));
-    const closed = picking ? !stillOpen : left < 0.01;
-    const cashSum = settings.money(order.payments.reduce(function (sum, row) {
-      return sum + Number(row.cashAmount || 0);
+      ? (stillOpen ? minor.fromMinor(Math.max(0, minor.subMinor(minor.toMinor(remaining), minor.toMinor(share)))) : 0)
+      : minor.fromMinor(Math.max(0, minor.subMinor(minor.toMinor(remaining), minor.toMinor(share))));
+    const closed = picking ? !stillOpen : minor.toMinor(left) < 1;
+    const cashSum = minor.fromMinor((order.payments || []).reduce(function (sum, row) {
+      return minor.addMinor(sum, minor.toMinor(row.cashAmount));
     }, 0));
-    const cardSum = settings.money(order.payments.reduce(function (sum, row) {
-      return sum + Number(row.cardAmount || 0);
+    const cardSum = minor.fromMinor((order.payments || []).reduce(function (sum, row) {
+      return minor.addMinor(sum, minor.toMinor(row.cardAmount));
     }, 0));
-    const giftSum = settings.money(order.payments.reduce(function (sum, row) {
-      return sum + Number(row.giftAmount || 0);
+    const giftSum = minor.fromMinor((order.payments || []).reduce(function (sum, row) {
+      return minor.addMinor(sum, minor.toMinor(row.giftAmount));
     }, 0));
     const method = remaining === 0 && share === 0
       ? 'prepaid'
@@ -3028,9 +3039,9 @@ app.post('/api/orders/pay', function (req, res) {
       serviceCharge: parts.serviceCharge,
       bonusPercent: parts.bonusPercent,
       bonusAmount: parts.bonusAmount,
-      total: settings.money(total + tip),
-      tipAmount: tip,
-      prepaid: prepaid,
+      total: minor.fromMinor(minor.addMinor(minor.toMinor(total), minor.toMinor(tip))),
+      tipAmount: minor.fromMinor(minor.toMinor(tip)),
+      prepaid: minor.fromMinor(minor.toMinor(prepaid)),
       due: remaining,
       share: share,
       remaining: left,
@@ -3061,18 +3072,21 @@ app.post('/api/orders/pay', function (req, res) {
         serviceCharge: parts.serviceCharge,
         bonusPercent: parts.bonusPercent,
         bonusAmount: parts.bonusAmount,
-        total: settings.money(total + tip),
+        total: minor.fromMinor(minor.addMinor(minor.toMinor(total), minor.toMinor(tip))),
         tipAmount: tip,
         prepaid: prepaid,
-        due: settings.money(Math.max(0, total + tip - prepaid)),
+        due: minor.fromMinor(Math.max(0, minor.subMinor(
+          minor.addMinor(minor.toMinor(total), minor.toMinor(tip)),
+          minor.toMinor(prepaid)
+        ))),
         cashAmount: cashSum,
         cardAmount: cardSum,
         giftAmount: giftSum,
-        tendered: settings.money(order.payments.reduce(function (sum, row) {
-          return sum + Number(row.tendered || 0);
+        tendered: minor.fromMinor((order.payments || []).reduce(function (sum, row) {
+          return minor.addMinor(sum, minor.toMinor(row.tendered));
         }, 0)),
-        change: settings.money(order.payments.reduce(function (sum, row) {
-          return sum + Number(row.change || 0);
+        change: minor.fromMinor((order.payments || []).reduce(function (sum, row) {
+          return minor.addMinor(sum, minor.toMinor(row.change));
         }, 0)),
         at: shareRow.at,
         waiterId: staff.user.id,
@@ -4159,11 +4173,11 @@ app.post('/api/orders/refund', function (req, res) {
     const pay = order.payment;
     let giftBack = 0;
     (order.payments || []).forEach(function (row) {
-      const giftSum = Number(row.giftAmount) || 0;
+      const giftSum = minor.toMinor(row.giftAmount);
       if (row.giftCode && giftSum > 0) {
-        const back = gifts.restore(row.giftCode, giftSum);
+        const back = gifts.restore(row.giftCode, minor.fromMinor(giftSum));
         if (!back.error) {
-          giftBack += giftSum;
+          giftBack = minor.addMinor(giftBack, giftSum);
         }
       }
     });
@@ -4173,10 +4187,10 @@ app.post('/api/orders/refund', function (req, res) {
       waiterId: staff.user.id,
       waiterName: staff.user.name,
       reason: reason,
-      cashAmount: Number(pay.cashAmount) || 0,
-      cardAmount: Number(pay.cardAmount) || 0,
-      giftAmount: settings.money(giftBack),
-      total: Number(pay.total) || 0
+      cashAmount: minor.fromMinor(minor.toMinor(pay.cashAmount)),
+      cardAmount: minor.fromMinor(minor.toMinor(pay.cardAmount)),
+      giftAmount: minor.fromMinor(giftBack),
+      total: minor.fromMinor(minor.toMinor(pay.total))
     };
     order.updatedAt = order.refund.at;
     orders.writeOrders(store);

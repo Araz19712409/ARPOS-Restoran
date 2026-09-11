@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const store = require('./store');
 const db = require('./db');
+const num = require('./num');
 
 function ordersFile() {
   return path.join(db.dataDir(), 'orders.json');
@@ -207,26 +208,34 @@ function isOpenLine(item) {
   return !!(item && !item.voided && !item.settled);
 }
 
+function lineMinor(item) {
+  return num.mulQty(num.toMinor(item && item.salePrice), item && item.qty);
+}
+
 function lineSum(item) {
-  return Number(item.salePrice) * Number(item.qty);
+  return num.fromMinor(lineMinor(item));
 }
 
 function orderTotal(order) {
-  return (order.items || []).reduce(function (sum, item) {
+  let sum = 0;
+  (order.items || []).forEach(function (item) {
     if (item.voided) {
-      return sum;
+      return;
     }
-    return sum + lineSum(item);
-  }, 0);
+    sum = num.addMinor(sum, lineMinor(item));
+  });
+  return num.fromMinor(sum);
 }
 
 function openTotal(order) {
-  return (order.items || []).reduce(function (sum, item) {
+  let sum = 0;
+  (order.items || []).forEach(function (item) {
     if (!isOpenLine(item)) {
-      return sum;
+      return;
     }
-    return sum + lineSum(item);
-  }, 0);
+    sum = num.addMinor(sum, lineMinor(item));
+  });
+  return num.fromMinor(sum);
 }
 
 function pickPayLines(order, itemIds, seatTableId) {
@@ -291,9 +300,13 @@ function cleanRunStatus(channel, value) {
 }
 
 function paidTotal(order) {
-  return (order.payments || []).reduce(function (sum, row) {
-    return sum + Number(row.cashAmount || 0) + Number(row.cardAmount || 0) + Number(row.giftAmount || 0);
-  }, 0);
+  let sum = 0;
+  (order.payments || []).forEach(function (row) {
+    sum = num.addMinor(sum, num.toMinor(row.cashAmount));
+    sum = num.addMinor(sum, num.toMinor(row.cardAmount));
+    sum = num.addMinor(sum, num.toMinor(row.giftAmount));
+  });
+  return num.fromMinor(sum);
 }
 
 module.exports = {

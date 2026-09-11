@@ -326,7 +326,7 @@
       return api('/api/update/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ waiterId: waiter.user.id })
+        body: JSON.stringify({ waiterId: waiter.user.id, confirm: true })
       }).then(function (body) {
         say((body.data && body.data.message) || 'Yeniləmə pəncərəsi açıldı. «Yenilə» düyməsinə basın.', 'ok');
       }).catch(function (error) {

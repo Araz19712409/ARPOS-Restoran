@@ -402,8 +402,7 @@ function ensureBackupFolder(dir) {
 }
 
 function money(value) {
-  const n = num.parseDec(value);
-  return Number(((Number.isFinite(n) ? n : 0)).toFixed(2));
+  return num.fromMinor(num.toMinor(value));
 }
 
 function clampPercent(value) {
@@ -480,41 +479,39 @@ function writeSettings(data) {
 }
 
 function discountOff(itemsTotal, discount) {
-  const items = money(itemsTotal);
+  const items = num.toMinor(itemsTotal);
   if (!discount || discount.cleared) {
     return 0;
   }
   if (discount.type === 'percent') {
-    return money(items * clampPercent(discount.value) / 100);
+    return Math.round(items * clampPercent(discount.value) / 100);
   }
-  if (discount.type === 'amount') {
-    return money(Math.min(items, Math.max(0, Number(discount.value) || 0)));
-  }
-  return money(Math.min(items, Math.max(0, Number(discount.amount) || 0)));
+  const amt = num.toMinor(discount.value != null ? discount.value : discount.amount);
+  return Math.min(items, Math.max(0, amt));
 }
 
 // Məhsul cəminə endirim, xidmət və ofisiant bonusunu hesablayırıq
 function billParts(itemsTotal, waiterId, cfg, discount) {
   const store = cfg || readSettings();
-  const items = money(itemsTotal);
-  const off = discountOff(items, discount);
-  const after = money(Math.max(0, items - off));
+  const items = num.toMinor(itemsTotal);
+  const off = discountOff(itemsTotal, discount);
+  const after = Math.max(0, num.subMinor(items, off));
   const servicePercent = store.serviceChargePercent;
-  const serviceCharge = money(after * servicePercent / 100);
+  const serviceCharge = Math.round(after * servicePercent / 100);
   const bonusPercent = clampPercent(store.waiterBonuses[String(waiterId)]);
-  const bonusAmount = money(after * bonusPercent / 100);
+  const bonusAmount = Math.round(after * bonusPercent / 100);
   return {
-    itemsTotal: items,
-    discountAmount: off,
+    itemsTotal: num.fromMinor(items),
+    discountAmount: num.fromMinor(off),
     discountType: discount && discount.type ? String(discount.type) : '',
     discountValue: Number(discount && discount.value) || 0,
     discountReason: discount && discount.reason ? String(discount.reason) : '',
-    afterDiscount: after,
+    afterDiscount: num.fromMinor(after),
     servicePercent: servicePercent,
-    serviceCharge: serviceCharge,
+    serviceCharge: num.fromMinor(serviceCharge),
     bonusPercent: bonusPercent,
-    bonusAmount: bonusAmount,
-    total: money(after + serviceCharge)
+    bonusAmount: num.fromMinor(bonusAmount),
+    total: num.fromMinor(num.addMinor(after, serviceCharge))
   };
 }
 

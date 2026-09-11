@@ -164,6 +164,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 148. [x] 1.2.4 — Maaş 16 saat, oflayn saat, 86 kilidi, alış ödənişi, GitHub sessiya
 149. [x] 1.2.5 — LAN HTTPS (3443), PIN anti-bruteforce 15/30/60
 150. [x] 1.2.6 — 1.2.5 açılmırdı (pinText təkrarı)
+151. [x] 1.2.7 — qəpik hesab, updater SHA-256 + təsdiq
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı
