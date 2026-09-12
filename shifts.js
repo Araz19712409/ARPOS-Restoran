@@ -133,6 +133,36 @@ function openShiftForTill(store, terminalId) {
   return open.length === 1 ? open[0] : null;
 }
 
+function ensureOpen(store, terminal, user, startingCash) {
+  const term = terminal || {};
+  const tid = Number(term.id);
+  if (!tid) {
+    return { error: 'Terminal seçin.' };
+  }
+  const have = currentFor(store, tid);
+  if (have) {
+    return { shift: have, created: false };
+  }
+  const cash = money(startingCash);
+  if (!Number.isFinite(cash) || cash < 0) {
+    return { error: 'Başlanğıc nağd düzgün deyil.' };
+  }
+  const row = {
+    id: store.nextId,
+    terminalId: tid,
+    terminalName: String(term.name || '').slice(0, 40),
+    status: 'open',
+    startingCash: cash,
+    openedAt: new Date().toISOString(),
+    openedBy: user && user.id ? user.id : 0,
+    openedByName: user && user.name ? String(user.name).slice(0, 40) : '',
+    autoOpened: true
+  };
+  store.nextId += 1;
+  store.shifts.push(row);
+  return { shift: row, created: true };
+}
+
 function addCashDrop(store, terminalId, amount, note, user) {
   const pay = money(amount);
   if (!Number.isFinite(pay) || pay <= 0) {
@@ -164,5 +194,6 @@ module.exports = {
   currentFor: currentFor,
   withExpected: withExpected,
   openShiftForTill: openShiftForTill,
+  ensureOpen: ensureOpen,
   addCashDrop: addCashDrop
 };

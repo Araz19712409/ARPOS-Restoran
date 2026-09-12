@@ -76,6 +76,10 @@ Ayarlar → E-kassa: fiskal aparat seçimi (`Heç biri`, WizarPOS, Omnitech, AzS
 
 **Faza 3.1:** stansiya → sklad. Bu kodda yoxdur.
 
+## Mətbəx
+
+`autoSendAllOnAccept` (default ON): qəbulda soyuq və isti printerə gedir; «İstini göndər» gizlənir. OFF: köhnə kurs növbəsi. `delivery.autoPrintKitchen`-dən ayrıdır.
+
 ## Versiya
 
 Hər buraxılış `package.json` və `VERSIONS.md` içində qeyd olunur.

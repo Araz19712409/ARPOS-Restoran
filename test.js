@@ -415,6 +415,25 @@ test('masa birləşməsi: linkedTableIds örtür', function () {
   assert.strictEqual(orders.coversTable({ status: 'paid', tableId: 3 }, 3), false);
 });
 
+test('növbə avtomatik açılır; ikinci dəfə toxunmur; açıq masa close blok', function () {
+  withTempDb(function () {
+    const store = { nextId: 1, shifts: [] };
+    const term = { id: 1, name: 'Kassa 1' };
+    const user = { id: 2, name: 'Ali' };
+    const first = shifts.ensureOpen(store, term, user, 0);
+    assert.ok(first.created);
+    assert.strictEqual(first.shift.startingCash, 0);
+    assert.strictEqual(first.shift.autoOpened, true);
+    const second = shifts.ensureOpen(store, term, user, 0);
+    assert.ok(!second.created);
+    assert.strictEqual(second.shift.id, first.shift.id);
+    const names = shifts.openTableNames([
+      { status: 'open', terminalId: 1, tableName: 'M1' }
+    ], 1);
+    assert.deepStrictEqual(names, ['M1']);
+  });
+});
+
 test('növbə nağd çıxarışı gözləniləndən düşür', function () {
   const at = '2026-09-07T12:00:00';
   const row = {
@@ -554,6 +573,20 @@ test('ayarlarda filial və sms sahəsi var', function () {
   assert.strictEqual(typeof cfg.sms.reserveText, 'string');
   assert.strictEqual(typeof cfg.vatPercent, 'number');
   assert.strictEqual(typeof cfg.branchCode, 'string');
+});
+
+test('qəbulda autoSendAllOnAccept isti kursu göndərir', function () {
+  const prev = settings.readSettings();
+  settings.writeSettings({ autoSendAllOnAccept: true });
+  const firedOn = settings.nextFiredCourse(1);
+  assert.strictEqual(firedOn, 2);
+  assert.strictEqual(settings.kitchenSendNow(2, firedOn), true);
+  settings.writeSettings({ autoSendAllOnAccept: false });
+  const firedOff = settings.nextFiredCourse(1);
+  assert.strictEqual(firedOff, 1);
+  assert.strictEqual(settings.kitchenSendNow(2, firedOff), false);
+  assert.strictEqual(settings.kitchenSendNow(2, 2), true);
+  settings.writeSettings({ autoSendAllOnAccept: prev.autoSendAllOnAccept !== false });
 });
 
 test('filial qiyməti və hesabat filtri', function () {

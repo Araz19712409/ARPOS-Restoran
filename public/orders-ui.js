@@ -44,6 +44,7 @@
   var busy = false;
   var waiter = null;
   var terminal = null;
+  var shiftPack = null;
   var locks = [];
   var lastReceipt = null;
   var pinBuffer = '';
@@ -243,6 +244,56 @@
     drawWaiterLine();
   }
 
+  function money(value) {
+    return Number(value || 0).toFixed(2);
+  }
+
+  function refreshShiftBadge() {
+    var btn = document.getElementById('shift-z-open');
+    if (!btn) {
+      return Promise.resolve();
+    }
+    var show = !!(waiter && can('payments.take') && terminal);
+    btn.style.display = show ? '' : 'none';
+    if (!show) {
+      btn.textContent = 'Növbə / Z';
+      return Promise.resolve();
+    }
+    return api('/api/shifts?terminalId=' + encodeURIComponent(terminal.id)).then(function (body) {
+      shiftPack = body.data || {};
+      btn.textContent = shiftPack.current ? 'Növbə: Açıq' : 'Növbə: Yox';
+    }).catch(function () {
+      btn.textContent = 'Növbə / Z';
+    });
+  }
+
+  function fillShiftModal() {
+    var status = document.getElementById('shift-z-status');
+    var tablesEl = document.getElementById('shift-z-tables');
+    var expected = document.getElementById('shift-z-expected');
+    var counted = document.getElementById('shift-z-counted');
+    var closeBtn = document.getElementById('shift-z-close');
+    var cur = shiftPack && shiftPack.current;
+    var openList = (shiftPack && shiftPack.openTables) || [];
+    status.textContent = cur ? 'Açıq' : 'Yox';
+    tablesEl.textContent = openList.length ? ('Açıq masa: ' + openList.join(', ') + '. Əvvəl bağlayın.') : '';
+    expected.textContent = cur ? ('Gözlənilən: ' + money(cur.expectedCash) + ' AZN') : '';
+    if (counted && document.activeElement !== counted) {
+      counted.value = cur ? money(cur.expectedCash) : '';
+    }
+    closeBtn.disabled = !cur || openList.length > 0 || !can('payments.take');
+  }
+
+  function openShiftModal() {
+    if (!can('payments.take') || !terminal) {
+      return;
+    }
+    refreshShiftBadge().then(function () {
+      fillShiftModal();
+      document.getElementById('shift-z-modal').classList.remove('hidden');
+    });
+  }
+
   function drawWaiterLine() {
     if (waiter && terminal) {
       document.getElementById('waiter-line').textContent = waiter.user.name + ' • ' + terminal.name;
@@ -251,6 +302,7 @@
     } else {
       document.getElementById('waiter-line').textContent = 'PIN ilə daxil olun.';
     }
+    refreshShiftBadge();
   }
 
   function showTerminalPick(list) {
@@ -469,6 +521,7 @@
           low.slice(0, 6).map(function (row) { return row.name; }).join(', '), 'warn');
       }
       render();
+      refreshShiftBadge();
     }).catch(function (error) {
       say(error.message, 'err');
     });
@@ -1113,8 +1166,17 @@
     var held = !!(order && (order.items || []).some(function (item) {
       return !item.voided && !item.sent;
     }));
-    document.getElementById('fire-course').style.display =
-      held && can('orders.create') ? '' : 'none';
+    var fireBtn = document.getElementById('fire-course');
+    var autoAll = settings.autoSendAllOnAccept !== false;
+    if (autoAll) {
+      fireBtn.style.display = 'none';
+      fireBtn.disabled = true;
+      fireBtn.title = 'Qəbulda bütün kurslar mətbəxə gedir.';
+    } else {
+      fireBtn.disabled = false;
+      fireBtn.title = '';
+      fireBtn.style.display = held && can('orders.create') ? '' : 'none';
+    }
     document.getElementById('handoff-open').style.display =
       order && can('orders.create') ? '' : 'none';
     document.getElementById('merge-open').style.display =
@@ -1428,6 +1490,42 @@
 
   document.getElementById('switch-terminal').addEventListener('click', function () {
     ensureTerminal(true);
+  });
+  document.getElementById('shift-z-open').addEventListener('click', openShiftModal);
+  document.getElementById('shift-z-cancel').addEventListener('click', function () {
+    document.getElementById('shift-z-modal').classList.add('hidden');
+  });
+  document.getElementById('shift-z-form').addEventListener('submit', function (event) {
+    event.preventDefault();
+    if (!can('payments.take') || !terminal) {
+      return;
+    }
+    var openList = (shiftPack && shiftPack.openTables) || [];
+    if (openList.length) {
+      say('Açıq masa var: ' + openList.join(', ') + '.', 'err');
+      return;
+    }
+    api('/api/shifts/close', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        terminalId: terminal.id,
+        countedCash: dec(document.getElementById('shift-z-counted').value)
+      })
+    }).then(function (body) {
+      var diff = body.data && body.data.difference;
+      var msg = diff === 0 ? 'Növbə bağlandı. Çekmece tutdu.' : ('Növbə bağlandı. Fərq: ' + money(diff));
+      if (body.warning) {
+        msg += ' ' + body.warning;
+      } else {
+        msg += ' Z çapıldı.';
+      }
+      say(msg, body.warning ? 'warn' : 'ok');
+      document.getElementById('shift-z-modal').classList.add('hidden');
+      return refreshShiftBadge();
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
   });
 
   pingTimer = window.setInterval(function () {

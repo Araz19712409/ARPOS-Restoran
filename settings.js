@@ -32,6 +32,22 @@ function cleanStock(raw) {
   };
 }
 
+function emptyShift() {
+  return {
+    autoOpenOnSale: true,
+    defaultStartingCash: 0
+  };
+}
+
+function cleanShift(raw) {
+  const src = raw && raw.shift && typeof raw.shift === 'object' ? raw.shift : {};
+  const cash = Number(src.defaultStartingCash);
+  return {
+    autoOpenOnSale: src.autoOpenOnSale !== false,
+    defaultStartingCash: Number.isFinite(cash) && cash >= 0 ? Number(cash.toFixed(2)) : 0
+  };
+}
+
 function emptyDelivery() {
   return {
     provider: 'manual',
@@ -140,6 +156,8 @@ function defaults() {
     ekassa: emptyEkassa(),
     delivery: emptyDelivery(),
     stock: emptyStock(),
+    autoSendAllOnAccept: true,
+    shift: emptyShift(),
     opsMode: 'full',
     listenLan: true,
     httpsPort: 3443,
@@ -531,6 +549,8 @@ function normalize(raw, prev) {
     ekassa: cleanEkassa(raw),
     delivery: cleanDelivery(raw),
     stock: cleanStock(raw),
+    autoSendAllOnAccept: raw && raw.autoSendAllOnAccept === false ? false : true,
+    shift: cleanShift(raw),
     opsMode: cleanOpsMode(raw && raw.opsMode),
     listenLan: raw && Object.prototype.hasOwnProperty.call(raw, 'listenLan')
       ? cleanListenLan(raw.listenLan)
@@ -564,6 +584,8 @@ function writeSettings(data) {
     ekassa: data.ekassa !== undefined ? data.ekassa : prev.ekassa,
     delivery: data.delivery !== undefined ? data.delivery : prev.delivery,
     stock: data.stock !== undefined ? data.stock : prev.stock,
+    autoSendAllOnAccept: data.autoSendAllOnAccept !== undefined ? data.autoSendAllOnAccept : prev.autoSendAllOnAccept,
+    shift: data.shift !== undefined ? data.shift : prev.shift,
     opsMode: data.opsMode !== undefined ? data.opsMode : prev.opsMode,
     listenLan: data.listenLan !== undefined ? data.listenLan : prev.listenLan,
     httpsPort: data.httpsPort !== undefined ? data.httpsPort : prev.httpsPort,
@@ -624,6 +646,24 @@ function billParts(itemsTotal, waiterId, cfg, discount) {
   };
 }
 
+function autoSendAllOnAccept(cfg) {
+  const row = cfg || readSettings();
+  return row.autoSendAllOnAccept !== false;
+}
+
+function nextFiredCourse(firedCourse, cfg) {
+  const cur = Math.max(1, Number(firedCourse) || 1);
+  return autoSendAllOnAccept(cfg) ? Math.max(cur, 2) : cur;
+}
+
+function kitchenSendNow(course, firedCourse, cfg) {
+  if (autoSendAllOnAccept(cfg)) {
+    return true;
+  }
+  const n = Number(course);
+  return n === 0 || n <= Number(firedCourse || 1);
+}
+
 module.exports = {
   readSettings: readSettings,
   writeSettings: writeSettings,
@@ -641,5 +681,8 @@ module.exports = {
   forPos: forPos,
   publicEkassa: publicEkassa,
   publicDelivery: publicDelivery,
-  emptyDelivery: emptyDelivery
+  emptyDelivery: emptyDelivery,
+  autoSendAllOnAccept: autoSendAllOnAccept,
+  nextFiredCourse: nextFiredCourse,
+  kitchenSendNow: kitchenSendNow
 };

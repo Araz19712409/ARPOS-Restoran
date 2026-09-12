@@ -35,6 +35,7 @@
           <a href="/settings.html" data-need="settings.view">Ayarlar</a>
         </div>
       </details>
+      <button id="shift-z-open" type="button" style="display:none">Növbə / Z</button>
       <button id="switch-terminal" type="button">Terminal</button>
       <button id="logout" type="button">Çıxış</button>
     </nav>
@@ -391,6 +392,22 @@
         <button id="receipt-print" class="gold" type="button">Çap et</button>
       </div>
     </div>
+  </div>
+
+  <div id="shift-z-modal" class="modal hidden">
+    <form id="shift-z-form" class="modal-card">
+      <h3>Növbə / Z</h3>
+      <p id="shift-z-status" class="hint">Yox</p>
+      <p id="shift-z-tables" class="hint"></p>
+      <p id="shift-z-expected" class="hint"></p>
+      <label>Sayılan nağd
+        <input id="shift-z-counted" type="text" inputmode="decimal" autocomplete="off" required>
+      </label>
+      <div class="modal-actions">
+        <button id="shift-z-cancel" type="button">Bağla</button>
+        <button id="shift-z-close" class="gold" type="submit">Növbəni bağla</button>
+      </div>
+    </form>
   </div>
 
   <div id="pin-lock" class="pin-lock">

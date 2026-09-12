@@ -176,6 +176,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 160. [x] 1.2.16 — Çatdırılma Faza 1: manual + stub webhook, delivery.html (real Wolt yox)
 161. [x] 1.2.17 — Anbar Faza 1: inventar sənədi + silinmə (istehsal/multi-sklad yox)
 162. [x] 1.2.18 — Anbar Faza 2+3: istehsal + multi-sklad (nested semi və stansiya xəritəsi yox)
+163. [x] 1.2.19 — Qəbulda bütün kurslar + növbə avto-açılış və sifarişdə Z
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı

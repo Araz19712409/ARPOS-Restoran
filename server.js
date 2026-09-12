@@ -2040,6 +2040,8 @@ app.put('/api/settings', function (req, res) {
       ekassa: body.ekassa,
       delivery: body.delivery,
       stock: body.stock,
+      autoSendAllOnAccept: body.autoSendAllOnAccept,
+      shift: body.shift,
       opsMode: body.opsMode,
       listenLan: body.listenLan,
       branchName: body.branchName,
@@ -2413,6 +2415,32 @@ function audit(req, kind, text) {
   });
 }
 
+function ensureShiftAuto(req, terminal) {
+  const store = shifts.readStore();
+  const have = shifts.currentFor(store, terminal.id);
+  if (have) {
+    return have;
+  }
+  const cfg = settings.readSettings();
+  if (cfg.shift && cfg.shift.autoOpenOnSale === false) {
+    reject(400, 'Əvvəlcə növbə açın.');
+  }
+  const out = shifts.ensureOpen(
+    store,
+    terminal,
+    req.staff && req.staff.user,
+    cfg.shift && cfg.shift.defaultStartingCash
+  );
+  if (out.error) {
+    reject(400, out.error);
+  }
+  shifts.writeStore(store);
+  if (out.created) {
+    audit(req, 'shift', (terminal.name || '') + ' — növbə avtomatik açıldı');
+  }
+  return out.shift;
+}
+
 function needTerminal(body) {
   const terminal = terminals.getById(body && body.terminalId);
   if (!terminal) {
@@ -2726,6 +2754,7 @@ app.post('/api/orders/accept', async function (req, res) {
         reject(403, staff ? 'Sifariş yazmağa icazəniz yoxdur.' : 'PIN ilə daxil olun.');
       }
       const terminal = needTerminal(body);
+      ensureShiftAuto(req, terminal);
       const tableId = Number(body.tableId);
       const lines = Array.isArray(body.items) ? body.items : [];
       const layout = readLayout();
@@ -2764,6 +2793,11 @@ app.post('/api/orders/accept', async function (req, res) {
       order.branchName = stamp.name;
       const fresh = [];
       const added = [];
+      const cfg = settings.readSettings();
+      if (!order.firedCourse) {
+        order.firedCourse = 1;
+      }
+      order.firedCourse = settings.nextFiredCourse(order.firedCourse, cfg);
 
       for (let i = 0; i < lines.length; i += 1) {
         const line = lines[i];
@@ -2794,10 +2828,7 @@ app.post('/api/orders/accept', async function (req, res) {
           course: line.course != null ? line.course : product.course,
           stationId: product.stationId
         });
-        if (!order.firedCourse) {
-          order.firedCourse = 1;
-        }
-        const sendNow = course === 0 || course <= Number(order.firedCourse);
+        const sendNow = settings.kitchenSendNow(course, order.firedCourse, cfg);
         const complimentary = !!line.complimentary;
         const item = {
           id: store.nextItemId,
@@ -2849,7 +2880,7 @@ app.post('/api/orders/accept', async function (req, res) {
             course: catalog.courseOf(child),
             complimentary: true,
             allergens: catalog.parseAllergens(child.allergens),
-            sent: catalog.courseOf(child) === 0 || catalog.courseOf(child) <= Number(order.firedCourse),
+            sent: settings.kitchenSendNow(catalog.courseOf(child), order.firedCourse, cfg),
             sentAt: '',
             costPrice: stock.lineCost(child, null, { modifiers: [] }),
             kitchenDone: false,
@@ -3334,9 +3365,7 @@ app.post('/api/orders/pay', function (req, res) {
       reject(404, 'Açıq hesab tapılmadı.');
     }
     needOrderTables(order, terminal);
-    if (!shifts.currentFor(shifts.readStore(), terminal.id)) {
-      reject(400, 'Əvvəlcə növbə açın.');
-    }
+    ensureShiftAuto(req, terminal);
     const held = (order.items || []).some(function (item) {
       return !item.voided && !item.sent;
     });
@@ -3701,9 +3730,7 @@ app.post('/api/reservations/:id/prepay', function (req, res) {
     if (!terminal) {
       reject(400, 'Terminal seçin.');
     }
-    if (!shifts.currentFor(shifts.readStore(), terminal.id)) {
-      reject(400, 'Əvvəlcə növbə açın.');
-    }
+    ensureShiftAuto(req, terminal);
     const cashAmount = stock.parseDec(body.cashAmount);
     const cardAmount = stock.parseDec(body.cardAmount);
     if (!Number.isFinite(cashAmount) || !Number.isFinite(cardAmount) || cashAmount < 0 || cardAmount < 0) {
@@ -5050,6 +5077,13 @@ app.post('/api/shifts/close', function (req, res) {
     packed.terminalName = result.terminalName;
     packed.branchName = settings.readSettings().branchName || '';
     printers.sendZTickets(packed).then(function (print) {
+      return fiscal.probe('close').then(function () {
+        return print || {};
+      }).catch(function () {
+        const warn = (print && print.warning) ? print.warning + ' ' : '';
+        return { warning: warn + 'E-kassa növbə bağlanması alınmadı.' };
+      });
+    }).then(function (print) {
       res.json({
         success: true,
         data: packed,

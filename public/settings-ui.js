@@ -453,7 +453,14 @@
         sms: smsPayload(),
         update: updatePayload(),
         backupGithub: backupGithubPayload(),
-        tillLocked: !!(document.getElementById('till-locked') && document.getElementById('till-locked').checked)
+        tillLocked: !!(document.getElementById('till-locked') && document.getElementById('till-locked').checked),
+        shift: {
+          autoOpenOnSale: !(document.getElementById('shift-auto-open') &&
+            !document.getElementById('shift-auto-open').checked),
+          defaultStartingCash: 0
+        },
+        autoSendAllOnAccept: !(document.getElementById('auto-send-all') &&
+          !document.getElementById('auto-send-all').checked)
       })
     }).then(function (body) {
       current = body.data || current;
@@ -559,6 +566,10 @@
     if (tillBox) {
       tillBox.checked = current.tillLocked === true;
     }
+    var shiftAuto = document.getElementById('shift-auto-open');
+    if (shiftAuto) {
+      shiftAuto.checked = !(current.shift && current.shift.autoOpenOnSale === false);
+    }
     document.getElementById('backup-folder').value = current.backupFolder || '';
     var ek = current.ekassa || {};
     var del = current.delivery || {};
@@ -602,6 +613,10 @@
     var mode = current.opsMode === 'sales' ? 'sales' : 'full';
     document.getElementById('ops-sales').checked = mode === 'sales';
     document.getElementById('ops-full').checked = mode === 'full';
+    var autoSend = document.getElementById('auto-send-all');
+    if (autoSend) {
+      autoSend.checked = current.autoSendAllOnAccept !== false;
+    }
     var saleWh = document.getElementById('sales-warehouse');
     if (saleWh) {
       var list = body.data.warehouses || [];
