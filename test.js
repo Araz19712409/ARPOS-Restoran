@@ -16,6 +16,7 @@ const books = require('./books');
 const clock = require('./clock');
 const offline = require('./public/offline.js');
 const num = require('./num');
+const money = require('./public/money.js');
 const db = require('./db');
 const totp = require('./totp');
 const backup = require('./backup');
@@ -97,6 +98,123 @@ test('qəpik qismən ödəniş qalığı', function () {
   };
   assert.strictEqual(orders.orderTotal(order), 0.3);
   assert.strictEqual(orders.paidTotal(order), 0.1);
+});
+
+function clientBillAfter(order, serviceChargePercent) {
+  let itemsM = 0;
+  (order.items || []).forEach(function (item) {
+    if (!item.voided) {
+      itemsM = money.addMinor(itemsM, money.mulQty(money.toMinor(item.salePrice), item.qty));
+    }
+  });
+  const d = order.discount;
+  let offM = 0;
+  if (d && !d.cleared) {
+    if (d.type === 'percent') {
+      let pct = money.parseDec(d.value);
+      if (!Number.isFinite(pct)) {
+        pct = 0;
+      }
+      pct = Math.min(100, Math.max(0, pct));
+      offM = Math.round(itemsM * pct / 100);
+    } else {
+      offM = Math.min(itemsM, Math.max(0, money.toMinor(d.value != null ? d.value : d.amount)));
+    }
+  }
+  const afterM = Math.max(0, money.subMinor(itemsM, offM));
+  const serviceM = Math.round(afterM * (Number(serviceChargePercent) || 0) / 100);
+  const tipM = money.toMinor(order.tipAmount);
+  return {
+    items: money.fromMinor(itemsM),
+    off: money.fromMinor(offM),
+    after: money.fromMinor(afterM),
+    service: money.fromMinor(serviceM),
+    tip: money.fromMinor(tipM),
+    total: money.fromMinor(money.addMinor(money.addMinor(afterM, serviceM), tipM))
+  };
+}
+
+function clientPaid(order) {
+  let sum = 0;
+  (order.payments || []).forEach(function (row) {
+    sum = money.addMinor(sum, money.toMinor(row.cashAmount));
+    sum = money.addMinor(sum, money.toMinor(row.cardAmount));
+    sum = money.addMinor(sum, money.toMinor(row.giftAmount));
+  });
+  return money.fromMinor(sum);
+}
+
+function clientRemaining(order, cfg, prepaid) {
+  const parts = clientBillAfter(order, cfg.serviceChargePercent);
+  return money.fromMinor(Math.max(0, money.subMinor(
+    money.subMinor(money.toMinor(parts.total), money.toMinor(prepaid || 0)),
+    money.toMinor(clientPaid(order))
+  )));
+}
+
+function clientShare(remaining, n) {
+  const remM = money.toMinor(remaining);
+  let shareM = n === 1 ? remM : Math.round(remM / n);
+  if (money.subMinor(remM, shareM) <= 1) {
+    shareM = remM;
+  }
+  return money.fromMinor(shareM);
+}
+
+function stickMix(cash, card, due) {
+  const dueM = money.toMinor(due);
+  let cashM = money.toMinor(cash);
+  let cardM = money.toMinor(card);
+  const gap = money.subMinor(dueM, money.addMinor(cashM, cardM));
+  if (gap !== 0) {
+    if (cardM > 0) {
+      cardM = money.addMinor(cardM, gap);
+    } else {
+      cashM = money.addMinor(cashM, gap);
+    }
+  }
+  return { cash: money.fromMinor(cashM), card: money.fromMinor(cardM), gift: 0 };
+}
+
+test('client money.js num.js ilə eynidir', function () {
+  assert.strictEqual(money.fromMinor(money.addMinor(money.toMinor(0.1), money.toMinor(0.2))), 0.3);
+  assert.strictEqual(money.toMinor(0.1), num.toMinor(0.1));
+  assert.strictEqual(money.mulQty(money.toMinor(0.1), 2), num.mulQty(num.toMinor(0.1), 2));
+});
+
+test('client billAfter = billParts + tip (0.1+0.2, xidmət 18%)', function () {
+  const order = {
+    items: [{ salePrice: 0.1, qty: 1 }, { salePrice: 0.2, qty: 1 }],
+    tipAmount: 1,
+    payments: []
+  };
+  const cfg = { serviceChargePercent: 18, waiterBonuses: {} };
+  const serverParts = settings.billParts(orders.orderTotal(order), 1, cfg, order.discount);
+  const client = clientBillAfter(order, 18);
+  assert.strictEqual(client.items, serverParts.itemsTotal);
+  assert.strictEqual(client.service, serverParts.serviceCharge);
+  assert.strictEqual(client.tip, 1);
+  assert.strictEqual(client.total, num.fromMinor(num.addMinor(num.toMinor(serverParts.total), num.toMinor(1))));
+  const remaining = clientRemaining(order, cfg, 0);
+  const serverRem = num.fromMinor(Math.max(0, num.subMinor(
+    num.addMinor(num.toMinor(serverParts.total), num.toMinor(1)),
+    0
+  )));
+  assert.strictEqual(remaining, serverRem);
+  assert.strictEqual(remaining, 1.35);
+});
+
+test('client payDue mix və 3 pay payDueM-ə yapışır', function () {
+  const remaining = 10.01;
+  const share = clientShare(remaining, 3);
+  assert.strictEqual(share, 3.34);
+  const mix = stickMix(1.11, 2.22, share);
+  assert.strictEqual(num.addMinor(num.toMinor(mix.cash), num.toMinor(mix.card)), num.toMinor(share));
+  const gift = 0;
+  assert.strictEqual(
+    num.addMinor(num.addMinor(num.toMinor(mix.cash), num.toMinor(mix.card)), num.toMinor(gift)),
+    num.toMinor(share)
+  );
 });
 
 test('PIN qaydaları', function () {

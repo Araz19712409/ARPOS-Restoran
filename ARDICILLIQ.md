@@ -169,6 +169,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 153. [x] 1.2.9 — Ayarlar: 8 tab, bir Yadda saxla
 154. [x] 1.2.10 — Hesabatlar hub: 4 tab, bir toolbar
 155. [x] 1.2.11 — Sifariş: 3 zona, çek iyerarxiyası
+156. [x] 1.2.12 — Ödəniş: qəpik hizası (cash+card+gift = pay)
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı

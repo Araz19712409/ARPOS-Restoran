@@ -14,10 +14,14 @@
   var tableFilter = 'all';
   var payLock = false;
 
+  var M = window.PosMoney;
+
   function dec(value) {
-    return window.PosNav && window.PosNav.parseDec
-      ? window.PosNav.parseDec(value)
-      : Number(String(value == null ? '' : value).replace(',', '.'));
+    return M && M.parseDec
+      ? M.parseDec(value)
+      : (window.PosNav && window.PosNav.parseDec
+        ? window.PosNav.parseDec(value)
+        : Number(String(value == null ? '' : value).replace(',', '.')));
   }
   var payMode = 'order';
   var payDue = 0;
@@ -1211,40 +1215,35 @@
       box.appendChild(row);
     });
 
-    var items = 0;
-    sent.forEach(function (item) {
-      if (!item.voided) {
-        items += Number(item.salePrice) * Number(item.qty);
-      }
-    });
-    pending.forEach(function (item) { items += Number(item.salePrice) * Number(item.qty); });
     var order = openOrder();
-    var off = discountOff(order, items);
-    var after = Number((Math.max(0, items - off)).toFixed(2));
-    var service = serviceOf(after);
-    document.getElementById('check-items').textContent = items.toFixed(2) + ' AZN';
+    var view = {
+      items: sent.concat(pending),
+      discount: order && order.discount,
+      tipAmount: order && order.tipAmount
+    };
+    var parts = billAfter(view);
+    document.getElementById('check-items').textContent = parts.items.toFixed(2) + ' AZN';
     var discRow = document.getElementById('check-discount-row');
-    if (off > 0) {
+    if (parts.off > 0) {
       discRow.classList.remove('hidden');
       document.getElementById('check-discount-label').textContent =
-        'Endirim' + (order.discount && order.discount.type === 'percent' ? ' (' + order.discount.value + '%)' : '');
-      document.getElementById('check-discount').textContent = '-' + off.toFixed(2) + ' AZN';
+        'Endirim' + (order && order.discount && order.discount.type === 'percent' ? ' (' + order.discount.value + '%)' : '');
+      document.getElementById('check-discount').textContent = '-' + parts.off.toFixed(2) + ' AZN';
     } else {
       discRow.classList.add('hidden');
     }
-    document.getElementById('check-service').textContent = service.toFixed(2) + ' AZN';
+    document.getElementById('check-service').textContent = parts.service.toFixed(2) + ' AZN';
     document.getElementById('check-service-label').textContent =
       'Xidmət' + (settings.serviceChargePercent ? ' (' + settings.serviceChargePercent + '%)' : '');
     document.getElementById('check-service-row').style.display = '';
-    var tip = Number(order && order.tipAmount) || 0;
     var tipRow = document.getElementById('check-tip-row');
-    if (tip > 0) {
+    if (parts.tip > 0) {
       tipRow.classList.remove('hidden');
-      document.getElementById('check-tip').textContent = tip.toFixed(2) + ' AZN';
+      document.getElementById('check-tip').textContent = parts.tip.toFixed(2) + ' AZN';
     } else {
       tipRow.classList.add('hidden');
     }
-    document.getElementById('check-total').textContent = (after + service + tip).toFixed(2) + ' AZN';
+    document.getElementById('check-total').textContent = parts.total.toFixed(2) + ' AZN';
   }
 
   function render() {
@@ -1498,52 +1497,86 @@
     });
   });
 
-  function serviceOf(items) {
+  function lineMinor(item) {
+    return M.mulQty(M.toMinor(item && item.salePrice), item && item.qty);
+  }
+
+  function sumItemsMinor(items) {
+    var total = 0;
+    (items || []).forEach(function (item) {
+      if (!item.voided) {
+        total = M.addMinor(total, lineMinor(item));
+      }
+    });
+    return total;
+  }
+
+  function serviceOfMinor(afterM) {
     var pct = Number(settings.serviceChargePercent) || 0;
-    return Number((items * pct / 100).toFixed(2));
+    return Math.round(afterM * pct / 100);
+  }
+
+  function serviceOf(items) {
+    return M.fromMinor(serviceOfMinor(M.toMinor(items)));
+  }
+
+  function billItemsMinor(order) {
+    return sumItemsMinor(order && order.items);
   }
 
   function billItems(order) {
-    var total = 0;
-    (order && order.items || []).forEach(function (item) {
-      if (!item.voided) {
-        total += Number(item.salePrice) * Number(item.qty);
-      }
-    });
-    return Number(total.toFixed(2));
+    return M.fromMinor(billItemsMinor(order));
   }
 
-  function discountOff(order, items) {
+  function discountOffMinor(order, itemsM) {
     var d = order && order.discount;
-    if (!d) {
+    if (!d || d.cleared) {
       return 0;
     }
     if (d.type === 'percent') {
-      return Number((items * Number(d.value) / 100).toFixed(2));
+      var pct = M.parseDec(d.value);
+      if (!Number.isFinite(pct)) {
+        pct = 0;
+      }
+      pct = Math.min(100, Math.max(0, pct));
+      return Math.round(itemsM * pct / 100);
     }
-    return Number(Math.min(items, Math.max(0, Number(d.value) || 0)).toFixed(2));
+    var amt = M.toMinor(d.value != null ? d.value : d.amount);
+    return Math.min(itemsM, Math.max(0, amt));
+  }
+
+  function discountOff(order, items) {
+    return M.fromMinor(discountOffMinor(order, M.toMinor(items)));
   }
 
   function billAfter(order) {
-    var items = billItems(order);
-    var off = discountOff(order, items);
-    var after = Number(Math.max(0, items - off).toFixed(2));
-    var service = serviceOf(after);
+    var itemsM = billItemsMinor(order);
+    var offM = discountOffMinor(order, itemsM);
+    var afterM = Math.max(0, M.subMinor(itemsM, offM));
+    var serviceM = serviceOfMinor(afterM);
+    var tipM = M.toMinor(order && order.tipAmount);
     return {
-      items: items,
-      off: off,
-      after: after,
-      service: service,
-      tip: Number(order && order.tipAmount) || 0,
-      total: Number((after + service + (Number(order && order.tipAmount) || 0)).toFixed(2))
+      items: M.fromMinor(itemsM),
+      off: M.fromMinor(offM),
+      after: M.fromMinor(afterM),
+      service: M.fromMinor(serviceM),
+      tip: M.fromMinor(tipM),
+      total: M.fromMinor(M.addMinor(M.addMinor(afterM, serviceM), tipM))
     };
   }
 
+  function paidSharesMinor(order) {
+    var sum = 0;
+    (order && order.payments || []).forEach(function (row) {
+      sum = M.addMinor(sum, M.toMinor(row.cashAmount));
+      sum = M.addMinor(sum, M.toMinor(row.cardAmount));
+      sum = M.addMinor(sum, M.toMinor(row.giftAmount));
+    });
+    return sum;
+  }
+
   function paidShares(order) {
-    return (order && order.payments || []).reduce(function (sum, row) {
-      return sum + Number(row.cashAmount || 0) + Number(row.cardAmount || 0) +
-        Number(row.giftAmount || 0);
-    }, 0);
+    return M.fromMinor(paidSharesMinor(order));
   }
 
   function billTotal(order) {
@@ -1589,17 +1622,20 @@
     if (lines.length === openLines(order).length) {
       return remaining;
     }
-    var pickSum = lines.reduce(function (sum, item) {
-      return sum + Number(item.salePrice) * Number(item.qty);
-    }, 0);
-    var openSum = openLines(order).reduce(function (sum, item) {
-      return sum + Number(item.salePrice) * Number(item.qty);
-    }, 0);
-    var raw = openSum > 0 ? Number((remaining * pickSum / openSum).toFixed(2)) : 0;
-    if (remaining - raw <= 0.01) {
-      return remaining;
+    var remM = M.toMinor(remaining);
+    var pickM = 0;
+    lines.forEach(function (item) {
+      pickM = M.addMinor(pickM, lineMinor(item));
+    });
+    var openM = 0;
+    openLines(order).forEach(function (item) {
+      openM = M.addMinor(openM, lineMinor(item));
+    });
+    var shareM = openM > 0 ? Math.round(remM * pickM / openM) : 0;
+    if (M.subMinor(remM, shareM) <= 1) {
+      shareM = remM;
     }
-    return raw;
+    return M.fromMinor(shareM);
   }
 
   function fillPayPicks(order) {
@@ -1664,7 +1700,7 @@
       lab.appendChild(box);
       var text = document.createElement('span');
       text.textContent = item.qty + '× ' + item.name + ' · ' +
-        (Number(item.salePrice) * Number(item.qty)).toFixed(2);
+        M.fromMinor(lineMinor(item)).toFixed(2);
       lab.appendChild(text);
       pickBox.appendChild(lab);
     });
@@ -1675,16 +1711,17 @@
   }
 
   function currentShare(remaining, order) {
+    var remM = M.toMinor(remaining);
     if (splitFrozen(order)) {
       var frozenN = Number(order.splitCount);
-      var frozen = Number(order.splitShare);
-      if (!Number.isFinite(frozen) || frozen <= 0) {
-        frozen = Number((remaining / frozenN).toFixed(2));
+      var frozenM = M.toMinor(order.splitShare);
+      if (frozenM <= 0) {
+        frozenM = Math.round(remM / frozenN);
       }
-      if (remaining - frozen <= 0.01) {
-        frozen = remaining;
+      if (M.subMinor(remM, frozenM) <= 1) {
+        frozenM = remM;
       }
-      return { n: frozenN, share: frozen };
+      return { n: frozenN, share: M.fromMinor(frozenM) };
     }
     var n = Number(document.getElementById('pay-split').value);
     if (!Number.isInteger(n) || n < 1) {
@@ -1693,11 +1730,11 @@
     if (n > 10) {
       n = 10;
     }
-    var share = n === 1 ? remaining : Number((remaining / n).toFixed(2));
-    if (remaining - share <= 0.01) {
-      share = remaining;
+    var shareM = n === 1 ? remM : Math.round(remM / n);
+    if (M.subMinor(remM, shareM) <= 1) {
+      shareM = remM;
     }
-    return { n: n, share: share };
+    return { n: n, share: M.fromMinor(shareM) };
   }
 
   function setSplitLocked(order) {
@@ -1723,7 +1760,7 @@
   function setPayRow(wrapId, valueId, amount) {
     var wrap = document.getElementById(wrapId);
     var value = document.getElementById(valueId);
-    var show = amount > 0.001;
+    var show = M.toMinor(amount) > 0;
     wrap.classList.toggle('hidden', !show);
     if (show) {
       value.textContent = amount.toFixed(2);
@@ -1743,18 +1780,65 @@
   function fillPayQuick(cash) {
     var box = document.getElementById('pay-quick');
     var steps = [1, 5, 10, 20, 50, 100, 200];
-    var vals = [Number(cash.toFixed(2))];
+    var cashM = M.toMinor(cash);
+    var vals = [M.fromMinor(cashM)];
     steps.forEach(function (step) {
-      var next = Number((Math.ceil(cash / step) * step).toFixed(2));
-      if (next > cash + 0.001 && vals.indexOf(next) < 0) {
+      var stepM = M.toMinor(step);
+      var nextM = Math.ceil(cashM / stepM) * stepM;
+      var next = M.fromMinor(nextM);
+      if (nextM > cashM && vals.indexOf(next) < 0) {
         vals.push(next);
       }
     });
     vals = vals.slice(0, 6);
     box.innerHTML = vals.map(function (amount) {
-      var label = Math.abs(amount - cash) < 0.001 ? 'Tam' : String(amount);
+      var label = M.toMinor(amount) === cashM ? 'Tam' : String(amount);
       return '<button type="button" data-tender="' + amount.toFixed(2) + '">' + label + '</button>';
     }).join('');
+  }
+
+  function clampDueMinor(n, dueM) {
+    n = Math.round(Number(n) || 0);
+    if (n < 0) {
+      return 0;
+    }
+    if (n > dueM) {
+      return dueM;
+    }
+    return n;
+  }
+
+  function splitDueMinor(source, cashM, cardM, dueM) {
+    dueM = Math.max(0, Math.round(Number(dueM) || 0));
+    cashM = Math.round(Number(cashM) || 0);
+    cardM = Math.round(Number(cardM) || 0);
+    if (source === 'cash') {
+      cashM = clampDueMinor(cashM, dueM);
+      cardM = M.subMinor(dueM, cashM);
+    } else if (source === 'card') {
+      cardM = clampDueMinor(cardM, dueM);
+      cashM = M.subMinor(dueM, cardM);
+    } else {
+      cashM = Math.max(0, cashM);
+      cardM = Math.max(0, cardM);
+      var gap = M.subMinor(dueM, M.addMinor(cashM, cardM));
+      if (gap !== 0) {
+        if (cardM > 0) {
+          cardM = M.addMinor(cardM, gap);
+        } else {
+          cashM = M.addMinor(cashM, gap);
+        }
+        if (cashM < 0) {
+          cardM = M.addMinor(cardM, cashM);
+          cashM = 0;
+        }
+        if (cardM < 0) {
+          cashM = M.addMinor(cashM, cardM);
+          cardM = 0;
+        }
+      }
+    }
+    return { cash: cashM, card: cardM };
   }
 
   function setPayMethod(method) {
@@ -1798,40 +1882,28 @@
       return;
     }
     payLock = true;
-    var total = payDue;
+    var dueM = M.toMinor(payDue);
     var cashInput = document.getElementById('pay-cash-amt');
     var cardInput = document.getElementById('pay-card-amt');
-    var cash = dec(cashInput.value);
-    var card = dec(cardInput.value);
+    var split = splitDueMinor(source, M.toMinor(cashInput.value), M.toMinor(cardInput.value), dueM);
+    var cash = M.fromMinor(split.cash);
+    var card = M.fromMinor(split.card);
     var changeEl = document.getElementById('pay-change');
-    if (!Number.isFinite(cash)) {
-      cash = 0;
-    }
-    if (!Number.isFinite(card)) {
-      card = 0;
-    }
-    if (source === 'cash') {
-      cash = Math.min(total, Math.max(0, cash));
-      card = Number((total - cash).toFixed(2));
-    } else if (source === 'card') {
-      card = Math.min(total, Math.max(0, card));
-      cash = Number((total - card).toFixed(2));
-    }
     cashInput.value = cash.toFixed(2);
     cardInput.value = card.toFixed(2);
-    document.getElementById('tender-wrap').style.display = cash > 0 ? '' : 'none';
-    if (cash > 0) {
-      var given = dec(document.getElementById('pay-tendered').value);
-      if (!Number.isFinite(given) || given < cash) {
+    document.getElementById('tender-wrap').style.display = split.cash > 0 ? '' : 'none';
+    if (split.cash > 0) {
+      var givenM = M.toMinor(document.getElementById('pay-tendered').value);
+      if (givenM < split.cash) {
         document.getElementById('pay-tendered').value = cash.toFixed(2);
-        given = cash;
+        givenM = split.cash;
       }
-      var leftover = Number((given - cash).toFixed(2));
-      changeEl.textContent = leftover > 0 ? ('Qalıq: ' + leftover.toFixed(2) + ' AZN') : 'Tam ödənir';
-      changeEl.classList.toggle('is-zero', leftover <= 0);
+      var leftoverM = M.subMinor(givenM, split.cash);
+      changeEl.textContent = leftoverM > 0 ? ('Qalıq: ' + M.fromMinor(leftoverM).toFixed(2) + ' AZN') : 'Tam ödənir';
+      changeEl.classList.toggle('is-zero', leftoverM <= 0);
       fillPayQuick(cash);
     } else {
-      changeEl.textContent = (payMode === 'order' && payDue === 0)
+      changeEl.textContent = (payMode === 'order' && dueM === 0)
         ? 'Tam ilkin ödəniş'
         : 'Tam kart';
       changeEl.classList.add('is-zero');
@@ -1862,14 +1934,14 @@
     } else if (document.getElementById('pay-modal').classList.contains('hidden')) {
       tipBox.value = Number(order.tipAmount || 0).toFixed(2);
     }
-    order.tipAmount = dec(tipBox.value) || 0;
+    order.tipAmount = M.fromMinor(M.toMinor(tipBox.value));
     document.getElementById('pay-voen').value = order.buyerVoen || '';
     document.getElementById('pay-buyer').value = order.buyerName || '';
     var parts = billAfter(order);
     var booked = bookingFor(tableId);
-    var prepaid = booked && booked.prepay ? Number(booked.prepay.total) : 0;
-    var already = paidShares(order);
-    var remaining = Number(Math.max(0, parts.total - prepaid - already).toFixed(2));
+    var prepaidM = M.toMinor(booked && booked.prepay ? booked.prepay.total : 0);
+    var remainingM = Math.max(0, M.subMinor(M.subMinor(M.toMinor(parts.total), prepaidM), paidSharesMinor(order)));
+    var remaining = M.fromMinor(remainingM);
     if ((order.items || []).some(function (item) { return !item.voided && !item.sent; })) {
       say('Əvvəlcə isti kursu göndərin.', 'err');
       return;
@@ -1890,8 +1962,9 @@
     setSplitLocked(order);
     var cut = currentShare(remaining, order);
     payDue = pickingPay() ? pickDueAmount(order, remaining) : cut.share;
-    document.getElementById('pay-submit').textContent = remaining - payDue > 0.01 ? 'Payı ödə' : 'Satışı bitir';
-    fillPayBreakdown(parts, prepaid, already, remaining);
+    document.getElementById('pay-submit').textContent =
+      M.subMinor(remainingM, M.toMinor(payDue)) > 1 ? 'Payı ödə' : 'Satışı bitir';
+    fillPayBreakdown(parts, M.fromMinor(prepaidM), M.fromMinor(paidSharesMinor(order)), remaining);
     document.getElementById('pay-share').textContent = pickingPay()
       ? 'Seçilmiş sətirlər'
       : (cut.n > 1 ? (cut.n + ' nəfər • hər pay ' + payDue.toFixed(2) + ' AZN') : '');
@@ -1933,8 +2006,8 @@
     if (payMode !== 'reserve') {
       return;
     }
-    var amt = dec(document.getElementById('pay-prepay-amt').value);
-    payDue = Number.isFinite(amt) && amt > 0 ? Number(amt.toFixed(2)) : 0;
+    var amt = M.toMinor(document.getElementById('pay-prepay-amt').value);
+    payDue = amt > 0 ? M.fromMinor(amt) : 0;
     setPayDueView();
     setPayMethod(payMethod);
   });
@@ -2170,9 +2243,9 @@
     if (!waiter) {
       return;
     }
-    var cashAmount = dec(document.getElementById('pay-cash-amt').value);
-    var cardAmount = dec(document.getElementById('pay-card-amt').value);
-    var tendered = dec(document.getElementById('pay-tendered').value);
+    var cashAmount = M.fromMinor(M.toMinor(document.getElementById('pay-cash-amt').value));
+    var cardAmount = M.fromMinor(M.toMinor(document.getElementById('pay-card-amt').value));
+    var tendered = M.fromMinor(M.toMinor(document.getElementById('pay-tendered').value));
     if (payMode === 'reserve') {
       var booked = bookingFor(tableId);
       if (!booked) {
@@ -2215,7 +2288,7 @@
     }
     var splitN = Number(document.getElementById('pay-split').value) || 1;
     var hasShares = (order.payments || []).length > 0;
-    var payText = payDue <= 0.01 && !hasShares
+    var payText = M.toMinor(payDue) < 1 && !hasShares
       ? 'Hesab 0 AZN-dir. Masa bağlansın?'
       : (splitN === 1 && !hasShares
         ? 'Satış bitiriləcək və masa boşalacaq. Davam?'
@@ -2225,13 +2298,26 @@
         return;
       }
       busy = true;
+      var dueM = M.toMinor(payDue);
       var giftCode = document.getElementById('pay-gift').value.trim();
       var giftAmount = 0;
+      var cashM = M.toMinor(document.getElementById('pay-cash-amt').value);
+      var cardM = M.toMinor(document.getElementById('pay-card-amt').value);
+      var tendM = M.toMinor(document.getElementById('pay-tendered').value);
       if (giftCode) {
-        giftAmount = payDue;
+        giftAmount = M.fromMinor(dueM);
         cashAmount = 0;
         cardAmount = 0;
         tendered = 0;
+      } else {
+        var splitPay = splitDueMinor('', cashM, cardM, dueM);
+        cashAmount = M.fromMinor(splitPay.cash);
+        cardAmount = M.fromMinor(splitPay.card);
+        giftAmount = 0;
+        if (splitPay.cash > 0 && tendM < splitPay.cash) {
+          tendM = splitPay.cash;
+        }
+        tendered = splitPay.cash > 0 ? M.fromMinor(tendM) : 0;
       }
       return api('/api/orders/pay', {
       method: 'POST',
@@ -2241,7 +2327,7 @@
         waiterId: waiter.user.id,
         terminalId: terminal ? terminal.id : 0,
         splitCount: Number(document.getElementById('pay-split').value) || 1,
-        tipAmount: dec(document.getElementById('pay-tip').value) || 0,
+        tipAmount: M.fromMinor(M.toMinor(document.getElementById('pay-tip').value)),
         buyerVoen: document.getElementById('pay-voen').value,
         buyerName: document.getElementById('pay-buyer').value,
         giftCode: giftCode,
