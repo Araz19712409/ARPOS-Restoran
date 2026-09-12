@@ -1,5 +1,6 @@
 # Arpos Restoran — versiyalar
 
+- **1.2.14** — 2026-09-12 — E-kassa: provider seçimi + emulyator
 - **1.2.13** — 2026-09-12 — Sifariş A.1: planşet zona, yığcam header, qısa ödəniş
 - **1.2.12** — 2026-09-12 — Ödəniş: qəpik hizası (cash+card+gift = pay)
 - **1.2.11** — 2026-09-12 — Sifariş: 3 zona, çek iyerarxiyası

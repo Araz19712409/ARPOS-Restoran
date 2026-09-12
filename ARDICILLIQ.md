@@ -171,6 +171,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 155. [x] 1.2.11 — Sifariş: 3 zona, çek iyerarxiyası
 156. [x] 1.2.12 — Ödəniş: qəpik hizası (cash+card+gift = pay)
 157. [x] 1.2.13 — Sifariş A.1: planşet zona, yığcam header, qısa ödəniş
+158. [x] 1.2.14 — E-kassa: 4 provider, emulyator default, növbə + Təkrar
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı

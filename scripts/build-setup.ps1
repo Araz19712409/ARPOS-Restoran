@@ -57,6 +57,7 @@ Get-ChildItem -Force $root | ForEach-Object {
 Remove-Item (Join-Path $app 'scripts\make-license.js') -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $app 'scripts\license-owner.js') -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $app 'scripts\arpos-icon.png') -Force -ErrorAction SilentlyContinue
+Get-ChildItem $app -File | Where-Object { $_.Extension -match '\.(pdf|docx)$' } | Remove-Item -Force -ErrorAction SilentlyContinue
 if (Test-Path (Join-Path $root 'node_modules')) {
   Copy-Item -Recurse -Force (Join-Path $root 'node_modules') (Join-Path $app 'node_modules')
 }

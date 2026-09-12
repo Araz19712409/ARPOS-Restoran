@@ -133,12 +133,54 @@
 
   function ekassaPayload() {
     return {
+      provider: document.getElementById('ekassa-provider').value,
+      emulator: document.getElementById('ekassa-emulator').checked,
       voen: document.getElementById('ekassa-voen').value,
       objectName: document.getElementById('ekassa-object').value,
       objectCode: document.getElementById('ekassa-code').value,
       operator: document.getElementById('ekassa-operator').value,
-      note: document.getElementById('ekassa-note').value
+      note: document.getElementById('ekassa-note').value,
+      wizarpos: {
+        host: document.getElementById('ekassa-wz-host').value,
+        port: Number(document.getElementById('ekassa-wz-port').value) || 9876,
+        apiKey: document.getElementById('ekassa-wz-key').value,
+        cashier: document.getElementById('ekassa-wz-cashier').value
+      },
+      omnitech: {
+        host: document.getElementById('ekassa-om-host').value,
+        port: Number(document.getElementById('ekassa-om-port').value) || 8989,
+        user: document.getElementById('ekassa-om-user').value,
+        password: document.getElementById('ekassa-om-pass').value
+      },
+      azsmart: {
+        host: document.getElementById('ekassa-az-host').value,
+        port: Number(document.getElementById('ekassa-az-port').value) || 8008,
+        merchantId: document.getElementById('ekassa-az-mid').value
+      }
     };
+  }
+
+  function showEkassaFields() {
+    var id = document.getElementById('ekassa-provider').value;
+    document.querySelectorAll('.ekassa-prov').forEach(function (box) {
+      box.classList.toggle('hidden', box.getAttribute('data-prov') !== id);
+    });
+  }
+
+  function fiscalStatus(job) {
+    if (job.status === 'sent') {
+      return 'göndərildi';
+    }
+    if (job.status === 'error') {
+      return 'xəta';
+    }
+    if (job.status === 'pending') {
+      return 'növbə';
+    }
+    if (job.status === 'ready') {
+      return 'hazır';
+    }
+    return 'gözləyir';
   }
 
   function loadFiscal() {
@@ -148,23 +190,54 @@
     }
     api('/api/fiscal').then(function (body) {
       var jobs = body.data || [];
-      box.innerHTML = '';
+      box.textContent = '';
       if (!jobs.length) {
-        box.innerHTML = '<tr><td colspan="4">Növbə boşdur.</td></tr>';
+        var empty = document.createElement('tr');
+        var td = document.createElement('td');
+        td.colSpan = 6;
+        td.textContent = 'Növbə boşdur.';
+        empty.appendChild(td);
+        box.appendChild(empty);
         return;
       }
       jobs.slice(0, 20).forEach(function (job) {
         var tr = document.createElement('tr');
-        tr.innerHTML = '<td></td><td></td><td></td><td></td>';
-        var cells = tr.querySelectorAll('td');
-        cells[0].textContent = formatBackup(job.at, '');
-        cells[1].textContent = job.tableName || ('#' + job.orderId);
-        cells[2].textContent = Number(job.total || 0).toFixed(2);
-        cells[3].textContent = job.status === 'ready' ? 'hazır' : 'gözləyir';
+        function cell(text) {
+          var td = document.createElement('td');
+          td.textContent = text;
+          tr.appendChild(td);
+        }
+        cell(formatBackup(job.at, ''));
+        cell(job.tableName || ('#' + job.orderId));
+        cell(Number(job.total || 0).toFixed(2));
+        cell(fiscalStatus(job));
+        cell(job.fiscalId || job.message || '');
+        var act = document.createElement('td');
+        if (job.status === 'error' || job.status === 'pending') {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = 'Təkrar';
+          btn.addEventListener('click', function () {
+            api('/api/fiscal/' + job.id + '/retry', { method: 'POST' }).then(function () {
+              say('Yenidən göndərildi.');
+              loadFiscal();
+            }).catch(function (error) {
+              say(error.message, 'err');
+            });
+          });
+          act.appendChild(btn);
+        }
+        tr.appendChild(act);
         box.appendChild(tr);
       });
     }).catch(function () {
-      box.innerHTML = '<tr><td colspan="4">Növbə oxunmadı.</td></tr>';
+      box.textContent = '';
+      var err = document.createElement('tr');
+      var td = document.createElement('td');
+      td.colSpan = 6;
+      td.textContent = 'Növbə oxunmadı.';
+      err.appendChild(td);
+      box.appendChild(err);
     });
   }
 
@@ -469,6 +542,8 @@
     }
     document.getElementById('backup-folder').value = current.backupFolder || '';
     var ek = current.ekassa || {};
+    document.getElementById('ekassa-provider').value = ek.provider || 'none';
+    document.getElementById('ekassa-emulator').checked = ek.emulator !== false;
     document.getElementById('ekassa-voen').value = ek.voen || '';
     document.getElementById('ekassa-object').value = ek.objectName || '';
     document.getElementById('ekassa-code').value = ek.objectCode || '';
@@ -477,6 +552,21 @@
     if (op) {
       op.value = ek.operator || '';
     }
+    var wz = ek.wizarpos || {};
+    document.getElementById('ekassa-wz-host').value = wz.host || '';
+    document.getElementById('ekassa-wz-port').value = String(wz.port || 9876);
+    document.getElementById('ekassa-wz-key').value = wz.apiKey || '';
+    document.getElementById('ekassa-wz-cashier').value = wz.cashier || '';
+    var om = ek.omnitech || {};
+    document.getElementById('ekassa-om-host').value = om.host || '';
+    document.getElementById('ekassa-om-port').value = String(om.port || 8989);
+    document.getElementById('ekassa-om-user').value = om.user || '';
+    document.getElementById('ekassa-om-pass').value = om.password || '';
+    var az = ek.azsmart || {};
+    document.getElementById('ekassa-az-host').value = az.host || '';
+    document.getElementById('ekassa-az-port').value = String(az.port || 8008);
+    document.getElementById('ekassa-az-mid').value = az.merchantId || '';
+    showEkassaFields();
     var mode = current.opsMode === 'sales' ? 'sales' : 'full';
     document.getElementById('ops-sales').checked = mode === 'sales';
     document.getElementById('ops-full').checked = mode === 'full';
@@ -721,6 +811,33 @@
   }
   document.getElementById('save-bonuses').addEventListener('click', saveAll);
   document.getElementById('save-ekassa').addEventListener('click', saveAll);
+  document.getElementById('ekassa-provider').addEventListener('change', showEkassaFields);
+  function probeEkassa(url, failText) {
+    if (!waiter) {
+      say('PIN ilə daxil olun.', 'err');
+      return;
+    }
+    var out = document.getElementById('ekassa-probe');
+    api(url, { method: 'POST' }).then(function (body) {
+      var data = body.data || {};
+      var text = data.message || failText;
+      if (out) {
+        out.textContent = text;
+      }
+      say(text, data.ok ? 'ok' : 'err');
+    }).catch(function (error) {
+      if (out) {
+        out.textContent = error.message;
+      }
+      say(error.message, 'err');
+    });
+  }
+  document.getElementById('ekassa-test').addEventListener('click', function () {
+    probeEkassa('/api/fiscal/test', 'Test alınmadı.');
+  });
+  document.getElementById('ekassa-shift').addEventListener('click', function () {
+    probeEkassa('/api/fiscal/shift', 'Status alınmadı.');
+  });
   document.getElementById('save-ops').addEventListener('click', saveAll);
   document.getElementById('save-lan').addEventListener('click', saveAll);
   document.getElementById('save-branch').addEventListener('click', saveAll);

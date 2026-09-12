@@ -185,6 +185,16 @@
   justify-content: flex-start;
 }
 
+.ekassa-prov {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.ekassa-prov.hidden {
+  display: none;
+}
+
 .settings-page .side-actions {
   display: flex;
   flex-wrap: wrap;

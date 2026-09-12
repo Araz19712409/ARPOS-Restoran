@@ -15,6 +15,8 @@ const terminals = require('./terminals');
 const books = require('./books');
 const clock = require('./clock');
 const offline = require('./public/offline.js');
+const fiscal = require('./fiscal');
+const crypto = require('crypto');
 const num = require('./num');
 const money = require('./public/money.js');
 const db = require('./db');
@@ -1043,6 +1045,66 @@ test('yeniləmə checksum və təsdiq', function () {
   assert.strictEqual(updater.hashMatches(hex, hex.replace(/a/g, 'b')), false);
   assert.strictEqual(updater.isConfirmed({}), false);
   assert.strictEqual(updater.isConfirmed({ confirm: true }), true);
+});
+
+test('fiskal provider siyahısı və wizarpos imza', function () {
+  assert.deepStrictEqual(fiscal.providers.IDS, ['none', 'wizarpos', 'omnitech', 'azsmart']);
+  const dt = '20260101120000';
+  const nonce = 'n1';
+  const key = 'key1';
+  const expect = crypto.createHash('sha256').update(dt + nonce + key).digest('hex');
+  assert.strictEqual(fiscal.providers.wizarpos.sign(dt, nonce, key), expect);
+});
+
+test('azsmart qəpik map', function () {
+  assert.strictEqual(fiscal.providers.azsmart.toCents(1.35), 135);
+  assert.strictEqual(fiscal.providers.azsmart.toCents(0.1 + 0.2), 30);
+  assert.strictEqual(fiscal.providers.azsmart.vatMap(18).taxCode, 4);
+  assert.strictEqual(fiscal.providers.azsmart.vatMap(0).taxCode, 6);
+});
+
+test('none və emulator satış; HTTP yoxdur', function () {
+  withTempDb(function () {
+    settings.writeSettings({
+      ekassa: { provider: 'none', voen: '1234567890', objectName: 'Kafe' }
+    });
+    const noneJob = fiscal.enqueue({ id: 1, tableName: 'A', items: [] }, { total: 2 });
+    assert.strictEqual(noneJob.status, 'ready');
+    assert.ok(noneJob.message.indexOf('Vergiyə getmədi') >= 0);
+    assert.strictEqual(JSON.stringify(noneJob).indexOf('apiKey'), -1);
+
+    settings.writeSettings({
+      ekassa: {
+        provider: 'wizarpos',
+        emulator: true,
+        voen: '1234567890',
+        objectName: 'Kafe',
+        wizarpos: { host: '10.0.0.9', port: 9876, apiKey: 'secret-key' }
+      }
+    });
+    const pub = settings.forPos();
+    assert.strictEqual(JSON.stringify(pub).indexOf('secret-key'), -1);
+    const http = require('http');
+    const orig = http.request;
+    let hit = 0;
+    http.request = function () {
+      hit += 1;
+      throw new Error('HTTP olmaz');
+    };
+    try {
+      const job = fiscal.enqueue({
+        id: 9,
+        tableName: 'M1',
+        items: [{ name: 'Çay', qty: 1, salePrice: 1.35 }]
+      }, { total: 1.35, cashAmount: 1.35 });
+      assert.strictEqual(hit, 0);
+      assert.strictEqual(job.status, 'sent');
+      assert.ok(String(job.fiscalId).indexOf('emu-') === 0);
+      assert.ok(job.message.indexOf('Vergiyə getmədi') >= 0);
+    } finally {
+      http.request = orig;
+    }
+  });
 });
 
 console.log('Bütün testlər keçdi.');

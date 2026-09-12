@@ -8,25 +8,87 @@ function defaultBackupFolder() {
   return path.join(db.dataDir(), 'backups');
 }
 
+function cleanPort(value, fallback) {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1 || n > 65535) {
+    return fallback;
+  }
+  return n;
+}
+
+function cleanHost(value) {
+  return String(value || '').trim().replace(/^https?:\/\//i, '').split('/')[0].slice(0, 80);
+}
+
 function emptyEkassa() {
   return {
+    provider: 'none',
+    emulator: true,
     voen: '',
     objectName: '',
     objectCode: '',
     operator: '',
-    note: ''
+    note: '',
+    wizarpos: { host: '', port: 9876, apiKey: '', cashier: '' },
+    omnitech: { host: '', port: 8989, user: '', password: '' },
+    azsmart: { host: '', port: 8008, merchantId: '' }
   };
 }
 
 function cleanEkassa(raw) {
   const src = raw && raw.ekassa && typeof raw.ekassa === 'object' ? raw.ekassa : {};
+  const wz = src.wizarpos && typeof src.wizarpos === 'object' ? src.wizarpos : {};
+  const om = src.omnitech && typeof src.omnitech === 'object' ? src.omnitech : {};
+  const az = src.azsmart && typeof src.azsmart === 'object' ? src.azsmart : {};
+  const provider = ['none', 'wizarpos', 'omnitech', 'azsmart'].indexOf(String(src.provider || '')) >= 0
+    ? String(src.provider)
+    : 'none';
   return {
+    provider: provider,
+    emulator: src.emulator !== false,
     voen: String(src.voen || '').replace(/\D/g, '').slice(0, 10),
     objectName: String(src.objectName || '').trim().slice(0, 80),
     objectCode: String(src.objectCode || '').trim().slice(0, 40),
     operator: String(src.operator || '').trim().slice(0, 40),
-    note: String(src.note || '').trim().slice(0, 80)
+    note: String(src.note || '').trim().slice(0, 80),
+    wizarpos: {
+      host: cleanHost(wz.host),
+      port: cleanPort(wz.port, 9876),
+      apiKey: String(wz.apiKey || '').trim().slice(0, 80),
+      cashier: String(wz.cashier || '').trim().slice(0, 40)
+    },
+    omnitech: {
+      host: cleanHost(om.host),
+      port: cleanPort(om.port, 8989),
+      user: String(om.user || '').trim().slice(0, 40),
+      password: String(om.password || '').trim().slice(0, 80)
+    },
+    azsmart: {
+      host: cleanHost(az.host),
+      port: cleanPort(az.port, 8008),
+      merchantId: String(az.merchantId || '').trim().slice(0, 80)
+    }
   };
+}
+
+function publicEkassa(ek) {
+  const src = ek && typeof ek === 'object' ? ek : emptyEkassa();
+  return {
+    provider: src.provider || 'none',
+    emulator: src.emulator !== false,
+    voen: src.voen || '',
+    objectName: src.objectName || '',
+    objectCode: src.objectCode || '',
+    operator: src.operator || '',
+    note: src.note || ''
+  };
+}
+
+function forPos(cfg) {
+  const row = cfg || readSettings();
+  const copy = Object.assign({}, row);
+  copy.ekassa = publicEkassa(row.ekassa);
+  return copy;
 }
 
 function defaults() {
@@ -528,5 +590,7 @@ module.exports = {
   branchStamp: branchStamp,
   matchesBranch: matchesBranch,
   collectBranches: collectBranches,
-  cleanBranchCode: cleanBranchCode
+  cleanBranchCode: cleanBranchCode,
+  forPos: forPos,
+  publicEkassa: publicEkassa
 };

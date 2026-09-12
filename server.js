@@ -775,6 +775,41 @@ app.get('/api/fiscal', function (req, res) {
   }
 });
 
+app.post('/api/fiscal/test', function (req, res) {
+  if (!needPerm(req, res, 'settings.edit')) {
+    return;
+  }
+  fiscal.probe('test').then(function (data) {
+    res.json({ success: true, data: data });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.post('/api/fiscal/shift', function (req, res) {
+  if (!needPerm(req, res, 'settings.edit')) {
+    return;
+  }
+  fiscal.probe('shift').then(function (data) {
+    res.json({ success: true, data: data });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.post('/api/fiscal/:id/retry', function (req, res) {
+  if (!needPerm(req, res, 'settings.edit')) {
+    return;
+  }
+  lock.withLock('write', function () {
+    return fiscal.retry(req.params.id);
+  }).then(function (job) {
+    res.json({ success: true, data: job });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
 // Yeni qrup yaradırıq
 app.post('/api/groups', function (req, res) {
   if (!needPerm(req, res, 'products.edit')) {
@@ -1606,7 +1641,7 @@ app.get('/api/orders', function (req, res) {
       data: {
         orders: orders.readOrders().orders,
         reservations: reservations.readReservations().reservations,
-        settings: settings.readSettings(),
+        settings: settings.forPos(),
         locks: terminals.listLocks(),
         lowStock: req.staff && users.hasPermission(req.staff.role, 'stock.view')
           ? stock.lowItems()

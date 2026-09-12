@@ -51,6 +51,10 @@ npm run update
 node scripts/auto-update.js --confirm
 ```
 
+## E-kassa
+
+Ayarlar → E-kassa: fiskal aparat seçimi (`Heç biri`, WizarPOS, Omnitech, AzSmart). Default **Emulyator** açıqdır — satış lokal növbəyə düşür, vergiyə getmir, `emu-…` fiscalId. Cihaz gələndə həmin provider + Emulyator **sönük**.
+
 ## Versiya
 
 Hər buraxılış `package.json` və `VERSIONS.md` içində qeyd olunur.

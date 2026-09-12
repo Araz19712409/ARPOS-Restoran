@@ -212,7 +212,63 @@
 
       <article class="settings-panel hidden" data-tab="ekassa">
         <h2>E-kassa</h2>
-        <p class="hint">VÖEN dolu olsa növbə «hazır» olur; vergiyə getmir.</p>
+        <p class="hint">Aparat yoxdursa Emulyator açıq qalsın. Heç birində vergiyə getmir.</p>
+        <label>Fiskal aparat
+          <select id="ekassa-provider">
+            <option value="none">Heç biri</option>
+            <option value="wizarpos">WizarPOS</option>
+            <option value="omnitech">Omnitech (Omnisoft)</option>
+            <option value="azsmart">AzSmart (SmartOne)</option>
+          </select>
+        </label>
+        <label class="ops-choice">
+          <input id="ekassa-emulator" type="checkbox" checked>
+          Emulyator
+        </label>
+        <div class="ekassa-prov hidden" data-prov="wizarpos">
+          <label>Host
+            <input id="ekassa-wz-host" type="text" maxlength="80" placeholder="192.168.1.50">
+          </label>
+          <label>Port
+            <input id="ekassa-wz-port" type="number" min="1" max="65535" value="9876">
+          </label>
+          <label>API açarı
+            <input id="ekassa-wz-key" type="password" maxlength="80" autocomplete="off">
+          </label>
+          <label>Kassir
+            <input id="ekassa-wz-cashier" type="text" maxlength="40">
+          </label>
+        </div>
+        <div class="ekassa-prov hidden" data-prov="omnitech">
+          <label>Host
+            <input id="ekassa-om-host" type="text" maxlength="80">
+          </label>
+          <label>Port
+            <input id="ekassa-om-port" type="number" min="1" max="65535" value="8989">
+          </label>
+          <label>İstifadəçi
+            <input id="ekassa-om-user" type="text" maxlength="40">
+          </label>
+          <label>Şifrə
+            <input id="ekassa-om-pass" type="password" maxlength="80" autocomplete="off">
+          </label>
+        </div>
+        <div class="ekassa-prov hidden" data-prov="azsmart">
+          <label>Host
+            <input id="ekassa-az-host" type="text" maxlength="80">
+          </label>
+          <label>Port
+            <input id="ekassa-az-port" type="number" min="1" max="65535" value="8008">
+          </label>
+          <label>Merchant ID
+            <input id="ekassa-az-mid" type="password" maxlength="80" autocomplete="off">
+          </label>
+        </div>
+        <div class="side-actions">
+          <button id="ekassa-test" type="button">Test bağlantı</button>
+          <button id="ekassa-shift" type="button">Növbə statusu</button>
+        </div>
+        <p id="ekassa-probe" class="hint"></p>
         <label>VÖEN
           <input id="ekassa-voen" type="text" inputmode="numeric" maxlength="10">
         </label>
@@ -229,7 +285,7 @@
           <input id="ekassa-note" type="text" maxlength="80">
         </label>
         <h3>Növbə</h3>
-        <p class="hint">Satış bağlananda buraya düşür.</p>
+        <p class="hint">Satış bağlananda buraya düşür. Xətada Təkrar.</p>
         <div class="report-table-wrap">
           <table class="report-table">
             <thead>
@@ -238,6 +294,8 @@
                 <th>Masa</th>
                 <th>Cəm</th>
                 <th>Status</th>
+                <th>Fiskal</th>
+                <th></th>
               </tr>
             </thead>
             <tbody id="fiscal-body"></tbody>
@@ -338,6 +396,6 @@
   <script src="offline.js"></script>
   <script src="dom.js"></script>
   <script src="nav.js"></script>
-  <script src="settings-ui.js?v=8"></script>
+  <script src="settings-ui.js?v=9"></script>
 </body>
 </html>
