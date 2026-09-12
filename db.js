@@ -222,6 +222,8 @@ function loadStock() {
     nextItemId: Number(meta.nextItemId) || 1,
     nextMoveId: Number(meta.nextMoveId) || 1,
     nextPurchaseId: Number(meta.nextPurchaseId) || 1,
+    nextInventoryId: Number(meta.nextInventoryId) || 1,
+    inventories: Array.isArray(meta.inventories) ? meta.inventories : [],
     items: conn.prepare('SELECT json FROM stock_items ORDER BY id').all().map(function (row) {
       return parseJson(row.json, {});
     }),
@@ -249,7 +251,9 @@ function saveStock(data) {
     kvSet('stock_meta', {
       nextItemId: data.nextItemId,
       nextMoveId: data.nextMoveId,
-      nextPurchaseId: data.nextPurchaseId
+      nextPurchaseId: data.nextPurchaseId,
+      nextInventoryId: data.nextInventoryId,
+      inventories: Array.isArray(data.inventories) ? data.inventories : []
     });
     conn.prepare('DELETE FROM stock_items').run();
     conn.prepare('DELETE FROM stock_moves').run();

@@ -261,7 +261,7 @@ function inventoryAsOf(stockStore, at) {
     }
     moved[item.id] = true;
     const qty = qtyOf(move.qty);
-    if (move.type === 'in' || move.type === 'void') {
+    if (move.type === 'in' || move.type === 'void' || move.type === 'inv_plus') {
       let price = money(item.buyPrice);
       if (move.purchaseId) {
         const fromBuy = purchaseLinePrice(stockStore.purchases, move.purchaseId, item.id);
@@ -272,7 +272,7 @@ function inventoryAsOf(stockStore, at) {
         price = money(move.buyPrice);
       }
       fifoAdd(item, qty, price, move.at);
-    } else if (move.type === 'sale' || move.type === 'out') {
+    } else if (move.type === 'sale' || move.type === 'out' || move.type === 'inv_minus') {
       fifoConsume(item, qty);
     } else if (move.type === 'count' || move.type === 'adjust') {
       fifoSetQty(item, qty);
@@ -317,7 +317,17 @@ function inventoryAsOf(stockStore, at) {
 }
 
 function defaults() {
-  return { nextItemId: 1, nextMoveId: 1, nextPurchaseId: 1, items: [], moves: [], purchases: [], suppliers: [] };
+  return {
+    nextItemId: 1,
+    nextMoveId: 1,
+    nextPurchaseId: 1,
+    nextInventoryId: 1,
+    items: [],
+    moves: [],
+    purchases: [],
+    inventories: [],
+    suppliers: []
+  };
 }
 
 function packStock(raw) {
@@ -325,11 +335,13 @@ function packStock(raw) {
     nextItemId: Number(raw.nextItemId) || 1,
     nextMoveId: Number(raw.nextMoveId) || 1,
     nextPurchaseId: Number(raw.nextPurchaseId) || 1,
+    nextInventoryId: Number(raw.nextInventoryId) || 1,
     items: (Array.isArray(raw.items) ? raw.items : []).map(function (item) {
       return ensureLots(item);
     }),
     moves: Array.isArray(raw.moves) ? raw.moves : [],
     purchases: Array.isArray(raw.purchases) ? raw.purchases : [],
+    inventories: Array.isArray(raw.inventories) ? raw.inventories : [],
     suppliers: cleanSuppliers(raw.suppliers)
   };
 }
@@ -672,6 +684,206 @@ function moveStock(itemId, type, amount, note) {
   return { item: publicItem(item) };
 }
 
+function cleanReasonCode(value) {
+  const id = String(value || '').trim();
+  if (id === 'spoil' || id === 'break' || id === 'staff' || id === 'other') {
+    return id;
+  }
+  return '';
+}
+
+function reasonLabel(code) {
+  if (code === 'spoil') {
+    return 'xarab';
+  }
+  if (code === 'break') {
+    return 'töküldü';
+  }
+  if (code === 'staff') {
+    return 'ev';
+  }
+  if (code === 'other') {
+    return 'digər';
+  }
+  return '';
+}
+
+function writeOff(itemId, amount, reasonCode, note) {
+  const code = cleanReasonCode(reasonCode);
+  if (!code) {
+    return { error: 'Səbəb seçin.' };
+  }
+  const prefix = reasonLabel(code);
+  const extra = String(note || '').trim();
+  const text = (prefix + (extra ? ': ' + extra : '')).slice(0, 80);
+  const out = moveStock(itemId, 'out', amount, text);
+  if (out.error) {
+    return out;
+  }
+  const box = readStock();
+  const last = box.moves[box.moves.length - 1];
+  if (last && last.itemId === Number(itemId) && last.type === 'out') {
+    last.reasonCode = code;
+    writeStock(box);
+  }
+  return out;
+}
+
+function publicInventory(row) {
+  return {
+    id: row.id,
+    status: row.status === 'done' ? 'done' : 'draft',
+    at: row.at || '',
+    confirmedAt: row.confirmedAt || '',
+    by: row.by || '',
+    counts: (row.counts || []).map(function (line) {
+      return {
+        itemId: Number(line.itemId),
+        name: line.name || '',
+        unit: line.unit || 'əd',
+        systemQty: qtyOf(line.systemQty),
+        countedQty: qtyOf(line.countedQty)
+      };
+    })
+  };
+}
+
+function listInventories(box) {
+  const store = box || readStock();
+  return (store.inventories || []).slice().reverse().map(publicInventory);
+}
+
+function createInventoryDraft(who) {
+  const box = readStock();
+  const counts = (box.items || []).map(function (item) {
+    ensureLots(item);
+    const q = qtyOf(item.qty);
+    return {
+      itemId: item.id,
+      name: item.name,
+      unit: item.unit || 'əd',
+      systemQty: q,
+      countedQty: q
+    };
+  });
+  if (!counts.length) {
+    return { error: 'Xammal yoxdur.' };
+  }
+  const doc = {
+    id: box.nextInventoryId,
+    status: 'draft',
+    at: new Date().toISOString(),
+    confirmedAt: '',
+    by: String(who || '').trim().slice(0, 40),
+    counts: counts
+  };
+  box.nextInventoryId += 1;
+  box.inventories = box.inventories || [];
+  box.inventories.push(doc);
+  writeStock(box);
+  return { inventory: publicInventory(doc) };
+}
+
+function updateInventoryLines(id, lines) {
+  const box = readStock();
+  const doc = (box.inventories || []).find(function (row) {
+    return row.id === Number(id);
+  });
+  if (!doc) {
+    return { error: 'Sayım tapılmadı.' };
+  }
+  if (doc.status !== 'draft') {
+    return { error: 'Təsdiq olunmuş sənəd dəyişmir.' };
+  }
+  const incoming = Array.isArray(lines) ? lines : [];
+  incoming.forEach(function (row) {
+    const line = (doc.counts || []).find(function (item) {
+      return item.itemId === Number(row.itemId);
+    });
+    if (!line) {
+      return;
+    }
+    if (row.countedQty == null || row.countedQty === '') {
+      return;
+    }
+    const counted = qtyOf(row.countedQty);
+    if (!Number.isFinite(counted) || counted < 0) {
+      return;
+    }
+    line.countedQty = counted;
+  });
+  writeStock(box);
+  return { inventory: publicInventory(doc) };
+}
+
+function confirmInventory(id, who) {
+  const box = readStock();
+  const doc = (box.inventories || []).find(function (row) {
+    return row.id === Number(id);
+  });
+  if (!doc) {
+    return { error: 'Sayım tapılmadı.' };
+  }
+  if (doc.status !== 'draft') {
+    return { error: 'Artıq təsdiqlənib.' };
+  }
+  const at = new Date().toISOString();
+  const ops = [];
+  for (let i = 0; i < (doc.counts || []).length; i += 1) {
+    const line = doc.counts[i];
+    const systemQty = qtyOf(line.systemQty);
+    const countedQty = qtyOf(line.countedQty);
+    const diff = qtyOf(countedQty - systemQty);
+    if (diff === 0) {
+      continue;
+    }
+    const item = box.items.find(function (row) {
+      return row.id === Number(line.itemId);
+    });
+    if (!item) {
+      return { error: (line.name || 'Xammal') + ' tapılmadı.' };
+    }
+    ensureLots(item);
+    if (diff < 0 && qtyOf(item.qty) < qtyOf(-diff)) {
+      return { error: item.name + ' çatmır. Qalıq: ' + item.qty + ' ' + item.unit };
+    }
+    ops.push({ item: item, diff: diff, line: line });
+  }
+  ops.forEach(function (op) {
+    const item = op.item;
+    const diff = op.diff;
+    const qty = qtyOf(Math.abs(diff));
+    item.touched = true;
+    ensureLots(item);
+    const type = diff > 0 ? 'inv_plus' : 'inv_minus';
+    let price = fifoAvg(item);
+    if (type === 'inv_plus') {
+      fifoAdd(item, qty, price, at);
+    } else {
+      fifoConsume(item, qty);
+      price = money(item.buyPrice);
+    }
+    box.moves.push({
+      id: box.nextMoveId,
+      itemId: item.id,
+      type: type,
+      qty: qty,
+      buyPrice: money(price),
+      inventoryId: doc.id,
+      note: ('İnventar #' + doc.id).slice(0, 80),
+      at: at
+    });
+    box.nextMoveId += 1;
+  });
+  doc.status = 'done';
+  doc.confirmedAt = at;
+  if (who) {
+    doc.by = String(who || '').trim().slice(0, 40);
+  }
+  writeStock(box);
+  return { inventory: publicInventory(doc) };
+}
+
 function publicPurchase(row) {
   return {
     id: row.id,
@@ -967,6 +1179,12 @@ module.exports = {
   updateItem: updateItem,
   removeItem: removeItem,
   moveStock: moveStock,
+  writeOff: writeOff,
+  listInventories: listInventories,
+  createInventoryDraft: createInventoryDraft,
+  updateInventoryLines: updateInventoryLines,
+  confirmInventory: confirmInventory,
+  cleanReasonCode: cleanReasonCode,
   addPurchase: addPurchase,
   payPurchase: payPurchase,
   fifoAdd: fifoAdd,

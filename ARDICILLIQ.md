@@ -174,6 +174,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 158. [x] 1.2.14 — E-kassa: 4 provider, emulyator default, növbə + Təkrar
 159. [x] 1.2.15 — Sifariş Ofis: Hesabatlar, Ofisiant günü yoxdur
 160. [x] 1.2.16 — Çatdırılma Faza 1: manual + stub webhook, delivery.html (real Wolt yox)
+161. [x] 1.2.17 — Anbar Faza 1: inventar sənədi + silinmə (istehsal/multi-sklad yox)
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı

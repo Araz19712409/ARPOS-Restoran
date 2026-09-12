@@ -12,7 +12,7 @@
   <header class="top">
     <div>
       <h1>Anbar</h1>
-      <p id="waiter-line">Qalıq, alış, tarix.</p>
+      <p id="waiter-line">Qalıq, alış, tarix, inventar.</p>
     </div>
     <nav class="app-nav waiter-nav">
       <a href="/orders.html">Sifariş</a>
@@ -43,6 +43,7 @@
         <button type="button" data-tab="qty" class="active">Qalıq</button>
         <button type="button" data-tab="buy" id="stock-tab-buy">Alış</button>
         <button type="button" data-tab="hist">Tarix</button>
+        <button type="button" data-tab="inv">İnventar</button>
       </div>
       <div id="stock-qty-tools" class="stock-bar-tools">
         <input id="stock-search" type="search" placeholder="Axtar..." maxlength="40">
@@ -132,6 +133,46 @@
           </thead>
           <tbody id="move-body"></tbody>
         </table>
+      </div>
+    </section>
+
+    <section id="stock-inv-panel" class="hidden">
+      <p class="hint">Sayım sənədi: sistem qalığı dondurulur. Təsdiq fərqi FIFO ilə yazır (fifoSetQty yox).</p>
+      <div class="stock-inv-split">
+        <div class="stock-inv-list">
+          <button id="stock-inv-new" class="gold" type="button">Yeni sayım</button>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Status</th>
+                  <th>Kim</th>
+                </tr>
+              </thead>
+              <tbody id="inv-docs"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="stock-inv-sheet">
+          <p id="inv-title" class="hint">Sənəd seçin.</p>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Xammal</th>
+                  <th>Sistem</th>
+                  <th>Sayım</th>
+                </tr>
+              </thead>
+              <tbody id="inv-lines"></tbody>
+            </table>
+          </div>
+          <div class="buy-foot">
+            <button id="stock-inv-save" type="button">Yadda saxla</button>
+            <button id="stock-inv-confirm" class="gold" type="button">Təsdiq</button>
+          </div>
+        </div>
       </div>
     </section>
   </main>
@@ -227,6 +268,31 @@
       </label>
       <div class="modal-actions">
         <button id="cancel-stock-move" type="button">Bağla</button>
+        <button class="gold" type="submit">Yadda saxla</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="stock-off-modal" class="modal hidden">
+    <form id="stock-off-form" class="modal-card">
+      <h3 id="stock-off-title">Silinmə</h3>
+      <p class="hint">Qalıqdan çıxır. Mühasib zay kimi görür.</p>
+      <label>Səbəb
+        <select id="stock-off-reason" required>
+          <option value="spoil">Xarab</option>
+          <option value="break">Sındı / töküldü</option>
+          <option value="staff">Personal / ev</option>
+          <option value="other">Digər</option>
+        </select>
+      </label>
+      <label>Miqdar
+        <input id="stock-off-qty" type="text" inputmode="decimal" autocomplete="off" required>
+      </label>
+      <label>Qeyd
+        <input id="stock-off-note" type="text" maxlength="80">
+      </label>
+      <div class="modal-actions">
+        <button id="cancel-stock-off" type="button">Bağla</button>
         <button class="gold" type="submit">Yadda saxla</button>
       </div>
     </form>

@@ -409,12 +409,30 @@
   border-color: #c9842a;
 }
 
-.stock-bar-tools {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
+.stock-inv-split {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+  max-height: calc(768px - 150px);
+}
+
+.stock-inv-list,
+.stock-inv-sheet {
+  min-width: 0;
+  overflow: auto;
+}
+
+.stock-inv-sheet .buy-foot {
+  margin-top: 8px;
+}
+
+.inv-doc-row {
+  cursor: pointer;
+}
+
+.inv-doc-row.active td {
+  background: #3a3228;
 }
 
 .stock-bar-tools input[type="search"] {

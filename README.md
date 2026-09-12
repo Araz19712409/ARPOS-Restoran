@@ -66,6 +66,14 @@ Ayarlar → E-kassa: fiskal aparat seçimi (`Heç biri`, WizarPOS, Omnitech, AzS
 
 **Faza 2 (açar olanda):** real Wolt/Bolt/Glovo OAuth/API. Bu kodda yoxdur.
 
+## Anbar
+
+**Faza 1 (indi):** İnventar sənədi (qaralama → təsdiq) və silinmə səbəbi. Anbar tabları: Qalıq | Alış | Tarix | İnventar.
+
+Təsdiq `counted − system` (sənəddə dondurulmuş sistem) üçün `inv_plus` / `inv_minus` yazır. Artım `fifoAvg`. `fifoSetQty` təsdiqdə yoxdur. Zay: `reasonCode` spoil|break|staff|other.
+
+**Faza 2:** istehsal aktı. **Faza 3:** multi-sklad. Bu kodda yoxdur.
+
 ## Versiya
 
 Hər buraxılış `package.json` və `VERSIONS.md` içində qeyd olunur.

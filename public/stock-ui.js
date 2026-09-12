@@ -10,7 +10,9 @@
   var editQty = 0;
   var stockQuery = '';
   var lowOnly = false;
-  var stockTab = 'qty';
+  var inventories = [];
+  var invId = 0;
+  var offId = 0;
 
   function dec(value) {
     return window.PosNav && window.PosNav.parseDec
@@ -90,7 +92,7 @@
     }
     document.getElementById('stock-open-add').style.display = can('stock.edit') ? '' : 'none';
     document.getElementById('stock-tab-buy').style.display = can('stock.edit') ? '' : 'none';
-    if (!can('stock.edit') && stockTab === 'buy') {
+    if (!can('stock.edit') && (stockTab === 'buy' || stockTab === 'inv')) {
       showTab('qty');
     }
     if (data) {
@@ -103,6 +105,7 @@
     document.getElementById('stock-qty-panel').classList.toggle('hidden', tab !== 'qty');
     document.getElementById('stock-buy-box').classList.toggle('hidden', tab !== 'buy');
     document.getElementById('stock-hist-panel').classList.toggle('hidden', tab !== 'hist');
+    document.getElementById('stock-inv-panel').classList.toggle('hidden', tab !== 'inv');
     document.getElementById('stock-qty-tools').classList.toggle('hidden', tab !== 'qty');
     document.querySelectorAll('.stock-tabs [data-tab]').forEach(function (btn) {
       btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
@@ -224,6 +227,14 @@
       acts.className = 'stock-acts';
       if (can('stock.edit')) {
         addAct(acts, 'Dəyiş', function () { openEdit(row); });
+        addAct(acts, 'Zay', function () {
+          offId = row.id;
+          document.getElementById('stock-off-title').textContent = row.name;
+          document.getElementById('stock-off-qty').value = '';
+          document.getElementById('stock-off-note').value = '';
+          document.getElementById('stock-off-reason').value = 'spoil';
+          document.getElementById('stock-off-modal').classList.remove('hidden');
+        });
         addAct(acts, 'Qalıq', function () {
           moveId = row.id;
           document.getElementById('stock-move-title').textContent = row.name;
@@ -424,6 +435,12 @@
     if (type === 'in') {
       return 'Giriş';
     }
+    if (type === 'inv_plus') {
+      return 'İnventar +';
+    }
+    if (type === 'inv_minus') {
+      return 'İnventar −';
+    }
     if (type === 'out') {
       return 'Çıxış';
     }
@@ -487,12 +504,92 @@
     });
   }
 
+  function currentInv() {
+    return inventories.find(function (row) {
+      return row.id === Number(invId);
+    }) || null;
+  }
+
+  function collectInvCounts() {
+    var counts = [];
+    document.querySelectorAll('#inv-lines input[data-item]').forEach(function (input) {
+      counts.push({
+        itemId: Number(input.getAttribute('data-item')),
+        countedQty: dec(input.value)
+      });
+    });
+    return counts;
+  }
+
+  function renderInv() {
+    var docs = document.getElementById('inv-docs');
+    var lines = document.getElementById('inv-lines');
+    var title = document.getElementById('inv-title');
+    if (!docs || !lines) {
+      return;
+    }
+    docs.innerHTML = '';
+    if (!inventories.length) {
+      docs.innerHTML = '<tr><td colspan="3">Sayım yoxdur.</td></tr>';
+    } else {
+      inventories.forEach(function (row) {
+        var tr = document.createElement('tr');
+        tr.className = 'inv-doc-row' + (row.id === invId ? ' active' : '');
+        tr.innerHTML = '<td></td><td></td><td></td>';
+        var cells = tr.querySelectorAll('td');
+        cells[0].textContent = '#' + row.id;
+        cells[1].textContent = row.status === 'done' ? 'Təsdiq' : 'Qaralama';
+        cells[2].textContent = row.by || '';
+        tr.addEventListener('click', function () {
+          invId = row.id;
+          renderInv();
+        });
+        docs.appendChild(tr);
+      });
+    }
+    var doc = currentInv();
+    lines.innerHTML = '';
+    var canEdit = can('stock.edit') && doc && doc.status === 'draft';
+    document.getElementById('stock-inv-save').disabled = !canEdit;
+    document.getElementById('stock-inv-confirm').disabled = !canEdit;
+    document.getElementById('stock-inv-new').style.display = can('stock.edit') ? '' : 'none';
+    if (!doc) {
+      title.textContent = 'Sənəd seçin.';
+      return;
+    }
+    title.textContent = 'İnventar #' + doc.id + (doc.status === 'done' ? ' (təsdiq)' : ' (qaralama)');
+    (doc.counts || []).forEach(function (line) {
+      var tr = document.createElement('tr');
+      var nameTd = document.createElement('td');
+      nameTd.textContent = line.name + ' (' + line.unit + ')';
+      var sysTd = document.createElement('td');
+      sysTd.className = 'num';
+      sysTd.textContent = String(line.systemQty);
+      var cntTd = document.createElement('td');
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.inputMode = 'decimal';
+      input.setAttribute('data-item', String(line.itemId));
+      input.value = String(line.countedQty);
+      input.disabled = !canEdit;
+      cntTd.appendChild(input);
+      tr.appendChild(nameTd);
+      tr.appendChild(sysTd);
+      tr.appendChild(cntTd);
+      lines.appendChild(tr);
+    });
+  }
+
   function load() {
     return api('/api/stock').then(function (body) {
       items = (body.data && body.data.items) || [];
       purchases = (body.data && body.data.purchases) || [];
       moves = (body.data && body.data.moves) || [];
       suppliers = (body.data && body.data.suppliers) || [];
+      inventories = (body.data && body.data.inventories) || [];
+      if (invId && !inventories.some(function (row) { return row.id === invId; })) {
+        invId = inventories.length ? inventories[0].id : 0;
+      }
       if (waiter && body.data && body.data.permissions) {
         waiter.permissions = body.data.permissions;
         window.sessionStorage.setItem('posWaiter', JSON.stringify(waiter));
@@ -500,6 +597,7 @@
       render();
       renderPurchases();
       renderMoves();
+      renderInv();
       fillSuppliers();
       document.querySelectorAll('#buy-lines .buy-item').forEach(function (select) {
         fillItemSelect(select, select.value);
@@ -692,6 +790,82 @@
     }).then(function () {
       document.getElementById('stock-move-modal').classList.add('hidden');
       say('Hərəkət yadda saxlandı.');
+      return load();
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
+  });
+
+  document.getElementById('stock-inv-new').addEventListener('click', function () {
+    if (!can('stock.edit')) {
+      return;
+    }
+    api('/api/stock/inventories', { method: 'POST' }).then(function (body) {
+      invId = body.data && body.data.id;
+      say('Sayım yaradıldı.');
+      showTab('inv');
+      return load();
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
+  });
+  document.getElementById('stock-inv-save').addEventListener('click', function () {
+    if (!can('stock.edit') || !invId) {
+      return;
+    }
+    api('/api/stock/inventories/' + invId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ counts: collectInvCounts() })
+    }).then(function () {
+      say('Sayım yadda saxlandı.');
+      return load();
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
+  });
+  document.getElementById('stock-inv-confirm').addEventListener('click', function () {
+    if (!can('stock.edit') || !invId) {
+      return;
+    }
+    window.askYes('Təsdiq', 'Sayım təsdiqlənsin? Fərq anbara yazılacaq.').then(function (ok) {
+      if (!ok) {
+        return;
+      }
+      return api('/api/stock/inventories/' + invId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ counts: collectInvCounts() })
+      }).then(function () {
+        return api('/api/stock/inventories/' + invId + '/confirm', { method: 'POST' });
+      }).then(function () {
+        say('İnventar təsdiqləndi.');
+        return load();
+      });
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
+  });
+  document.getElementById('cancel-stock-off').addEventListener('click', function () {
+    document.getElementById('stock-off-modal').classList.add('hidden');
+  });
+  document.getElementById('stock-off-form').addEventListener('submit', function (event) {
+    event.preventDefault();
+    if (!can('stock.edit') || !offId) {
+      return;
+    }
+    api('/api/stock/write-off', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        itemId: offId,
+        qty: dec(document.getElementById('stock-off-qty').value),
+        reasonCode: document.getElementById('stock-off-reason').value,
+        note: document.getElementById('stock-off-note').value.trim()
+      })
+    }).then(function () {
+      document.getElementById('stock-off-modal').classList.add('hidden');
+      say('Silinmə yazıldı.');
       return load();
     }).catch(function (error) {
       say(error.message, 'err');

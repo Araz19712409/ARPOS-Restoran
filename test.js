@@ -726,6 +726,60 @@ test('FIFO köhnə partiyanı əvvəl çıxır', function () {
   assert.strictEqual(stock.fifoAvg(item), 20);
 });
 
+test('inventar təsdiq sənəd systemQty istifadə edir; writeOff səbəb saxlanır', function () {
+  withTempDb(function () {
+    const made = stock.createItem({ name: 'Un', unit: 'kq', buyPrice: 10 });
+    assert.ok(!made.error);
+    const put = stock.moveStock(made.item.id, 'in', 10, 'alış');
+    assert.ok(!put.error);
+    const draft = stock.createInventoryDraft('Ali');
+    assert.ok(draft.inventory);
+    const liveOut = stock.moveStock(made.item.id, 'out', 3, 'satış arası');
+    assert.ok(!liveOut.error);
+    assert.strictEqual(stock.readStock().items[0].qty, 7);
+    const saved = stock.updateInventoryLines(draft.inventory.id, [
+      { itemId: made.item.id, countedQty: 8 }
+    ]);
+    const line = saved.inventory.counts[0];
+    assert.strictEqual(line.systemQty, 10);
+    assert.strictEqual(line.countedQty, 8);
+    const done = stock.confirmInventory(draft.inventory.id, 'Ali');
+    assert.ok(!done.error, done.error);
+    const after = stock.readStock().items[0];
+    assert.strictEqual(after.qty, 5);
+    const invMove = stock.readStock().moves.filter(function (row) {
+      return row.type === 'inv_minus';
+    })[0];
+    assert.ok(invMove);
+    assert.strictEqual(invMove.qty, 2);
+    const replay = stock.inventoryAsOf(stock.readStock(), new Date());
+    const un = replay.items.find(function (row) { return row.id === made.item.id; });
+    assert.strictEqual(un.qty, 5);
+    const off = stock.writeOff(made.item.id, 1, 'spoil', 'test');
+    assert.ok(!off.error);
+    const zay = stock.readStock().moves.filter(function (row) {
+      return row.reasonCode === 'spoil';
+    })[0];
+    assert.ok(zay);
+    assert.strictEqual(zay.type, 'out');
+    assert.ok(String(zay.note).indexOf('xarab') === 0);
+  });
+});
+
+test('inventoryAsOf inv_plus fifoAvg', function () {
+  const inv = stock.inventoryAsOf({
+    items: [{ id: 1, name: 'Un', unit: 'kq', buyPrice: 4, qty: 0, lots: [] }],
+    purchases: [],
+    moves: [
+      { id: 1, itemId: 1, type: 'in', qty: 2, buyPrice: 10, at: '2026-09-01T10:00:00' },
+      { id: 2, itemId: 1, type: 'inv_plus', qty: 2, buyPrice: 10, at: '2026-09-02T10:00:00' },
+      { id: 3, itemId: 1, type: 'inv_minus', qty: 1, at: '2026-09-03T10:00:00' }
+    ]
+  }, new Date('2026-09-03T23:59:59'));
+  assert.strictEqual(inv.items[0].qty, 3);
+  assert.strictEqual(inv.total, 30);
+});
+
 test('kreditor köhnə alışları ödənilib sayır', function () {
   const cred = stock.creditorsAsOf([
     { at: '2026-09-01T10:00:00', supplier: 'Market', total: 50 },
