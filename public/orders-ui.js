@@ -333,6 +333,9 @@
     pendingGuestAddress = existing ? (existing.guestAddress || '') : '';
     pendingCourier = existing ? (existing.courierName || '') : '';
     say('');
+    if (id && window.matchMedia && window.matchMedia('(max-width: 980px)').matches) {
+      setOrderZone('menu');
+    }
     render();
   }
 
@@ -2778,5 +2781,29 @@
       renderProducts();
     }
   }, 30000);
+
+  function setOrderZone(zone) {
+    var page = document.querySelector('.order-page');
+    var bar = document.getElementById('order-zones');
+    if (!page || !bar) {
+      return;
+    }
+    page.setAttribute('data-zone', zone);
+    bar.querySelectorAll('button').forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-zone') === zone);
+    });
+  }
+
+  var zoneBar = document.getElementById('order-zones');
+  if (zoneBar) {
+    zoneBar.addEventListener('click', function (event) {
+      var btn = event.target.closest('button[data-zone]');
+      if (!btn) {
+        return;
+      }
+      setOrderZone(btn.getAttribute('data-zone'));
+    });
+  }
+
   load();
 })();

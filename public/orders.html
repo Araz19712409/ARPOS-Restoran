@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="orders.css">
   <link rel="stylesheet" href="dates.css">
 </head>
-<body class="order-page">
+<body class="order-page" data-zone="floor">
   <header class="top">
     <div class="top-left">
       <button id="switch-waiter" class="hidden" type="button">Ofisiantı dəyiş</button>
@@ -46,20 +46,24 @@
       <h2>Zal</h2>
       <div id="floor-tabs" class="group-tabs"></div>
     </div>
-    <input id="table-search" type="search" placeholder="Masa və ya zal axtar..." maxlength="40">
-    <div id="table-filters" class="table-filters">
-      <button type="button" data-filter="all" class="active">Hamısı</button>
-      <button type="button" data-filter="empty">Boş</button>
-      <button type="button" data-filter="reserved">Rezerv</button>
-      <button type="button" data-filter="busy">Hesab</button>
+    <div class="floor-tools">
+      <input id="table-search" type="search" placeholder="Masa və ya zal axtar..." maxlength="40">
+      <div id="table-filters" class="table-filters">
+        <button type="button" data-filter="all" class="active">Hamısı</button>
+        <button type="button" data-filter="empty">Boş</button>
+        <button type="button" data-filter="reserved">Rezerv</button>
+        <button type="button" data-filter="busy">Hesab</button>
+      </div>
+      <div class="table-filters floor-extra">
+        <button id="new-takeaway" type="button">Takeaway</button>
+        <button id="new-delivery" type="button">Çatdırılma</button>
+        <button id="waitlist-open" type="button">Növbə</button>
+      </div>
     </div>
-    <div class="table-filters floor-extra">
-      <button id="new-takeaway" type="button">Takeaway</button>
-      <button id="new-delivery" type="button">Çatdırılma</button>
-      <button id="waitlist-open" type="button">Növbə</button>
+    <div class="floor-scroll">
+      <div id="service-board" class="table-grid"></div>
+      <div id="table-board" class="table-board"></div>
     </div>
-    <div id="service-board" class="table-grid"></div>
-    <div id="table-board" class="table-board"></div>
   </aside>
   <div id="floor-resizer" class="floor-resizer" title="Eni dartın"></div>
 
@@ -120,22 +124,27 @@
         </div>
       </div>
       <p id="message" class="message"></p>
-      <div class="more-actions">
-        <button id="reserve-table" type="button">Rezerv</button>
-        <button id="cancel-reserve" type="button">Rezervi ləğv</button>
-        <button id="prepay-open" type="button">İlkin</button>
-        <button id="reprint-order" type="button">Çap</button>
-        <button id="discount-open" type="button">Endirim</button>
-        <button id="move-open" type="button">Köçür</button>
-        <button id="fire-course" type="button" style="display:none">İstini göndər</button>
-        <button id="handoff-open" type="button" style="display:none">Hesabı ver</button>
-        <button id="merge-open" type="button" style="display:none">Birləşdir</button>
-        <button id="unmerge-open" type="button" style="display:none">Ayır</button>
-      </div>
       <div class="main-actions">
         <button id="pay-open" type="button">Ödəniş</button>
         <button id="accept-order" class="gold" type="button">Qəbul et</button>
       </div>
+      <div class="sec-actions">
+        <button id="reprint-order" type="button">Çap</button>
+        <button id="discount-open" type="button">Endirim</button>
+        <button id="fire-course" type="button" style="display:none">İstini göndər</button>
+      </div>
+      <details class="check-more" id="check-more">
+        <summary>Digər</summary>
+        <div class="check-more-list">
+          <button id="reserve-table" type="button">Rezerv</button>
+          <button id="cancel-reserve" type="button">Rezervi ləğv</button>
+          <button id="prepay-open" type="button">İlkin</button>
+          <button id="move-open" type="button">Köçür</button>
+          <button id="handoff-open" type="button" style="display:none">Hesabı ver</button>
+          <button id="merge-open" type="button" style="display:none">Birləşdir</button>
+          <button id="unmerge-open" type="button" style="display:none">Ayır</button>
+        </div>
+      </details>
     </div>
   </aside>
 
@@ -185,6 +194,8 @@
         <p id="pay-table-label" class="pay-table-label"></p>
       </div>
       <div class="pay-scroll">
+      <section class="pay-step">
+        <p class="pay-step-label">1. Məbləğ</p>
       <div class="pay-due-box">
         <span id="pay-due-label">Ödəniləcək</span>
         <strong id="pay-due-amt">0.00</strong>
@@ -231,6 +242,9 @@
       <label id="prepay-amt-wrap" class="hidden">İlkin məbləğ
         <input id="pay-prepay-amt" type="text" inputmode="decimal" autocomplete="off">
       </label>
+      </section>
+      <section class="pay-step">
+        <p class="pay-step-label">2. Üsul</p>
       <div class="pay-methods">
         <button id="pay-method-cash" type="button">Nağd</button>
         <button id="pay-method-card" type="button">Kart</button>
@@ -244,6 +258,9 @@
           <input id="pay-card-amt" type="text" inputmode="decimal" autocomplete="off">
         </label>
       </div>
+      </section>
+      <section class="pay-step">
+        <p class="pay-step-label">3. Tender</p>
       <div id="tender-wrap" class="pay-tender">
         <label>Müştəri verdi
           <input id="pay-tendered" type="text" inputmode="decimal" autocomplete="off">
@@ -251,6 +268,7 @@
         <div id="pay-quick" class="pay-quick"></div>
       </div>
       <p id="pay-change" class="pay-change"></p>
+      </section>
       </div>
       <div class="modal-actions pay-actions">
         <button id="cancel-pay" type="button">Bağla</button>
@@ -390,6 +408,12 @@
       <div id="terminal-pick" class="pin-pad"></div>
     </div>
   </div>
+
+  <nav id="order-zones" class="order-zones" aria-label="Zona">
+    <button type="button" data-zone="floor" class="active">Zal</button>
+    <button type="button" data-zone="menu">Menyu</button>
+    <button type="button" data-zone="check">Çek</button>
+  </nav>
 
   <script src="log-client.js"></script>
   <script src="confirm.js"></script>
