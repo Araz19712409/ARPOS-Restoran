@@ -1122,11 +1122,25 @@
     document.getElementById('unmerge-open').style.display =
       order && (order.linkedTableIds || []).length && can('orders.create') ? '' : 'none';
 
+    var hint = document.getElementById('check-hint');
+    if (hint) {
+      if (!tableId) {
+        hint.textContent = 'Masa seçin.';
+      } else if (pending.length) {
+        hint.textContent = 'Qəbul et: ' + pending.length + ' sətir.';
+      } else {
+        hint.textContent = '';
+      }
+    }
+
     var box = document.getElementById('check-list');
-    box.innerHTML = '';
+    box.textContent = '';
     var sent = order ? order.items : [];
     if (!sent.length && !pending.length) {
-      box.innerHTML = '<p class="hint">Məhsula basın.</p>';
+      var empty = document.createElement('p');
+      empty.className = 'hint';
+      empty.textContent = tableId ? 'Məhsula basın.' : 'Masa seçin.';
+      box.appendChild(empty);
     }
 
     sent.forEach(function (item) {
@@ -1283,7 +1297,35 @@
       return;
     }
     event.preventDefault();
-    takeBarcodeHit(event.target.value);
+    if (takeBarcodeHit(event.target.value)) {
+      return;
+    }
+    var hits = visibleProducts();
+    if (hits.length === 1) {
+      addProduct(hits[0]);
+      searchQuery = '';
+      event.target.value = '';
+      renderGroups();
+      renderProducts();
+    }
+  });
+  var searchFocus = document.getElementById('search-focus');
+  if (searchFocus) {
+    searchFocus.addEventListener('click', function () {
+      document.getElementById('order-search').focus();
+    });
+  }
+  document.addEventListener('keydown', function (event) {
+    if (event.key !== '/') {
+      return;
+    }
+    var t = event.target;
+    var tag = t && t.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) {
+      return;
+    }
+    event.preventDefault();
+    document.getElementById('order-search').focus();
   });
 
   function runAction(url, extra, question) {
@@ -2029,7 +2071,12 @@
     document.getElementById('pay-tendered').value = btn.getAttribute('data-tender');
     syncPayFields('tender');
   });
-  document.getElementById('pay-open').addEventListener('click', openPay);
+  document.getElementById('pay-open').addEventListener('click', function () {
+    if (window.matchMedia && window.matchMedia('(max-width: 980px)').matches) {
+      setOrderZone('check');
+    }
+    openPay();
+  });
   document.getElementById('prepay-open').addEventListener('click', openPrepay);
 
   document.getElementById('move-open').addEventListener('click', function () {

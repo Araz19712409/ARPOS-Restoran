@@ -10,11 +10,37 @@
 }
 
 .order-page .top {
-  padding: 10px 16px;
+  padding: 6px 12px;
+  gap: 8px;
 }
 
 .order-page .top h1 {
-  font-size: 1.1rem;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.order-page #waiter-line {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  max-width: 240px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-page .app-nav {
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.order-page .app-nav a,
+.order-page .more-nav summary,
+.order-page .app-nav button {
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
 }
 
 .waiter-nav {
@@ -521,6 +547,14 @@
   min-width: 0;
 }
 
+.menu-tools #search-focus {
+  flex: 0 0 auto;
+  min-width: 40px;
+  min-height: 36px;
+  margin: 0;
+  font-weight: 800;
+}
+
 .size-scale {
   display: flex;
   align-items: center;
@@ -757,15 +791,13 @@
   color: #e2b65a;
 }
 
-.more-actions,
 .sec-actions {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
-.more-actions button,
 .sec-actions button,
 .check-more-list button {
   min-height: 36px;
@@ -806,6 +838,45 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+}
+
+.check-hint {
+  min-height: 1.15em;
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #e2b65a;
+}
+
+.pay-more {
+  margin: 0;
+}
+
+.pay-more summary {
+  list-style: none;
+  cursor: pointer;
+  min-height: 32px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #d8c7aa;
+}
+
+.pay-more summary::-webkit-details-marker {
+  display: none;
+}
+
+.pay-more .pay-split,
+.pay-more .pay-extra-row {
+  margin-top: 8px;
+}
+
+#pay-tip-wrap {
+  margin: 0;
+}
+
+#pay-tip-wrap input {
+  min-height: 36px;
 }
 
 .modal-actions button.gold {
@@ -1270,10 +1341,42 @@
   .order-page[data-zone="floor"] .menu-col,
   .order-page[data-zone="floor"] .check-col,
   .order-page[data-zone="menu"] .floor-col,
-  .order-page[data-zone="menu"] .check-col,
   .order-page[data-zone="check"] .floor-col,
   .order-page[data-zone="check"] .menu-col {
     display: none;
+  }
+
+  .order-page[data-zone="menu"] .menu-col {
+    padding-bottom: 92px;
+  }
+
+  .order-page[data-zone="menu"] .check-col {
+    display: flex;
+    background: transparent;
+    pointer-events: none;
+    z-index: 8;
+  }
+
+  .order-page[data-zone="menu"] .check-head,
+  .order-page[data-zone="menu"] .check-list,
+  .order-page[data-zone="menu"] .check-sum-box,
+  .order-page[data-zone="menu"] .sec-actions,
+  .order-page[data-zone="menu"] .check-more {
+    display: none;
+  }
+
+  .order-page[data-zone="menu"] .check-foot {
+    pointer-events: auto;
+    margin-top: auto;
+    background: #221d17;
+    padding: 8px 10px;
+    border-top: 1px solid #3d3428;
+  }
+
+  .order-page[data-zone="menu"] #pay-open,
+  .order-page[data-zone="menu"] #accept-order {
+    min-height: 52px;
+    font-size: 1.05rem;
   }
 }
 

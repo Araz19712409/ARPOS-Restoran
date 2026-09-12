@@ -20,12 +20,12 @@
     </div>
     <nav class="app-nav waiter-nav">
       <a class="active" href="/orders.html">Sifariş</a>
-      <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
-      <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
-      <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
       <details class="more-nav">
         <summary>Ofis</summary>
         <div class="more-nav-list">
+          <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+          <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
+          <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
           <a href="/reports.html" data-need="reports.view">Hesabat</a>
           <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
           <a href="/" data-need="layout.edit">Çertyoj</a>
@@ -72,6 +72,7 @@
       <div id="group-tabs" class="group-tabs"></div>
       <div class="menu-tools">
         <input id="order-search" type="search" placeholder="Ad və ya barkod..." maxlength="60">
+        <button id="search-focus" type="button" aria-label="Axtarış" title="Axtarış (/)">/</button>
         <div class="size-scale">
           <span>Ölçü</span>
           <button id="scale-down" type="button" aria-label="Kiçilt">−</button>
@@ -123,6 +124,7 @@
           <strong id="check-total">0.00 AZN</strong>
         </div>
       </div>
+      <p id="check-hint" class="check-hint"></p>
       <p id="message" class="message"></p>
       <div class="main-actions">
         <button id="pay-open" type="button">Ödəniş</button>
@@ -216,29 +218,32 @@
         <div id="pay-seats" class="pay-seats"></div>
         <div id="pay-pick" class="pay-pick"></div>
       </div>
-      <div id="split-wrap" class="pay-split">
-        <span>Neçə nəfər</span>
-        <div class="pay-split-ctrl">
-          <button id="pay-split-minus" type="button">−</button>
-          <input id="pay-split" type="number" min="1" max="10" value="1">
-          <button id="pay-split-plus" type="button">+</button>
-        </div>
-      </div>
       <p id="pay-share" class="pay-share"></p>
-      <div class="pay-extra-row">
-        <label id="pay-tip-wrap">Bəxşiş
-          <input id="pay-tip" type="text" inputmode="decimal" autocomplete="off" value="0">
-        </label>
-        <label>VÖEN
-          <input id="pay-voen" type="text" inputmode="numeric" maxlength="12" placeholder="Şirkət">
-        </label>
-        <label>Ad
-          <input id="pay-buyer" type="text" maxlength="40" placeholder="İstəyə görə">
-        </label>
-        <label>Hədiyyə
-          <input id="pay-gift" type="text" maxlength="16" placeholder="Kod">
-        </label>
-      </div>
+      <label id="pay-tip-wrap">Bəxşiş
+        <input id="pay-tip" type="text" inputmode="decimal" autocomplete="off" value="0">
+      </label>
+      <details id="pay-more" class="pay-more">
+        <summary>Əlavə</summary>
+        <div id="split-wrap" class="pay-split">
+          <span>Neçə nəfər</span>
+          <div class="pay-split-ctrl">
+            <button id="pay-split-minus" type="button">−</button>
+            <input id="pay-split" type="number" min="1" max="10" value="1">
+            <button id="pay-split-plus" type="button">+</button>
+          </div>
+        </div>
+        <div class="pay-extra-row">
+          <label>VÖEN
+            <input id="pay-voen" type="text" inputmode="numeric" maxlength="12" placeholder="Şirkət">
+          </label>
+          <label>Ad
+            <input id="pay-buyer" type="text" maxlength="40" placeholder="İstəyə görə">
+          </label>
+          <label>Hədiyyə
+            <input id="pay-gift" type="text" maxlength="16" placeholder="Kod">
+          </label>
+        </div>
+      </details>
       <label id="prepay-amt-wrap" class="hidden">İlkin məbləğ
         <input id="pay-prepay-amt" type="text" inputmode="decimal" autocomplete="off">
       </label>
@@ -424,6 +429,6 @@
   <script src="dates.js"></script>
   <script src="group-icons.js?v=3"></script>
   <script src="money.js?v=1"></script>
-  <script src="orders-ui.js?v=13"></script>
+  <script src="orders-ui.js?v=14"></script>
 </body>
 </html>
