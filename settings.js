@@ -20,6 +20,34 @@ function cleanHost(value) {
   return String(value || '').trim().replace(/^https?:\/\//i, '').split('/')[0].slice(0, 80);
 }
 
+function emptyDelivery() {
+  return {
+    provider: 'manual',
+    autoPrintKitchen: true,
+    webhookSecret: ''
+  };
+}
+
+function cleanDelivery(raw) {
+  const src = raw && raw.delivery && typeof raw.delivery === 'object' ? raw.delivery : {};
+  const provider = ['none', 'manual', 'wolt', 'bolt', 'glovo'].indexOf(String(src.provider || '')) >= 0
+    ? String(src.provider)
+    : 'manual';
+  return {
+    provider: provider,
+    autoPrintKitchen: src.autoPrintKitchen !== false,
+    webhookSecret: String(src.webhookSecret || '').replace(/[\r\n]/g, '').trim().slice(0, 80)
+  };
+}
+
+function publicDelivery(row) {
+  const src = row && typeof row === 'object' ? row : emptyDelivery();
+  return {
+    provider: src.provider || 'manual',
+    autoPrintKitchen: src.autoPrintKitchen !== false
+  };
+}
+
 function emptyEkassa() {
   return {
     provider: 'none',
@@ -88,6 +116,7 @@ function forPos(cfg) {
   const row = cfg || readSettings();
   const copy = Object.assign({}, row);
   copy.ekassa = publicEkassa(row.ekassa);
+  copy.delivery = publicDelivery(row.delivery);
   return copy;
 }
 
@@ -97,6 +126,7 @@ function defaults() {
     waiterBonuses: {},
     backupFolder: defaultBackupFolder(),
     ekassa: emptyEkassa(),
+    delivery: emptyDelivery(),
     opsMode: 'full',
     listenLan: true,
     httpsPort: 3443,
@@ -486,6 +516,7 @@ function normalize(raw, prev) {
     waiterBonuses: bonuses,
     backupFolder: sanitizeFolder(raw && raw.backupFolder),
     ekassa: cleanEkassa(raw),
+    delivery: cleanDelivery(raw),
     opsMode: cleanOpsMode(raw && raw.opsMode),
     listenLan: raw && Object.prototype.hasOwnProperty.call(raw, 'listenLan')
       ? cleanListenLan(raw.listenLan)
@@ -517,6 +548,7 @@ function writeSettings(data) {
     waiterBonuses: data.waiterBonuses !== undefined ? data.waiterBonuses : prev.waiterBonuses,
     backupFolder: data.backupFolder !== undefined ? data.backupFolder : prev.backupFolder,
     ekassa: data.ekassa !== undefined ? data.ekassa : prev.ekassa,
+    delivery: data.delivery !== undefined ? data.delivery : prev.delivery,
     opsMode: data.opsMode !== undefined ? data.opsMode : prev.opsMode,
     listenLan: data.listenLan !== undefined ? data.listenLan : prev.listenLan,
     httpsPort: data.httpsPort !== undefined ? data.httpsPort : prev.httpsPort,
@@ -592,5 +624,7 @@ module.exports = {
   collectBranches: collectBranches,
   cleanBranchCode: cleanBranchCode,
   forPos: forPos,
-  publicEkassa: publicEkassa
+  publicEkassa: publicEkassa,
+  publicDelivery: publicDelivery,
+  emptyDelivery: emptyDelivery
 };

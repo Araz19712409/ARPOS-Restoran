@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Çatdırılma</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="products.css">
+  <link rel="stylesheet" href="orders.css">
+  <link rel="stylesheet" href="delivery.css">
+</head>
+<body class="delivery-page" data-need="orders.create|payments.take">
+  <header class="top">
+    <div>
+      <h1>Çatdırılma</h1>
+      <p id="waiter-line">Prep · Yolda · Bitdi. Ödəniş sifariş ekranında.</p>
+    </div>
+    <nav class="app-nav waiter-nav">
+      <a href="/orders.html" data-need="orders.create">Sifariş</a>
+      <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+      <a class="active" href="/delivery.html" data-need="orders.create|payments.take">Çatdırılma</a>
+      <details class="more-nav">
+        <summary>Ofis</summary>
+        <div class="more-nav-list">
+          <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+          <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
+          <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
+          <a href="/reports.html" data-need="reports.view">Hesabatlar</a>
+          <a href="/" data-need="layout.edit">Çertyoj</a>
+          <a href="/products.html" data-need="products.edit">Məhsullar</a>
+          <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a href="/printers.html" data-need="printers.view">Printerlər</a>
+          <a href="/users.html" data-need="users.view">İstifadəçilər</a>
+          <a href="/settings.html" data-need="settings.view">Ayarlar</a>
+        </div>
+      </details>
+      <button id="logout" type="button">Çıxış</button>
+    </nav>
+  </header>
+
+  <main class="delivery-main">
+    <p id="message" class="message"></p>
+    <div class="delivery-cols">
+      <section>
+        <h2>Prep</h2>
+        <div id="col-prep" class="delivery-col"></div>
+      </section>
+      <section>
+        <h2>Yolda</h2>
+        <div id="col-way" class="delivery-col"></div>
+      </section>
+      <section>
+        <h2>Bitdi</h2>
+        <div id="col-done" class="delivery-col"></div>
+      </section>
+    </div>
+  </main>
+
+  <div id="pin-lock" class="pin-lock">
+    <div class="pin-card">
+      <p class="eyebrow">Çatdırılma</p>
+      <h2>PIN yazın</h2>
+      <p id="pin-dots" class="pin-dots"></p>
+      <p id="pin-error" class="message"></p>
+      <div id="pin-pad" class="pin-pad"></div>
+    </div>
+  </div>
+
+  <script src="log-client.js"></script>
+  <script src="offline.js"></script>
+  <script src="dom.js"></script>
+  <script src="nav.js"></script>
+  <script src="delivery-ui.js"></script>
+</body>
+</html>

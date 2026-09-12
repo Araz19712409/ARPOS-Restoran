@@ -19,6 +19,7 @@ const sessions = require('./sessions');
 const shifts = require('./shifts');
 const stock = require('./stock');
 const fiscal = require('./fiscal');
+const delivery = require('./delivery');
 const journal = require('./journal');
 const waitlist = require('./waitlist');
 const clock = require('./clock');
@@ -116,6 +117,9 @@ app.use('/api', function (req, res, next) {
     return;
   }
   if (req.method === 'POST' && (req.path === '/login' || req.path === '/login/totp' || req.path === '/logs')) {
+    return next();
+  }
+  if (req.method === 'POST' && String(req.path || '').indexOf('/delivery/webhook/') === 0) {
     return next();
   }
   const token = req.get('X-Session') || '';
@@ -1698,6 +1702,7 @@ app.put('/api/settings', function (req, res) {
       waiterBonuses: body.waiterBonuses,
       backupFolder: body.backupFolder,
       ekassa: body.ekassa,
+      delivery: body.delivery,
       opsMode: body.opsMode,
       listenLan: body.listenLan,
       branchName: body.branchName,
@@ -2247,6 +2252,104 @@ app.post('/api/orders/guests', function (req, res) {
   });
 });
 
+app.post('/api/delivery/webhook/:provider', function (req, res) {
+  try {
+    const secret = req.get('X-Delivery-Secret') || '';
+    const packed = delivery.handleWebhook(req.params.provider, secret, req.body || {});
+    res.status(packed.status).json(packed.body);
+    if (packed.status === 201 && packed.packed && packed.packed.autoPrintKitchen) {
+      dispatchTickets(
+        packed.packed.catalogStore,
+        packed.packed.fresh,
+        packed.packed.order.tableName,
+        packed.packed.order.waiterName,
+        'CATDIRILMA'
+      ).catch(function (error) {
+        logger.warn({
+          method: 'POST',
+          path: '/api/delivery/webhook',
+          message: error.message || 'Mətbəx çapı gözləməyə düşdü'
+        });
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta.' });
+  }
+});
+
+app.post('/api/delivery/sample', function (req, res) {
+  if (!needPerm(req, res, 'settings.edit')) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const packed = delivery.sampleOrder();
+    if (!packed.ok) {
+      reject(packed.status || 400, packed.message || 'Nümunə yazılmadı.');
+    }
+    return packed;
+  }).then(function (packed) {
+    res.status(201).json({
+      success: true,
+      data: { orderId: packed.order.id, tableName: packed.order.tableName }
+    });
+    if (packed.autoPrintKitchen) {
+      dispatchTickets(
+        packed.catalogStore,
+        packed.fresh,
+        packed.order.tableName,
+        packed.order.waiterName,
+        'CATDIRILMA'
+      ).catch(function (error) {
+        logger.warn({
+          method: 'POST',
+          path: '/api/delivery/sample',
+          message: error.message || 'Mətbəx çapı gözləməyə düşdü'
+        });
+      });
+    }
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.get('/api/delivery/board', function (req, res) {
+  try {
+    if (!needAnyPerm(req, res, ['orders.create', 'payments.take'])) {
+      return;
+    }
+    res.json({
+      success: true,
+      data: {
+        orders: delivery.openDelivery(),
+        delivery: settings.forPos().delivery
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
+app.post('/api/delivery/patch', function (req, res) {
+  if (!needAnyPerm(req, res, ['orders.create', 'payments.take'])) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const body = req.body || {};
+    const packed = delivery.patchOpen(body.orderId, {
+      runStatus: body.runStatus,
+      courierName: body.courierName
+    });
+    if (!packed.ok) {
+      reject(packed.status || 400, packed.message);
+    }
+    return packed.order;
+  }).then(function (order) {
+    res.json({ success: true, data: { order: order } });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
 app.post('/api/orders/run-status', function (req, res) {
   if (!needPerm(req, res, 'orders.create')) {
     return;
@@ -2521,6 +2624,7 @@ function kitchenBoard(stationId, pass) {
         itemId: item.id,
         tableId: order.tableId,
         tableName: order.tableName || ('Masa ' + order.tableId),
+        channel: order.channel || 'dine',
         stationId: Number(item.stationId) || 0,
         stationName: station ? station.name : '—',
         name: item.name,

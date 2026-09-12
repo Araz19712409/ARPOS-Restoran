@@ -120,9 +120,19 @@
       var card = document.createElement('article');
       card.className = 'kitchen-card ' + ageClass(line.at);
       card.innerHTML =
-        '<div class="meta"><span></span><span class="when"></span></div>' +
+        '<div class="meta"><span class="ch-badge hidden"></span><span></span><span class="when"></span></div>' +
         '<p class="qty"></p><h3></h3><p class="note"></p><p class="who"></p>';
-      card.querySelector('.meta span').textContent = line.tableName + ' • ' + line.stationName;
+      var badge = card.querySelector('.ch-badge');
+      if (line.channel === 'delivery') {
+        badge.hidden = false;
+        badge.classList.remove('hidden');
+        badge.textContent = 'Çatdırılma';
+      } else if (line.channel === 'takeaway') {
+        badge.hidden = false;
+        badge.classList.remove('hidden');
+        badge.textContent = 'Götür';
+      }
+      card.querySelector('.meta span:not(.ch-badge):not(.when)').textContent = line.tableName + ' • ' + line.stationName;
       card.querySelector('.when').textContent = ageText(line.at);
       card.querySelector('.qty').textContent = '× ' + line.qty;
       card.querySelector('h3').textContent = line.name +

@@ -1,5 +1,6 @@
 # Arpos Restoran — versiyalar
 
+- **1.2.16** — 2026-09-12 — Çatdırılma Faza 1: manual + webhook stub (real Wolt/Bolt yox)
 - **1.2.15** — 2026-09-12 — Sifariş Ofis: Hesabatlar, Ofisiant günü silindi
 - **1.2.14** — 2026-09-12 — E-kassa: provider seçimi + emulyator
 - **1.2.13** — 2026-09-12 — Sifariş A.1: planşet zona, yığcam header, qısa ödəniş

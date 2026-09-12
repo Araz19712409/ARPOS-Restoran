@@ -131,6 +131,19 @@
     fillRoleSelect('new-role', selectedId);
   }
 
+  function deliveryPayload() {
+    return {
+      provider: document.getElementById('delivery-provider')
+        ? document.getElementById('delivery-provider').value
+        : 'manual',
+      autoPrintKitchen: !!(document.getElementById('delivery-autoprint') &&
+        document.getElementById('delivery-autoprint').checked),
+      webhookSecret: document.getElementById('delivery-secret')
+        ? document.getElementById('delivery-secret').value
+        : ''
+    };
+  }
+
   function ekassaPayload() {
     return {
       provider: document.getElementById('ekassa-provider').value,
@@ -425,6 +438,7 @@
         waiterBonuses: map,
         backupFolder: backupFolderValue(),
         ekassa: ekassaPayload(),
+        delivery: deliveryPayload(),
         opsMode: opsModeValue(),
         listenLan: listenLanValue(),
         branchName: branchNameValue(),
@@ -542,6 +556,19 @@
     }
     document.getElementById('backup-folder').value = current.backupFolder || '';
     var ek = current.ekassa || {};
+    var del = current.delivery || {};
+    var dProv = document.getElementById('delivery-provider');
+    if (dProv) {
+      dProv.value = del.provider || 'manual';
+    }
+    var dPrint = document.getElementById('delivery-autoprint');
+    if (dPrint) {
+      dPrint.checked = del.autoPrintKitchen !== false;
+    }
+    var dSec = document.getElementById('delivery-secret');
+    if (dSec) {
+      dSec.value = del.webhookSecret || '';
+    }
     document.getElementById('ekassa-provider').value = ek.provider || 'none';
     document.getElementById('ekassa-emulator').checked = ek.emulator !== false;
     document.getElementById('ekassa-voen').value = ek.voen || '';
@@ -811,6 +838,23 @@
   }
   document.getElementById('save-bonuses').addEventListener('click', saveAll);
   document.getElementById('save-ekassa').addEventListener('click', saveAll);
+  var sampleBtn = document.getElementById('delivery-sample');
+  if (sampleBtn) {
+    sampleBtn.addEventListener('click', function () {
+      if (!waiter || !canEditSettings()) {
+        say('Ayarları dəyişməyə icazəniz yoxdur.', 'err');
+        return;
+      }
+      saveBonuses(collectBonuses(), 'Yadda saxlandı.').then(function () {
+        return api('/api/delivery/sample', { method: 'POST' });
+      }).then(function (body) {
+        var row = (body && body.data) || {};
+        say((row.tableName || 'Nümunə') + ' yaradıldı.', 'ok');
+      }).catch(function (error) {
+        say(error.message, 'err');
+      });
+    });
+  }
   document.getElementById('ekassa-provider').addEventListener('change', showEkassaFields);
   function probeEkassa(url, failText) {
     if (!waiter) {

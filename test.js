@@ -1107,4 +1107,57 @@ test('none və emulator satış; HTTP yoxdur', function () {
   });
 });
 
+test('çatdırılma stub webhook və secret', function () {
+  withTempDb(function () {
+    const delivery = require('./delivery');
+    const cat = catalog.readCatalog();
+    cat.groups = [{ id: 1, name: 'İçki' }];
+    cat.nextGroupId = 2;
+    cat.products = [{
+      id: 1,
+      groupId: 1,
+      stationId: 3,
+      name: 'Çay',
+      salePrice: 2,
+      barcode: '12345',
+      blocked: false,
+      soldOut: false
+    }];
+    cat.nextProductId = 2;
+    catalog.writeCatalog(cat);
+    settings.writeSettings({
+      opsMode: 'sales',
+      delivery: { provider: 'wolt', autoPrintKitchen: false, webhookSecret: 's3cret-key' }
+    });
+    const pub = settings.forPos();
+    assert.strictEqual(JSON.stringify(pub).indexOf('s3cret-key'), -1);
+    assert.strictEqual(pub.delivery.provider, 'wolt');
+    const bad = delivery.handleWebhook('wolt', 'wrong', { items: [{ name: 'Çay', qty: 1 }] });
+    assert.strictEqual(bad.status, 401);
+    assert.ok(JSON.stringify(bad).indexOf('s3cret-key') === -1);
+    const good = delivery.handleWebhook('wolt', 's3cret-key', delivery.providers.types.sampleDraft('wolt'));
+    assert.strictEqual(good.status, 201);
+    assert.ok(good.body.success);
+    const order = orders.readOrders().orders.find(function (row) {
+      return row.id === good.body.data.orderId;
+    });
+    assert.ok(order);
+    assert.strictEqual(order.channel, 'delivery');
+    assert.strictEqual(order.runStatus, 'prep');
+    const tea = order.items.find(function (row) { return row.productId === 1; });
+    assert.ok(tea);
+    const miss = order.items.find(function (row) { return !row.productId; });
+    assert.ok(miss);
+    assert.ok(String(miss.note).indexOf('Kataloqda yox') >= 0);
+    const sample = delivery.sampleOrder();
+    assert.strictEqual(sample.ok, true);
+    settings.writeSettings({
+      opsMode: 'sales',
+      delivery: { provider: 'manual', webhookSecret: 's3cret-key' }
+    });
+    const blocked = delivery.handleWebhook('wolt', 's3cret-key', delivery.providers.types.sampleDraft('wolt'));
+    assert.strictEqual(blocked.status, 400);
+  });
+});
+
 console.log('Bütün testlər keçdi.');

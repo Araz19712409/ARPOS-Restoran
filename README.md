@@ -55,6 +55,17 @@ node scripts/auto-update.js --confirm
 
 Ayarlar → E-kassa: fiskal aparat seçimi (`Heç biri`, WizarPOS, Omnitech, AzSmart). Default **Emulyator** açıqdır — satış lokal növbəyə düşür, vergiyə getmir, `emu-…` fiscalId. Cihaz gələndə həmin provider + Emulyator **sönük**.
 
+## Çatdırılma
+
+**Faza 1 (indi):** daxili `manual` + aqreqator **stub**. Ayarlar → Ümumi → Çatdırılma: provider (`none` / `manual` / `wolt` / `bolt` / `glovo`). Wolt/Bolt/Glovo real API yoxdur.
+
+- Kassada **Çatdırılma** hesabı (`#new-delivery`) və lövhə `/delivery.html` (Prep | Yolda | Bitdi).
+- Webhook: `POST /api/delivery/webhook/:provider` header `X-Delivery-Secret`. Boş və ya səhv secret → 401. Secret loqa yazılmır.
+- Ayarlarda **Nümunə sifariş yarat** (`settings.edit`). Sətirlər barkod, sonra ad ilə kataloqa map; tapılmayan `note`.
+- Ödəniş mövcud pay axını + e-kassa enqueue eynidir.
+
+**Faza 2 (açar olanda):** real Wolt/Bolt/Glovo OAuth/API. Bu kodda yoxdur.
+
 ## Versiya
 
 Hər buraxılış `package.json` və `VERSIONS.md` içində qeyd olunur.

@@ -403,6 +403,16 @@
       for (var e = 0; e < extra.length; e++) {
         extra[e].parentNode.removeChild(extra[e]);
       }
+      if (!list.querySelector('a[href="/delivery.html"]')) {
+        var del = document.createElement('a');
+        del.href = '/delivery.html';
+        del.setAttribute('data-need', 'orders.create|payments.take');
+        del.textContent = 'Çatdırılma';
+        if (path === '/delivery.html' || path === '/delivery') {
+          del.classList.add('active');
+        }
+        list.insertBefore(del, reports);
+      }
     }
   }
 

@@ -101,6 +101,28 @@
             Kassanı bağla
           </label>
         </section>
+        <section>
+          <h3>Çatdırılma</h3>
+          <p class="hint">Wolt/Bolt/Glovo — tezliklə; indi manual. Real API yoxdur (stub webhook).</p>
+          <label>Provider
+            <select id="delivery-provider">
+              <option value="none">Heç biri</option>
+              <option value="manual">Manual</option>
+              <option value="wolt">Wolt (tezliklə)</option>
+              <option value="bolt">Bolt (tezliklə)</option>
+              <option value="glovo">Glovo (tezliklə)</option>
+            </select>
+          </label>
+          <label class="ops-choice">
+            <input id="delivery-autoprint" type="checkbox">
+            Mətbəxə avtomatik çap
+          </label>
+          <label>Webhook secret
+            <input id="delivery-secret" type="password" autocomplete="new-password" maxlength="80">
+          </label>
+          <p class="hint">Header: X-Delivery-Secret. Boş olsa webhook 401. Secret loqa yazılmır.</p>
+          <button id="delivery-sample" type="button">Nümunə sifariş yarat</button>
+        </section>
       </article>
 
       <article class="settings-panel hidden" data-tab="network">

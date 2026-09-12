@@ -1,0 +1,101 @@
+.delivery-page {
+  background:
+    radial-gradient(circle at top, #3a3228 0%, #1c1813 46%, #14110e 100%);
+  color: #f4ead8;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.delivery-page .top {
+  padding: 8px 14px;
+}
+
+.delivery-page .top h1 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.delivery-main {
+  min-height: 0;
+  overflow: hidden;
+  padding: 8px 12px 12px;
+}
+
+.delivery-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  height: calc(768px - 88px);
+  max-height: calc(100vh - 88px);
+}
+
+.delivery-cols section {
+  background: #2a241c;
+  border: 1px solid #5a4c3a;
+  border-radius: 12px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.delivery-cols h2 {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 0.95rem;
+  border-bottom: 1px solid #5a4c3a;
+}
+
+.delivery-col {
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.delivery-card {
+  background: #1c1813;
+  border: 1px solid #4a3f32;
+  border-radius: 10px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.delivery-card h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.delivery-card p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #c9b89a;
+}
+
+.delivery-card .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.delivery-card button {
+  min-height: 36px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+.delivery-card input {
+  min-height: 36px;
+  width: 100%;
+}
+
+.delivery-empty {
+  color: #9b8b72;
+  font-size: 0.85rem;
+  padding: 12px 4px;
+}
