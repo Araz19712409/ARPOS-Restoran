@@ -11,8 +11,15 @@
   var stockQuery = '';
   var lowOnly = false;
   var inventories = [];
+  var productions = [];
+  var transfers = [];
+  var warehouses = [];
   var invId = 0;
+  var prodId = 0;
+  var xferId = 0;
   var offId = 0;
+  var warehouseFilter = '';
+  var stockTab = 'qty';
 
   function dec(value) {
     return window.PosNav && window.PosNav.parseDec
@@ -92,7 +99,7 @@
     }
     document.getElementById('stock-open-add').style.display = can('stock.edit') ? '' : 'none';
     document.getElementById('stock-tab-buy').style.display = can('stock.edit') ? '' : 'none';
-    if (!can('stock.edit') && (stockTab === 'buy' || stockTab === 'inv')) {
+    if (!can('stock.edit') && (stockTab === 'buy' || stockTab === 'inv' || stockTab === 'prod' || stockTab === 'xfer')) {
       showTab('qty');
     }
     if (data) {
@@ -106,6 +113,8 @@
     document.getElementById('stock-buy-box').classList.toggle('hidden', tab !== 'buy');
     document.getElementById('stock-hist-panel').classList.toggle('hidden', tab !== 'hist');
     document.getElementById('stock-inv-panel').classList.toggle('hidden', tab !== 'inv');
+    document.getElementById('stock-prod-panel').classList.toggle('hidden', tab !== 'prod');
+    document.getElementById('stock-xfer-panel').classList.toggle('hidden', tab !== 'xfer');
     document.getElementById('stock-qty-tools').classList.toggle('hidden', tab !== 'qty');
     document.querySelectorAll('.stock-tabs [data-tab]').forEach(function (btn) {
       btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
@@ -154,6 +163,9 @@
     document.getElementById('stock-edit-buy').value = Number(row.buyPrice).toFixed(2);
     document.getElementById('stock-edit-total').value = (editQty * Number(row.buyPrice)).toFixed(2);
     document.getElementById('stock-edit-total').disabled = editQty <= 0;
+    document.getElementById('stock-edit-kind').value = row.kind === 'semi' ? 'semi' : 'raw';
+    fillRecipeBox('stock-edit-recipe', row.recipe || []);
+    toggleRecipeBox('edit');
     document.getElementById('stock-edit-modal').classList.remove('hidden');
   }
 
@@ -214,7 +226,7 @@
       }
       tr.innerHTML = '<td></td><td></td><td></td><td></td><td></td><td></td>';
       var cells = tr.querySelectorAll('td');
-      cells[0].textContent = row.name;
+      cells[0].textContent = row.name + (row.kind === 'semi' ? ' · Yarımfabrikat' : '');
       cells[1].textContent = row.qty + ' ' + row.unit;
       cells[1].className = 'num';
       cells[2].textContent = row.minQty + ' ' + row.unit;
@@ -254,6 +266,46 @@
     });
   }
 
+  function fillWhSelect(select, selectedId, opts) {
+    if (!select) {
+      return;
+    }
+    var prev = selectedId != null ? String(selectedId) : select.value;
+    select.innerHTML = '';
+    if (opts && opts.all) {
+      var all = document.createElement('option');
+      all.value = '';
+      all.textContent = 'Hamısı';
+      select.appendChild(all);
+    }
+    (warehouses || []).forEach(function (row) {
+      if (opts && opts.activeOnly && row.active === false) {
+        return;
+      }
+      var opt = document.createElement('option');
+      opt.value = String(row.id);
+      opt.textContent = row.name + (row.active === false ? ' (bağlı)' : '');
+      select.appendChild(opt);
+    });
+    if (prev && Array.prototype.some.call(select.options, function (opt) { return opt.value === prev; })) {
+      select.value = prev;
+    }
+  }
+
+  function activeWhId() {
+    var row = (warehouses || []).find(function (item) { return item.active !== false; });
+    return row ? row.id : 1;
+  }
+
+  function fillWhFields() {
+    fillWhSelect(document.getElementById('stock-wh-filter'), warehouseFilter, { all: true });
+    ['buy-warehouse', 'inv-warehouse', 'prod-from', 'prod-to', 'xfer-from', 'xfer-to',
+      'stock-move-warehouse', 'stock-off-warehouse'].forEach(function (id) {
+      var el = document.getElementById(id);
+      fillWhSelect(el, (el && el.value) || activeWhId(), { activeOnly: true });
+    });
+  }
+
   function fillItemSelect(select, selectedId) {
     select.innerHTML = '';
     var blank = document.createElement('option');
@@ -269,6 +321,100 @@
       }
       select.appendChild(opt);
     });
+  }
+
+  function fillRawSelect(select, selectedId) {
+    select.innerHTML = '';
+    var blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = 'Xammal';
+    select.appendChild(blank);
+    items.filter(function (row) {
+      return row.kind !== 'semi';
+    }).forEach(function (row) {
+      var opt = document.createElement('option');
+      opt.value = String(row.id);
+      opt.textContent = row.name + ' (' + row.unit + ')';
+      if (Number(selectedId) === row.id) {
+        opt.selected = true;
+      }
+      select.appendChild(opt);
+    });
+  }
+
+  function addRecipeLine(boxId, itemId, qty, unit) {
+    var box = document.getElementById(boxId);
+    if (!box) {
+      return;
+    }
+    var row = document.createElement('div');
+    row.className = 'stock-recipe-line';
+    var sel = document.createElement('select');
+    fillRawSelect(sel, itemId);
+    var qtyIn = document.createElement('input');
+    qtyIn.type = 'text';
+    qtyIn.inputMode = 'decimal';
+    qtyIn.placeholder = 'Miqdar';
+    qtyIn.value = qty != null ? String(qty) : '';
+    var unitSel = document.createElement('select');
+    ['əd', 'kq', 'l', 'qr', 'ml'].forEach(function (u) {
+      var opt = document.createElement('option');
+      opt.value = u;
+      opt.textContent = u;
+      if (u === (unit || 'əd')) {
+        opt.selected = true;
+      }
+      unitSel.appendChild(opt);
+    });
+    var del = document.createElement('button');
+    del.type = 'button';
+    del.textContent = 'Sil';
+    del.addEventListener('click', function () {
+      box.removeChild(row);
+    });
+    row.appendChild(sel);
+    row.appendChild(qtyIn);
+    row.appendChild(unitSel);
+    row.appendChild(del);
+    box.appendChild(row);
+  }
+
+  function fillRecipeBox(boxId, list) {
+    var box = document.getElementById(boxId);
+    if (!box) {
+      return;
+    }
+    box.innerHTML = '';
+    (list || []).forEach(function (line) {
+      addRecipeLine(boxId, line.itemId, line.qty, line.unit);
+    });
+  }
+
+  function collectRecipe(boxId) {
+    var lines = [];
+    var box = document.getElementById(boxId);
+    if (!box) {
+      return lines;
+    }
+    Array.prototype.forEach.call(box.querySelectorAll('.stock-recipe-line'), function (row) {
+      var itemId = Number(row.querySelector('select').value);
+      var qty = dec(row.querySelector('input').value);
+      var unit = row.querySelectorAll('select')[1].value;
+      if (!itemId || !qty || qty <= 0) {
+        return;
+      }
+      lines.push({ itemId: itemId, qty: qty, unit: unit });
+    });
+    return lines;
+  }
+
+  function toggleRecipeBox(which) {
+    var kind = document.getElementById(which === 'edit' ? 'stock-edit-kind' : 'stock-add-kind');
+    var box = document.getElementById(which === 'edit' ? 'stock-edit-recipe-box' : 'stock-add-recipe-box');
+    if (!kind || !box) {
+      return;
+    }
+    box.classList.toggle('hidden', kind.value !== 'semi');
   }
 
   function buyLineTotal(row) {
@@ -441,6 +587,18 @@
     if (type === 'inv_minus') {
       return 'İnventar −';
     }
+    if (type === 'prod_use') {
+      return 'İstehsal sərf';
+    }
+    if (type === 'prod_in') {
+      return 'İstehsal';
+    }
+    if (type === 'xfer_out') {
+      return 'Köçürmə −';
+    }
+    if (type === 'xfer_in') {
+      return 'Köçürmə +';
+    }
     if (type === 'out') {
       return 'Çıxış';
     }
@@ -580,13 +738,259 @@
     });
   }
 
+  function currentProd() {
+    return productions.find(function (row) {
+      return row.id === Number(prodId);
+    }) || null;
+  }
+
+  function fillProdOutput(selectedId) {
+    var sel = document.getElementById('prod-output');
+    if (!sel) {
+      return;
+    }
+    sel.innerHTML = '';
+    var blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = 'Yarımfabrikat';
+    sel.appendChild(blank);
+    items.filter(function (row) {
+      return row.kind === 'semi';
+    }).forEach(function (row) {
+      var opt = document.createElement('option');
+      opt.value = String(row.id);
+      opt.textContent = row.name + ' (' + row.unit + ')';
+      if (Number(selectedId) === row.id) {
+        opt.selected = true;
+      }
+      sel.appendChild(opt);
+    });
+  }
+
+  function renderProd() {
+    var docs = document.getElementById('prod-docs');
+    var lines = document.getElementById('prod-lines');
+    var title = document.getElementById('prod-title');
+    if (!docs || !lines) {
+      return;
+    }
+    fillProdOutput(currentProd() && currentProd().outputItemId);
+    docs.innerHTML = '';
+    if (!productions.length) {
+      docs.innerHTML = '<tr><td colspan="3">Akt yoxdur.</td></tr>';
+    } else {
+      productions.forEach(function (row) {
+        var tr = document.createElement('tr');
+        tr.className = 'inv-doc-row' + (row.id === prodId ? ' active' : '');
+        tr.innerHTML = '<td></td><td></td><td></td>';
+        var cells = tr.querySelectorAll('td');
+        cells[0].textContent = '#' + row.id;
+        cells[1].textContent = row.status === 'done' ? 'Təsdiq' : 'Qaralama';
+        cells[2].textContent = (row.outputName || '') + ' ' + row.outputQty;
+        tr.addEventListener('click', function () {
+          prodId = row.id;
+          renderProd();
+        });
+        docs.appendChild(tr);
+      });
+    }
+    var doc = currentProd();
+    lines.innerHTML = '';
+    var canEdit = can('stock.edit') && doc && doc.status === 'draft';
+    document.getElementById('stock-prod-save').disabled = !canEdit;
+    document.getElementById('stock-prod-confirm').disabled = !canEdit;
+    document.getElementById('stock-prod-new').style.display = can('stock.edit') ? '' : 'none';
+    document.getElementById('prod-output').disabled = !can('stock.edit') || (doc && doc.status === 'done');
+    document.getElementById('prod-qty').disabled = !can('stock.edit') || (doc && doc.status === 'done');
+    document.getElementById('prod-loss').disabled = !can('stock.edit') || (doc && doc.status === 'done');
+    document.getElementById('prod-from').disabled = !can('stock.edit') || (doc && doc.status === 'done');
+    document.getElementById('prod-to').disabled = !can('stock.edit') || (doc && doc.status === 'done');
+    if (!doc) {
+      title.textContent = 'Akt seçin və ya yeni yazın.';
+      document.getElementById('prod-qty').value = '1';
+      document.getElementById('prod-loss').value = '0';
+      return;
+    }
+    title.textContent = 'İstehsal #' + doc.id + (doc.status === 'done' ? ' (təsdiq)' : ' (qaralama)');
+    document.getElementById('prod-qty').value = String(doc.outputQty);
+    document.getElementById('prod-loss').value = String(doc.lossPct || 0);
+    fillWhSelect(document.getElementById('prod-from'), doc.fromWarehouseId || activeWhId(), { activeOnly: true });
+    fillWhSelect(document.getElementById('prod-to'), doc.toWarehouseId || activeWhId(), { activeOnly: true });
+    (doc.lines || []).forEach(function (line) {
+      var tr = document.createElement('tr');
+      var nameTd = document.createElement('td');
+      nameTd.textContent = line.name + ' (' + line.unit + ')';
+      var qtyTd = document.createElement('td');
+      qtyTd.className = 'num';
+      qtyTd.textContent = String(line.needQty);
+      tr.appendChild(nameTd);
+      tr.appendChild(qtyTd);
+      lines.appendChild(tr);
+    });
+  }
+
+  function currentXfer() {
+    return transfers.find(function (row) {
+      return row.id === Number(xferId);
+    }) || null;
+  }
+
+  function addXferLine(itemId, qty) {
+    var box = document.getElementById('xfer-lines');
+    if (!box) {
+      return;
+    }
+    var row = document.createElement('div');
+    row.className = 'buy-line';
+    row.innerHTML =
+      '<label>Xammal<select class="xfer-item"></select></label>' +
+      '<label>Miqdar<input class="xfer-qty" type="text" inputmode="decimal" autocomplete="off"></label>' +
+      '<button class="buy-del" type="button">Sil</button>';
+    fillItemSelect(row.querySelector('.xfer-item'), itemId);
+    if (qty != null) {
+      row.querySelector('.xfer-qty').value = String(qty);
+    }
+    row.querySelector('.buy-del').addEventListener('click', function () {
+      row.remove();
+    });
+    box.appendChild(row);
+  }
+
+  function collectXferLines() {
+    var lines = [];
+    document.querySelectorAll('#xfer-lines .buy-line').forEach(function (row) {
+      var itemId = Number(row.querySelector('.xfer-item').value);
+      var qty = dec(row.querySelector('.xfer-qty').value);
+      if (!itemId || !qty || qty <= 0) {
+        return;
+      }
+      lines.push({ itemId: itemId, qty: qty });
+    });
+    return lines;
+  }
+
+  function fillXferLines(doc) {
+    var box = document.getElementById('xfer-lines');
+    if (!box) {
+      return;
+    }
+    box.innerHTML = '';
+    (doc && doc.lines || []).forEach(function (line) {
+      addXferLine(line.itemId, line.qty);
+    });
+    if (!(doc && doc.lines && doc.lines.length) && can('stock.edit') && (!doc || doc.status !== 'done')) {
+      addXferLine();
+    }
+  }
+
+  function renderWh() {
+    var box = document.getElementById('wh-body');
+    if (!box) {
+      return;
+    }
+    box.innerHTML = '';
+    if (!warehouses.length) {
+      box.innerHTML = '<tr><td colspan="2">Sklad yoxdur.</td></tr>';
+      return;
+    }
+    warehouses.forEach(function (row) {
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td></td><td></td>';
+      tr.querySelectorAll('td')[0].textContent = row.name + (row.active === false ? ' (bağlı)' : '');
+      var acts = document.createElement('div');
+      acts.className = 'stock-acts';
+      if (can('stock.edit')) {
+        addAct(acts, row.active === false ? 'Aç' : 'Bağla', function () {
+          api('/api/stock/warehouses/' + row.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ active: row.active === false })
+          }).then(function () { return load(); }).catch(function (error) {
+            say(error.message, 'err');
+          });
+        });
+        addAct(acts, 'Sil', function () {
+          api('/api/stock/warehouses/' + row.id, { method: 'DELETE' }).then(function () {
+            say('Sklad silindi.');
+            return load();
+          }).catch(function (error) {
+            say(error.message, 'err');
+          });
+        });
+      }
+      tr.querySelectorAll('td')[1].appendChild(acts);
+      box.appendChild(tr);
+    });
+  }
+
+  function renderXfer() {
+    var docs = document.getElementById('xfer-docs');
+    var title = document.getElementById('xfer-title');
+    if (!docs || !title) {
+      return;
+    }
+    docs.innerHTML = '';
+    if (!transfers.length) {
+      docs.innerHTML = '<tr><td colspan="3">Köçürmə yoxdur.</td></tr>';
+    } else {
+      transfers.forEach(function (row) {
+        var tr = document.createElement('tr');
+        tr.className = 'inv-doc-row' + (row.id === xferId ? ' active' : '');
+        tr.innerHTML = '<td></td><td></td><td></td>';
+        var cells = tr.querySelectorAll('td');
+        cells[0].textContent = '#' + row.id;
+        cells[1].textContent = row.status === 'done' ? 'Təsdiq' : 'Qaralama';
+        cells[2].textContent = (row.fromName || '') + ' →';
+        tr.addEventListener('click', function () {
+          xferId = row.id;
+          renderXfer();
+        });
+        docs.appendChild(tr);
+      });
+    }
+    var doc = currentXfer();
+    var canEdit = can('stock.edit') && doc && doc.status === 'draft';
+    document.getElementById('stock-xfer-save').disabled = !can('stock.edit') || (doc && doc.status === 'done');
+    document.getElementById('stock-xfer-confirm').disabled = !canEdit;
+    document.getElementById('stock-xfer-new').style.display = can('stock.edit') ? '' : 'none';
+    document.getElementById('xfer-from').disabled = !can('stock.edit') || (doc && doc.status === 'done');
+    document.getElementById('xfer-to').disabled = !can('stock.edit') || (doc && doc.status === 'done');
+    document.getElementById('xfer-add-line').style.display = can('stock.edit') && (!doc || doc.status !== 'done') ? '' : 'none';
+    if (!doc) {
+      title.textContent = 'Sənəd seçin və ya yeni yazın.';
+      fillWhSelect(document.getElementById('xfer-from'), activeWhId(), { activeOnly: true });
+      fillWhSelect(document.getElementById('xfer-to'), activeWhId(), { activeOnly: true });
+      fillXferLines(null);
+      return;
+    }
+    title.textContent = 'Köçürmə #' + doc.id + ' ' + (doc.fromName || '') + ' → ' + (doc.toName || '') +
+      (doc.status === 'done' ? ' (təsdiq)' : ' (qaralama)');
+    fillWhSelect(document.getElementById('xfer-from'), doc.fromId, { activeOnly: true });
+    fillWhSelect(document.getElementById('xfer-to'), doc.toId, { activeOnly: true });
+    fillXferLines(doc);
+  }
+
   function load() {
-    return api('/api/stock').then(function (body) {
+    var url = '/api/stock';
+    if (warehouseFilter) {
+      url += '?warehouseId=' + encodeURIComponent(warehouseFilter);
+    }
+    return api(url).then(function (body) {
       items = (body.data && body.data.items) || [];
       purchases = (body.data && body.data.purchases) || [];
       moves = (body.data && body.data.moves) || [];
       suppliers = (body.data && body.data.suppliers) || [];
       inventories = (body.data && body.data.inventories) || [];
+      productions = (body.data && body.data.productions) || [];
+      transfers = (body.data && body.data.transfers) || [];
+      warehouses = (body.data && body.data.warehouses) || [];
+      fillWhFields();
+      if (xferId && !transfers.some(function (row) { return row.id === xferId; })) {
+        xferId = transfers.length ? transfers[0].id : 0;
+      }
+      if (prodId && !productions.some(function (row) { return row.id === prodId; })) {
+        prodId = productions.length ? productions[0].id : 0;
+      }
       if (invId && !inventories.some(function (row) { return row.id === invId; })) {
         invId = inventories.length ? inventories[0].id : 0;
       }
@@ -598,6 +1002,9 @@
       renderPurchases();
       renderMoves();
       renderInv();
+      renderProd();
+      renderXfer();
+      renderWh();
       fillSuppliers();
       document.querySelectorAll('#buy-lines .buy-item').forEach(function (select) {
         fillItemSelect(select, select.value);
@@ -619,6 +1026,10 @@
     stockQuery = document.getElementById('stock-search').value;
     render();
   });
+  document.getElementById('stock-wh-filter').addEventListener('change', function () {
+    warehouseFilter = document.getElementById('stock-wh-filter').value;
+    load();
+  });
   document.getElementById('stock-low-only').addEventListener('change', function () {
     lowOnly = document.getElementById('stock-low-only').checked;
     render();
@@ -628,6 +1039,9 @@
       return;
     }
     document.getElementById('stock-add-modal').classList.remove('hidden');
+    document.getElementById('stock-add-kind').value = 'raw';
+    document.getElementById('stock-add-recipe').innerHTML = '';
+    toggleRecipeBox('add');
     document.getElementById('stock-name').focus();
   });
   document.getElementById('cancel-stock-add').addEventListener('click', function () {
@@ -647,12 +1061,17 @@
         unit: document.getElementById('stock-unit').value,
         qty: 0,
         minQty: dec(document.getElementById('stock-min').value) || 0,
-        buyPrice: dec(document.getElementById('stock-buy').value) || 0
+        buyPrice: dec(document.getElementById('stock-buy').value) || 0,
+        kind: document.getElementById('stock-add-kind').value,
+        recipe: collectRecipe('stock-add-recipe')
       })
     }).then(function (body) {
       document.getElementById('stock-name').value = '';
       document.getElementById('stock-min').value = '0';
       document.getElementById('stock-buy').value = '0';
+      document.getElementById('stock-add-kind').value = 'raw';
+      document.getElementById('stock-add-recipe').innerHTML = '';
+      toggleRecipeBox('add');
       document.getElementById('stock-add-modal').classList.add('hidden');
       showTab('qty');
       var row = body.data || {};
@@ -684,6 +1103,7 @@
         supplier: document.getElementById('buy-supplier').value,
         docNo: document.getElementById('buy-doc').value,
         credit: document.getElementById('buy-credit').checked,
+        warehouseId: Number(document.getElementById('buy-warehouse').value) || undefined,
         lines: lines
       })
     }).then(function (body) {
@@ -744,7 +1164,9 @@
           ? (row ? row.unit : document.getElementById('stock-edit-unit').value)
           : document.getElementById('stock-edit-unit').value,
         minQty: dec(document.getElementById('stock-edit-min').value) || 0,
-        buyPrice: buy
+        buyPrice: buy,
+        kind: document.getElementById('stock-edit-kind').value,
+        recipe: collectRecipe('stock-edit-recipe')
       })
     }).then(function (body) {
       document.getElementById('stock-edit-modal').classList.add('hidden');
@@ -785,7 +1207,8 @@
         itemId: moveId,
         type: type,
         qty: dec(document.getElementById('stock-move-qty').value),
-        note: note
+        note: note,
+        warehouseId: Number(document.getElementById('stock-move-warehouse').value) || undefined
       })
     }).then(function () {
       document.getElementById('stock-move-modal').classList.add('hidden');
@@ -800,7 +1223,13 @@
     if (!can('stock.edit')) {
       return;
     }
-    api('/api/stock/inventories', { method: 'POST' }).then(function (body) {
+    api('/api/stock/inventories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        warehouseId: Number(document.getElementById('inv-warehouse').value) || undefined
+      })
+    }).then(function (body) {
       invId = body.data && body.data.id;
       say('Sayım yaradıldı.');
       showTab('inv');
@@ -861,12 +1290,207 @@
         itemId: offId,
         qty: dec(document.getElementById('stock-off-qty').value),
         reasonCode: document.getElementById('stock-off-reason').value,
-        note: document.getElementById('stock-off-note').value.trim()
+        note: document.getElementById('stock-off-note').value.trim(),
+        warehouseId: Number(document.getElementById('stock-off-warehouse').value) || undefined
       })
     }).then(function () {
       document.getElementById('stock-off-modal').classList.add('hidden');
       say('Silinmə yazıldı.');
       return load();
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
+  });
+
+  document.getElementById('stock-add-kind').addEventListener('change', function () {
+    toggleRecipeBox('add');
+  });
+  document.getElementById('stock-edit-kind').addEventListener('change', function () {
+    toggleRecipeBox('edit');
+  });
+  document.getElementById('stock-add-recipe-add').addEventListener('click', function (event) {
+    event.preventDefault();
+    addRecipeLine('stock-add-recipe');
+  });
+  document.getElementById('stock-edit-recipe-add').addEventListener('click', function (event) {
+    event.preventDefault();
+    addRecipeLine('stock-edit-recipe');
+  });
+  document.getElementById('stock-prod-new').addEventListener('click', function () {
+    if (!can('stock.edit')) {
+      return;
+    }
+    var outputId = Number(document.getElementById('prod-output').value);
+    if (!outputId) {
+      say('Yarımfabrikat seçin.', 'warn');
+      return;
+    }
+    api('/api/stock/productions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        outputItemId: outputId,
+        outputQty: dec(document.getElementById('prod-qty').value),
+        lossPct: dec(document.getElementById('prod-loss').value) || 0,
+        fromWarehouseId: Number(document.getElementById('prod-from').value) || undefined,
+        toWarehouseId: Number(document.getElementById('prod-to').value) || undefined
+      })
+    }).then(function (body) {
+      prodId = body.data && body.data.id;
+      say('Akt yaradıldı.');
+      showTab('prod');
+      return load();
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
+  });
+  document.getElementById('stock-prod-save').addEventListener('click', function () {
+    if (!can('stock.edit') || !prodId) {
+      return;
+    }
+    api('/api/stock/productions/' + prodId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        outputQty: dec(document.getElementById('prod-qty').value),
+        lossPct: dec(document.getElementById('prod-loss').value) || 0,
+        fromWarehouseId: Number(document.getElementById('prod-from').value) || undefined,
+        toWarehouseId: Number(document.getElementById('prod-to').value) || undefined
+      })
+    }).then(function () {
+      say('Akt yadda saxlandı.');
+      return load();
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
+  });
+  document.getElementById('stock-prod-confirm').addEventListener('click', function () {
+    if (!can('stock.edit') || !prodId) {
+      return;
+    }
+    window.askYes('Təsdiq', 'İstehsal təsdiqlənsin? Xammal silinəcək.').then(function (ok) {
+      if (!ok) {
+        return;
+      }
+      return api('/api/stock/productions/' + prodId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          outputQty: dec(document.getElementById('prod-qty').value),
+          lossPct: dec(document.getElementById('prod-loss').value) || 0,
+          fromWarehouseId: Number(document.getElementById('prod-from').value) || undefined,
+          toWarehouseId: Number(document.getElementById('prod-to').value) || undefined
+        })
+      }).then(function () {
+        return api('/api/stock/productions/' + prodId + '/confirm', { method: 'POST' });
+      }).then(function () {
+        say('İstehsal təsdiqləndi.');
+        return load();
+      });
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
+  });
+
+  document.getElementById('xfer-add-line').addEventListener('click', function () {
+    addXferLine();
+  });
+  document.getElementById('wh-add').addEventListener('click', function () {
+    if (!can('stock.edit')) {
+      return;
+    }
+    var name = document.getElementById('wh-name').value.trim();
+    if (!name) {
+      say('Sklad adını yazın.', 'warn');
+      return;
+    }
+    api('/api/stock/warehouses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name })
+    }).then(function () {
+      document.getElementById('wh-name').value = '';
+      say('Sklad əlavə olundu.');
+      return load();
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
+  });
+  document.getElementById('stock-xfer-new').addEventListener('click', function () {
+    if (!can('stock.edit')) {
+      return;
+    }
+    var lines = collectXferLines();
+    if (!lines.length) {
+      say('Köçürmə sətri yazın.', 'warn');
+      return;
+    }
+    api('/api/stock/transfers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fromId: Number(document.getElementById('xfer-from').value),
+        toId: Number(document.getElementById('xfer-to').value),
+        lines: lines
+      })
+    }).then(function (body) {
+      xferId = body.data && body.data.id;
+      say('Köçürmə yaradıldı.');
+      showTab('xfer');
+      return load();
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
+  });
+  function xferPayload() {
+    return {
+      fromId: Number(document.getElementById('xfer-from').value),
+      toId: Number(document.getElementById('xfer-to').value),
+      lines: collectXferLines()
+    };
+  }
+  document.getElementById('stock-xfer-save').addEventListener('click', function () {
+    if (!can('stock.edit')) {
+      return;
+    }
+    var payload = xferPayload();
+    if (!payload.lines.length) {
+      say('Köçürmə sətri yazın.', 'warn');
+      return;
+    }
+    if (!xferId) {
+      document.getElementById('stock-xfer-new').click();
+      return;
+    }
+    api('/api/stock/transfers/' + xferId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function () {
+      say('Köçürmə yadda saxlandı.');
+      return load();
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
+  });
+  document.getElementById('stock-xfer-confirm').addEventListener('click', function () {
+    if (!can('stock.edit') || !xferId) {
+      return;
+    }
+    window.askYes('Təsdiq', 'Köçürmə təsdiqlənsin?').then(function (ok) {
+      if (!ok) {
+        return;
+      }
+      return api('/api/stock/transfers/' + xferId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(xferPayload())
+      }).then(function () {
+        return api('/api/stock/transfers/' + xferId + '/confirm', { method: 'POST' });
+      }).then(function () {
+        say('Köçürmə təsdiqləndi.');
+        return load();
+      });
     }).catch(function (error) {
       say(error.message, 'err');
     });

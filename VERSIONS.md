@@ -1,5 +1,6 @@
 # Arpos Restoran — versiyalar
 
+- **1.2.18** — 2026-09-12 — Anbar Faza 2+3: istehsal/yarımfabrikat + multi-sklad (stansiya xəritəsi yox)
 - **1.2.17** — 2026-09-12 — Anbar Faza 1: inventar sənədi + silinmə (istehsal/multi-sklad yox)
 - **1.2.16** — 2026-09-12 — Çatdırılma Faza 1: manual + webhook stub (real Wolt/Bolt yox)
 - **1.2.15** — 2026-09-12 — Sifariş Ofis: Hesabatlar, Ofisiant günü silindi

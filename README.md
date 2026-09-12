@@ -68,11 +68,13 @@ Ayarlar → E-kassa: fiskal aparat seçimi (`Heç biri`, WizarPOS, Omnitech, AzS
 
 ## Anbar
 
-**Faza 1 (indi):** İnventar sənədi (qaralama → təsdiq) və silinmə səbəbi. Anbar tabları: Qalıq | Alış | Tarix | İnventar.
+**Faza 1:** İnventar sənədi və silinmə səbəbi. Tablar: Qalıq | Alış | Tarix | İnventar.
 
-Təsdiq `counted − system` (sənəddə dondurulmuş sistem) üçün `inv_plus` / `inv_minus` yazır. Artım `fifoAvg`. `fifoSetQty` təsdiqdə yoxdur. Zay: `reasonCode` spoil|break|staff|other.
+**Faza 2:** İstehsal / yarımfabrikat. `kind` raw|semi, resept yalnız raw (1 səviyyə). Akt: qaralama → təsdiq. `prod_use` / `prod_in`. İtki % xammala. Maya = sərf FIFO / çıxış. Nested semi yoxdur.
 
-**Faza 2:** istehsal aktı. **Faza 3:** multi-sklad. Bu kodda yoxdur.
+**Faza 3 (indi):** multi-sklad. Lotlarda `warehouseId`. Köhnə qalıq → Əsas (id 1). Köçürmə: `xfer_out` / `xfer_in`, eyni alış qiyməti. İstehsal from/to skladu. İnventar və alış sklada yazılır. Satış `settings.stock.salesWarehouseId` (stansiya xəritəsi yoxdur).
+
+**Faza 3.1:** stansiya → sklad. Bu kodda yoxdur.
 
 ## Versiya
 

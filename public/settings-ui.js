@@ -439,6 +439,11 @@
         backupFolder: backupFolderValue(),
         ekassa: ekassaPayload(),
         delivery: deliveryPayload(),
+        stock: {
+          salesWarehouseId: document.getElementById('sales-warehouse')
+            ? Number(document.getElementById('sales-warehouse').value) || 1
+            : 1
+        },
         opsMode: opsModeValue(),
         listenLan: listenLanValue(),
         branchName: branchNameValue(),
@@ -597,6 +602,32 @@
     var mode = current.opsMode === 'sales' ? 'sales' : 'full';
     document.getElementById('ops-sales').checked = mode === 'sales';
     document.getElementById('ops-full').checked = mode === 'full';
+    var saleWh = document.getElementById('sales-warehouse');
+    if (saleWh) {
+      var list = body.data.warehouses || [];
+      saleWh.innerHTML = '';
+      if (!list.length) {
+        var opt = document.createElement('option');
+        opt.value = '1';
+        opt.textContent = 'Əsas';
+        saleWh.appendChild(opt);
+      }
+      list.forEach(function (row) {
+        if (row.active === false) {
+          return;
+        }
+        var option = document.createElement('option');
+        option.value = String(row.id);
+        option.textContent = row.name;
+        saleWh.appendChild(option);
+      });
+      var want = current.stock && current.stock.salesWarehouseId
+        ? String(current.stock.salesWarehouseId)
+        : '1';
+      if (Array.prototype.some.call(saleWh.options, function (row) { return row.value === want; })) {
+        saleWh.value = want;
+      }
+    }
     var lanOn = current.listenLan !== false;
     document.getElementById('lan-on').checked = lanOn;
     document.getElementById('lan-off').checked = !lanOn;

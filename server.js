@@ -602,16 +602,22 @@ app.get('/api/stock', function (req, res) {
     }
     const box = stock.readStock();
     const catalogStore = catalog.readCatalog();
+    const q = req.query && req.query.warehouseId;
+    const warehouseId = (q === undefined || q === '' || q === 'all') ? null : q;
     res.json({
       success: true,
       data: {
         items: box.items.map(function (item) {
-          return stock.publicItemLinked(item, box, catalogStore);
+          return stock.publicItemLinked(item, box, catalogStore, warehouseId);
         }),
         moves: box.moves.slice(-80).reverse(),
         purchases: stock.listPurchasesForApi(box),
         suppliers: box.suppliers || [],
         inventories: stock.listInventories(box),
+        productions: stock.listProductions(box),
+        transfers: stock.listTransfers(box),
+        warehouses: stock.listWarehouses(box),
+        salesWarehouseId: stock.salesWarehouseId(box),
         permissions: req.staff && req.staff.permissions ? req.staff.permissions : []
       }
     });
@@ -643,7 +649,7 @@ app.post('/api/stock/inventories', function (req, res) {
   }
   lock.withLock('write', function () {
     const who = req.staff && req.staff.user ? req.staff.user.name : '';
-    const out = stock.createInventoryDraft(who);
+    const out = stock.createInventoryDraft(who, (req.body || {}).warehouseId);
     if (out.error) {
       reject(400, out.error);
     }
@@ -693,6 +699,234 @@ app.post('/api/stock/inventories/:id/confirm', function (req, res) {
   }).then(function (inventory) {
     audit(req, 'stock', 'İnventar #' + inventory.id);
     res.json({ success: true, data: inventory });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.get('/api/stock/productions', function (req, res) {
+  try {
+    if (!needPerm(req, res, 'stock.view')) {
+      return;
+    }
+    if (!needStockMode(req, res)) {
+      return;
+    }
+    res.json({ success: true, data: { productions: stock.listProductions() } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
+app.post('/api/stock/productions', function (req, res) {
+  if (!needPerm(req, res, 'stock.edit')) {
+    return;
+  }
+  if (!needStockMode(req, res)) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const who = req.staff && req.staff.user ? req.staff.user.name : '';
+    const out = stock.createProductionDraft(req.body || {}, who);
+    if (out.error) {
+      reject(400, out.error);
+    }
+    return out.production;
+  }).then(function (production) {
+    res.status(201).json({ success: true, data: production });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.put('/api/stock/productions/:id', function (req, res) {
+  if (!needPerm(req, res, 'stock.edit')) {
+    return;
+  }
+  if (!needStockMode(req, res)) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const out = stock.updateProductionDraft(req.params.id, req.body || {});
+    if (out.error) {
+      reject(400, out.error);
+    }
+    return out.production;
+  }).then(function (production) {
+    res.json({ success: true, data: production });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.post('/api/stock/productions/:id/confirm', function (req, res) {
+  if (!needPerm(req, res, 'stock.edit')) {
+    return;
+  }
+  if (!needStockMode(req, res)) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const who = req.staff && req.staff.user ? req.staff.user.name : '';
+    const out = stock.confirmProduction(req.params.id, who);
+    if (out.error) {
+      reject(400, out.error);
+    }
+    return out.production;
+  }).then(function (production) {
+    audit(req, 'stock', 'İstehsal #' + production.id);
+    res.json({ success: true, data: production });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.get('/api/stock/warehouses', function (req, res) {
+  try {
+    if (!needPerm(req, res, 'stock.view')) {
+      return;
+    }
+    if (!needStockMode(req, res)) {
+      return;
+    }
+    res.json({ success: true, data: { warehouses: stock.listWarehouses() } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
+app.post('/api/stock/warehouses', function (req, res) {
+  if (!needPerm(req, res, 'stock.edit')) {
+    return;
+  }
+  if (!needStockMode(req, res)) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const out = stock.createWarehouse(req.body || {});
+    if (out.error) {
+      reject(400, out.error);
+    }
+    return out.warehouse;
+  }).then(function (warehouse) {
+    res.status(201).json({ success: true, data: warehouse });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.put('/api/stock/warehouses/:id', function (req, res) {
+  if (!needPerm(req, res, 'stock.edit')) {
+    return;
+  }
+  if (!needStockMode(req, res)) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const out = stock.updateWarehouse(req.params.id, req.body || {});
+    if (out.error) {
+      reject(out.error === 'Sklad tapılmadı.' ? 404 : 400, out.error);
+    }
+    return out.warehouse;
+  }).then(function (warehouse) {
+    res.json({ success: true, data: warehouse });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.delete('/api/stock/warehouses/:id', function (req, res) {
+  if (!needPerm(req, res, 'stock.edit')) {
+    return;
+  }
+  if (!needStockMode(req, res)) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const out = stock.removeWarehouse(req.params.id);
+    if (out.error) {
+      reject(out.error === 'Sklad tapılmadı.' ? 404 : 400, out.error);
+    }
+    return out.warehouse;
+  }).then(function (warehouse) {
+    res.json({ success: true, data: warehouse });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.get('/api/stock/transfers', function (req, res) {
+  try {
+    if (!needPerm(req, res, 'stock.view')) {
+      return;
+    }
+    if (!needStockMode(req, res)) {
+      return;
+    }
+    res.json({ success: true, data: { transfers: stock.listTransfers() } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
+app.post('/api/stock/transfers', function (req, res) {
+  if (!needPerm(req, res, 'stock.edit')) {
+    return;
+  }
+  if (!needStockMode(req, res)) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const who = req.staff && req.staff.user ? req.staff.user.name : '';
+    const out = stock.createTransferDraft(req.body || {}, who);
+    if (out.error) {
+      reject(400, out.error);
+    }
+    return out.transfer;
+  }).then(function (transfer) {
+    res.status(201).json({ success: true, data: transfer });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.put('/api/stock/transfers/:id', function (req, res) {
+  if (!needPerm(req, res, 'stock.edit')) {
+    return;
+  }
+  if (!needStockMode(req, res)) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const out = stock.updateTransferDraft(req.params.id, req.body || {});
+    if (out.error) {
+      reject(400, out.error);
+    }
+    return out.transfer;
+  }).then(function (transfer) {
+    res.json({ success: true, data: transfer });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.post('/api/stock/transfers/:id/confirm', function (req, res) {
+  if (!needPerm(req, res, 'stock.edit')) {
+    return;
+  }
+  if (!needStockMode(req, res)) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const who = req.staff && req.staff.user ? req.staff.user.name : '';
+    const out = stock.confirmTransfer(req.params.id, who);
+    if (out.error) {
+      reject(400, out.error);
+    }
+    return out.transfer;
+  }).then(function (transfer) {
+    audit(req, 'stock', 'Köçürmə #' + transfer.id);
+    res.json({ success: true, data: transfer });
   }).catch(function (error) {
     sendFail(res, error);
   });
@@ -778,7 +1012,7 @@ app.post('/api/stock/move', function (req, res) {
   }
   lock.withLock('write', function () {
     const body = req.body || {};
-    const out = stock.moveStock(body.itemId, body.type, body.qty, body.note);
+    const out = stock.moveStock(body.itemId, body.type, body.qty, body.note, body.warehouseId);
     if (out.error) {
       reject(400, out.error);
     }
@@ -800,7 +1034,7 @@ app.post('/api/stock/write-off', function (req, res) {
   }
   lock.withLock('write', function () {
     const body = req.body || {};
-    const out = stock.writeOff(body.itemId, body.qty, body.reasonCode, body.note);
+    const out = stock.writeOff(body.itemId, body.qty, body.reasonCode, body.note, body.warehouseId);
     if (out.error) {
       reject(400, out.error);
     }
@@ -1768,6 +2002,7 @@ app.get('/api/settings', function (req, res) {
       success: true,
       data: {
         settings: settings.readSettings(),
+        warehouses: stock.listWarehouses(),
         version: updater.version(),
         lan: {
           live: LIVE_HOST,
@@ -1804,6 +2039,7 @@ app.put('/api/settings', function (req, res) {
       backupFolder: body.backupFolder,
       ekassa: body.ekassa,
       delivery: body.delivery,
+      stock: body.stock,
       opsMode: body.opsMode,
       listenLan: body.listenLan,
       branchName: body.branchName,

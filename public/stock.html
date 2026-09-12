@@ -12,7 +12,7 @@
   <header class="top">
     <div>
       <h1>Anbar</h1>
-      <p id="waiter-line">Qalıq, alış, tarix, inventar.</p>
+      <p id="waiter-line">Qalıq, alış, tarix, inventar, istehsal, köçürmə.</p>
     </div>
     <nav class="app-nav waiter-nav">
       <a href="/orders.html">Sifariş</a>
@@ -44,8 +44,11 @@
         <button type="button" data-tab="buy" id="stock-tab-buy">Alış</button>
         <button type="button" data-tab="hist">Tarix</button>
         <button type="button" data-tab="inv">İnventar</button>
+        <button type="button" data-tab="prod">İstehsal</button>
+        <button type="button" data-tab="xfer">Köçürmə</button>
       </div>
       <div id="stock-qty-tools" class="stock-bar-tools">
+        <select id="stock-wh-filter" title="Sklad"></select>
         <input id="stock-search" type="search" placeholder="Axtar..." maxlength="40">
         <label class="check-line">
           <input id="stock-low-only" type="checkbox">
@@ -84,6 +87,9 @@
           </label>
           <label>Sənəd №
             <input id="buy-doc" type="text" maxlength="20">
+          </label>
+          <label>Sklad
+            <select id="buy-warehouse"></select>
           </label>
           <label class="check-line">
             <input id="buy-credit" type="checkbox">
@@ -141,6 +147,9 @@
       <div class="stock-inv-split">
         <div class="stock-inv-list">
           <button id="stock-inv-new" class="gold" type="button">Yeni sayım</button>
+          <label>Sklad
+            <select id="inv-warehouse"></select>
+          </label>
           <div class="report-table-wrap">
             <table class="report-table">
               <thead>
@@ -175,6 +184,118 @@
         </div>
       </div>
     </section>
+
+    <section id="stock-prod-panel" class="hidden">
+      <p class="hint">Yarımfabrikat aktı. İtki % xammala yazılır, çıxış eyni qalır. Nested semi yoxdur.</p>
+      <div class="stock-inv-split">
+        <div class="stock-inv-list">
+          <button id="stock-prod-new" class="gold" type="button">Yeni akt</button>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Status</th>
+                  <th>Çıxış</th>
+                </tr>
+              </thead>
+              <tbody id="prod-docs"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="stock-inv-sheet">
+          <p id="prod-title" class="hint">Akt seçin və ya yeni yazın.</p>
+          <div id="prod-draft-form" class="report-toolbar">
+            <label>Yarımfabrikat
+              <select id="prod-output"></select>
+            </label>
+            <label>Miqdar
+              <input id="prod-qty" type="text" inputmode="decimal" autocomplete="off" value="1">
+            </label>
+            <label>İtki %
+              <input id="prod-loss" type="text" inputmode="decimal" autocomplete="off" value="0">
+            </label>
+            <label>Xammal skladu
+              <select id="prod-from"></select>
+            </label>
+            <label>Çıxış skladu
+              <select id="prod-to"></select>
+            </label>
+          </div>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Xammal</th>
+                  <th>Sərf</th>
+                </tr>
+              </thead>
+              <tbody id="prod-lines"></tbody>
+            </table>
+          </div>
+          <div class="buy-foot">
+            <button id="stock-prod-save" type="button">Yadda saxla</button>
+            <button id="stock-prod-confirm" class="gold" type="button">Təsdiq</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="stock-xfer-panel" class="hidden">
+      <p class="hint">Eyni xammal skladdan sklada. FIFO partiyası eyni alış qiyməti ilə keçir.</p>
+      <div class="stock-inv-split">
+        <div class="stock-inv-list">
+          <button id="stock-xfer-new" class="gold" type="button">Yeni köçürmə</button>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Status</th>
+                  <th>Haradan</th>
+                </tr>
+              </thead>
+              <tbody id="xfer-docs"></tbody>
+            </table>
+          </div>
+          <p class="hint">Skladlar</p>
+          <div class="report-toolbar">
+            <label>Ad
+              <input id="wh-name" type="text" maxlength="40" placeholder="məs. Mətbəx">
+            </label>
+            <button id="wh-add" type="button">Əlavə et</button>
+          </div>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Ad</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="wh-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="stock-inv-sheet">
+          <p id="xfer-title" class="hint">Sənəd seçin və ya yeni yazın.</p>
+          <div id="xfer-draft-form" class="report-toolbar">
+            <label>Haradan
+              <select id="xfer-from"></select>
+            </label>
+            <label>Haraya
+              <select id="xfer-to"></select>
+            </label>
+          </div>
+          <div id="xfer-lines" class="buy-lines"></div>
+          <div class="buy-foot">
+            <button id="xfer-add-line" type="button">Sətir</button>
+            <button id="stock-xfer-save" type="button">Yadda saxla</button>
+            <button id="stock-xfer-confirm" class="gold" type="button">Təsdiq</button>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <div id="stock-add-modal" class="modal hidden">
@@ -199,6 +320,17 @@
       <label>Alış, 1 vahid (istəyə görə)
         <input id="stock-buy" type="text" inputmode="decimal" autocomplete="off" value="0">
       </label>
+      <label>Növ
+        <select id="stock-add-kind">
+          <option value="raw">Xammal</option>
+          <option value="semi">Yarımfabrikat</option>
+        </select>
+      </label>
+      <div id="stock-add-recipe-box" class="hidden">
+        <p class="hint">Resept yalnız xammal (1 səviyyə).</p>
+        <div id="stock-add-recipe"></div>
+        <button id="stock-add-recipe-add" type="button">Sətir</button>
+      </div>
       <div class="modal-actions">
         <button id="cancel-stock-add" type="button">Bağla</button>
         <button class="gold" type="submit">Yadda saxla</button>
@@ -232,6 +364,17 @@
       <label>Cəm, AZN
         <input id="stock-edit-total" type="text" inputmode="decimal" autocomplete="off">
       </label>
+      <label>Növ
+        <select id="stock-edit-kind">
+          <option value="raw">Xammal</option>
+          <option value="semi">Yarımfabrikat</option>
+        </select>
+      </label>
+      <div id="stock-edit-recipe-box" class="hidden">
+        <p class="hint">Resept yalnız xammal (1 səviyyə).</p>
+        <div id="stock-edit-recipe"></div>
+        <button id="stock-edit-recipe-add" type="button">Sətir</button>
+      </div>
       <div class="modal-actions">
         <button id="cancel-stock-edit" type="button">Bağla</button>
         <button class="gold" type="submit">Yadda saxla</button>
@@ -266,6 +409,9 @@
       <label>Qeyd
         <input id="stock-move-note" type="text" maxlength="80">
       </label>
+      <label>Sklad
+        <select id="stock-move-warehouse"></select>
+      </label>
       <div class="modal-actions">
         <button id="cancel-stock-move" type="button">Bağla</button>
         <button class="gold" type="submit">Yadda saxla</button>
@@ -290,6 +436,9 @@
       </label>
       <label>Qeyd
         <input id="stock-off-note" type="text" maxlength="80">
+      </label>
+      <label>Sklad
+        <select id="stock-off-warehouse"></select>
       </label>
       <div class="modal-actions">
         <button id="cancel-stock-off" type="button">Bağla</button>

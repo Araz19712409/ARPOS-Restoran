@@ -20,6 +20,18 @@ function cleanHost(value) {
   return String(value || '').trim().replace(/^https?:\/\//i, '').split('/')[0].slice(0, 80);
 }
 
+function emptyStock() {
+  return { salesWarehouseId: 1 };
+}
+
+function cleanStock(raw) {
+  const src = raw && raw.stock && typeof raw.stock === 'object' ? raw.stock : {};
+  const n = Math.round(Number(src.salesWarehouseId));
+  return {
+    salesWarehouseId: Number.isInteger(n) && n >= 1 ? n : 1
+  };
+}
+
 function emptyDelivery() {
   return {
     provider: 'manual',
@@ -127,6 +139,7 @@ function defaults() {
     backupFolder: defaultBackupFolder(),
     ekassa: emptyEkassa(),
     delivery: emptyDelivery(),
+    stock: emptyStock(),
     opsMode: 'full',
     listenLan: true,
     httpsPort: 3443,
@@ -517,6 +530,7 @@ function normalize(raw, prev) {
     backupFolder: sanitizeFolder(raw && raw.backupFolder),
     ekassa: cleanEkassa(raw),
     delivery: cleanDelivery(raw),
+    stock: cleanStock(raw),
     opsMode: cleanOpsMode(raw && raw.opsMode),
     listenLan: raw && Object.prototype.hasOwnProperty.call(raw, 'listenLan')
       ? cleanListenLan(raw.listenLan)
@@ -549,6 +563,7 @@ function writeSettings(data) {
     backupFolder: data.backupFolder !== undefined ? data.backupFolder : prev.backupFolder,
     ekassa: data.ekassa !== undefined ? data.ekassa : prev.ekassa,
     delivery: data.delivery !== undefined ? data.delivery : prev.delivery,
+    stock: data.stock !== undefined ? data.stock : prev.stock,
     opsMode: data.opsMode !== undefined ? data.opsMode : prev.opsMode,
     listenLan: data.listenLan !== undefined ? data.listenLan : prev.listenLan,
     httpsPort: data.httpsPort !== undefined ? data.httpsPort : prev.httpsPort,

@@ -223,7 +223,13 @@ function loadStock() {
     nextMoveId: Number(meta.nextMoveId) || 1,
     nextPurchaseId: Number(meta.nextPurchaseId) || 1,
     nextInventoryId: Number(meta.nextInventoryId) || 1,
+    nextProductionId: Number(meta.nextProductionId) || 1,
+    nextWarehouseId: Number(meta.nextWarehouseId) || 1,
+    nextTransferId: Number(meta.nextTransferId) || 1,
+    warehouses: Array.isArray(meta.warehouses) ? meta.warehouses : [],
     inventories: Array.isArray(meta.inventories) ? meta.inventories : [],
+    productions: Array.isArray(meta.productions) ? meta.productions : [],
+    transfers: Array.isArray(meta.transfers) ? meta.transfers : [],
     items: conn.prepare('SELECT json FROM stock_items ORDER BY id').all().map(function (row) {
       return parseJson(row.json, {});
     }),
@@ -253,7 +259,13 @@ function saveStock(data) {
       nextMoveId: data.nextMoveId,
       nextPurchaseId: data.nextPurchaseId,
       nextInventoryId: data.nextInventoryId,
-      inventories: Array.isArray(data.inventories) ? data.inventories : []
+      nextProductionId: data.nextProductionId,
+      nextWarehouseId: data.nextWarehouseId,
+      nextTransferId: data.nextTransferId,
+      warehouses: Array.isArray(data.warehouses) ? data.warehouses : [],
+      inventories: Array.isArray(data.inventories) ? data.inventories : [],
+      productions: Array.isArray(data.productions) ? data.productions : [],
+      transfers: Array.isArray(data.transfers) ? data.transfers : []
     });
     conn.prepare('DELETE FROM stock_items').run();
     conn.prepare('DELETE FROM stock_moves').run();

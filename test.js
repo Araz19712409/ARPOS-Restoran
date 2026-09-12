@@ -780,6 +780,172 @@ test('inventoryAsOf inv_plus fifoAvg', function () {
   assert.strictEqual(inv.total, 30);
 });
 
+test('istehsal 2 raw → 1 semi; çatışmazlıq 400; nested/özünə yox', function () {
+  withTempDb(function () {
+    const a = stock.createItem({ name: 'Un', unit: 'kq', buyPrice: 4 });
+    const b = stock.createItem({ name: 'Su', unit: 'kq', buyPrice: 1 });
+    assert.ok(!a.error && !b.error);
+    stock.moveStock(a.item.id, 'in', 10, '');
+    stock.moveStock(b.item.id, 'in', 10, '');
+    const dough = stock.createItem({
+      name: 'Xəmir',
+      unit: 'kq',
+      kind: 'semi',
+      recipe: [
+        { itemId: a.item.id, qty: 0.5, unit: 'kq' },
+        { itemId: b.item.id, qty: 0.2, unit: 'kq' }
+      ]
+    });
+    assert.ok(!dough.error, dough.error);
+    const self = stock.updateItem(dough.item.id, {
+      name: 'Xəmir',
+      unit: 'kq',
+      kind: 'semi',
+      recipe: [{ itemId: dough.item.id, qty: 1, unit: 'kq' }]
+    });
+    assert.ok(self.error);
+    const nested = stock.createItem({
+      name: 'Doldurma',
+      unit: 'kq',
+      kind: 'semi',
+      recipe: [{ itemId: dough.item.id, qty: 1, unit: 'kq' }]
+    });
+    assert.ok(nested.error);
+    const dry = stock.createProductionDraft({
+      outputItemId: dough.item.id,
+      outputQty: 1000,
+      lossPct: 0
+    }, 'Ali');
+    assert.ok(!dry.error);
+    const lack = stock.confirmProduction(dry.production.id, 'Ali');
+    assert.ok(lack.error);
+    const okDraft = stock.createProductionDraft({
+      outputItemId: dough.item.id,
+      outputQty: 2,
+      lossPct: 0
+    }, 'Ali');
+    const done = stock.confirmProduction(okDraft.production.id, 'Ali');
+    assert.ok(!done.error, done.error);
+    const box = stock.readStock();
+    const flour = box.items.find(function (row) { return row.id === a.item.id; });
+    const water = box.items.find(function (row) { return row.id === b.item.id; });
+    const out = box.items.find(function (row) { return row.id === dough.item.id; });
+    assert.strictEqual(flour.qty, 9);
+    assert.strictEqual(water.qty, 9.6);
+    assert.strictEqual(out.qty, 2);
+    assert.ok(stock.fifoAvg(out) > 0);
+    assert.strictEqual(box.moves.filter(function (row) { return row.type === 'prod_use'; }).length, 2);
+    assert.strictEqual(box.moves.filter(function (row) { return row.type === 'prod_in'; }).length, 1);
+    const replay = stock.inventoryAsOf(box, new Date());
+    const dRow = replay.items.find(function (row) { return row.id === out.id; });
+    assert.strictEqual(dRow.qty, 2);
+    assert.ok(dRow.value > 0);
+  });
+});
+
+test('multi-sklad: lots warehouseId=1; köçürmə A→B; istehsal from/to; inventar sklada görə', function () {
+  withTempDb(function () {
+    const made = stock.createItem({ name: 'Un', unit: 'kq', buyPrice: 10 });
+    assert.ok(!made.error);
+    stock.moveStock(made.item.id, 'in', 10, 'alış');
+    const box0 = stock.readStock();
+    assert.ok(box0.warehouses.some(function (row) { return row.id === 1 && row.name === 'Əsas'; }));
+    const lot0 = box0.items[0].lots[0];
+    assert.strictEqual(lot0.warehouseId, 1);
+    const kitchen = stock.createWarehouse({ name: 'Mətbəx' });
+    assert.ok(!kitchen.error);
+    const kid = kitchen.warehouse.id;
+    const xDraft = stock.createTransferDraft({
+      fromId: 1,
+      toId: kid,
+      lines: [{ itemId: made.item.id, qty: 4 }]
+    }, 'Ali');
+    assert.ok(!xDraft.error);
+    const xDone = stock.confirmTransfer(xDraft.transfer.id, 'Ali');
+    assert.ok(!xDone.error, xDone.error);
+    const afterX = stock.readStock().items[0];
+    assert.strictEqual(stock.qtyAt(afterX, 1), 6);
+    assert.strictEqual(stock.qtyAt(afterX, kid), 4);
+    assert.strictEqual(afterX.qty, 10);
+    const xMoves = stock.readStock().moves.filter(function (row) {
+      return row.type === 'xfer_out' || row.type === 'xfer_in';
+    });
+    assert.strictEqual(xMoves.length, 2);
+    assert.strictEqual(xMoves[0].buyPrice, 10);
+
+    const water = stock.createItem({ name: 'Su', unit: 'kq', buyPrice: 1 });
+    stock.moveStock(water.item.id, 'in', 10, '', 1);
+    const dough = stock.createItem({
+      name: 'Xəmir',
+      unit: 'kq',
+      kind: 'semi',
+      recipe: [
+        { itemId: made.item.id, qty: 1, unit: 'kq' },
+        { itemId: water.item.id, qty: 0.5, unit: 'kq' }
+      ]
+    });
+    assert.ok(!dough.error, dough.error);
+    const lack = stock.createProductionDraft({
+      outputItemId: dough.item.id,
+      outputQty: 1,
+      fromWarehouseId: kid,
+      toWarehouseId: kid
+    }, 'Ali');
+    assert.ok(!lack.error);
+    const lackDone = stock.confirmProduction(lack.production.id, 'Ali');
+    assert.ok(lackDone.error);
+    const okProd = stock.createProductionDraft({
+      outputItemId: dough.item.id,
+      outputQty: 1,
+      fromWarehouseId: 1,
+      toWarehouseId: kid
+    }, 'Ali');
+    const prodDone = stock.confirmProduction(okProd.production.id, 'Ali');
+    assert.ok(!prodDone.error, prodDone.error);
+    const box1 = stock.readStock();
+    const flour = box1.items.find(function (row) { return row.id === made.item.id; });
+    const semi = box1.items.find(function (row) { return row.id === dough.item.id; });
+    assert.strictEqual(stock.qtyAt(flour, 1), 5);
+    assert.strictEqual(stock.qtyAt(flour, kid), 4);
+    assert.strictEqual(stock.qtyAt(semi, kid), 1);
+    assert.strictEqual(stock.qtyAt(semi, 1), 0);
+
+    const invDraft = stock.createInventoryDraft('Ali', kid);
+    const flourLine = invDraft.inventory.counts.find(function (row) { return row.itemId === made.item.id; });
+    assert.strictEqual(flourLine.systemQty, 4);
+    stock.updateInventoryLines(invDraft.inventory.id, [{ itemId: made.item.id, countedQty: 3 }]);
+    const invDone = stock.confirmInventory(invDraft.inventory.id, 'Ali');
+    assert.ok(!invDone.error, invDone.error);
+    const flour2 = stock.readStock().items.find(function (row) { return row.id === made.item.id; });
+    assert.strictEqual(stock.qtyAt(flour2, kid), 3);
+    assert.strictEqual(stock.qtyAt(flour2, 1), 5);
+
+    const replay = stock.inventoryAsOf(stock.readStock(), new Date());
+    const replayFlour = replay.items.find(function (row) { return row.id === made.item.id; });
+    assert.strictEqual(replayFlour.qty, 8);
+  });
+});
+
+test('inventoryAsOf prod_use/prod_in', function () {
+  const inv = stock.inventoryAsOf({
+    items: [
+      { id: 1, name: 'Un', unit: 'kq', buyPrice: 4, qty: 0, lots: [] },
+      { id: 2, name: 'Xəmir', unit: 'kq', buyPrice: 0, qty: 0, lots: [] }
+    ],
+    purchases: [],
+    moves: [
+      { id: 1, itemId: 1, type: 'in', qty: 5, buyPrice: 4, at: '2026-09-01T10:00:00' },
+      { id: 2, itemId: 1, type: 'prod_use', qty: 2, at: '2026-09-02T10:00:00' },
+      { id: 3, itemId: 2, type: 'prod_in', qty: 1, buyPrice: 8, at: '2026-09-02T10:00:00' }
+    ]
+  }, new Date('2026-09-02T23:59:59'));
+  const flour = inv.items.find(function (row) { return row.id === 1; });
+  const doughRow = inv.items.find(function (row) { return row.id === 2; });
+  assert.strictEqual(flour.qty, 3);
+  assert.strictEqual(doughRow.qty, 1);
+  assert.strictEqual(doughRow.value, 8);
+});
+
 test('kreditor köhnə alışları ödənilib sayır', function () {
   const cred = stock.creditorsAsOf([
     { at: '2026-09-01T10:00:00', supplier: 'Market', total: 50 },

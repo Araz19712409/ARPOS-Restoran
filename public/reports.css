@@ -431,8 +431,24 @@
   cursor: pointer;
 }
 
-.inv-doc-row.active td {
-  background: #3a3228;
+.stock-recipe-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 70px 70px auto;
+  gap: 6px;
+  align-items: end;
+  margin-bottom: 6px;
+}
+
+.stock-recipe-line input,
+.stock-recipe-line select {
+  min-height: 32px;
+}
+
+#stock-add-recipe-box,
+#stock-edit-recipe-box {
+  max-height: 160px;
+  overflow: auto;
+  margin-bottom: 8px;
 }
 
 .stock-bar-tools input[type="search"] {
