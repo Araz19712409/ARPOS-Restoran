@@ -165,6 +165,51 @@ function redeemPoints(phone, points, cfg) {
   };
 }
 
+function restoreRedeemed(phone, points) {
+  const pts = intPts(points);
+  const key = cleanPhone(phone);
+  if (!pts || key.length < 7) {
+    return { skipped: true, points: 0 };
+  }
+  const made = findOrCreate(key, '');
+  if (made.error) {
+    return { error: made.error };
+  }
+  const box = readStore();
+  const row = findRow(box, key);
+  if (!row) {
+    return { error: 'Müştəri tapılmadı.' };
+  }
+  row.points = Math.round(Number(row.points) || 0) + pts;
+  row.updatedAt = new Date().toISOString();
+  writeStore(box);
+  return { customer: publicCustomer(row), points: pts };
+}
+
+function revokeEarned(phone, points) {
+  const pts = intPts(points);
+  const key = cleanPhone(phone);
+  if (!pts || key.length < 7) {
+    return { skipped: true, points: 0 };
+  }
+  const box = readStore();
+  const row = findRow(box, key);
+  if (!row) {
+    return { skipped: true, points: 0, message: 'Müştəri yoxdur.' };
+  }
+  const have = Math.round(Number(row.points) || 0);
+  const take = Math.min(have, pts);
+  row.points = Math.max(0, have - take);
+  row.updatedAt = new Date().toISOString();
+  writeStore(box);
+  return {
+    customer: publicCustomer(row),
+    points: take,
+    requested: pts,
+    clamped: take < pts
+  };
+}
+
 function earnClosed(phone, cashMinor, cardMinor, cfg) {
   const key = cleanPhone(phone);
   if (key.length < 7) {
@@ -222,6 +267,8 @@ module.exports = {
   findOrCreate: findOrCreate,
   canRedeem: canRedeem,
   redeemPoints: redeemPoints,
+  restoreRedeemed: restoreRedeemed,
+  revokeEarned: revokeEarned,
   earnClosed: earnClosed,
   adjustPoints: adjustPoints,
   publicCustomer: publicCustomer

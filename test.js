@@ -468,6 +468,17 @@ test('loyalty: 100 AZN → 1 ball; redeem; closed-only hesablama', function () {
     assert.strictEqual(earned.customer.points, 10);
     const byName = customers.search('Tes');
     assert.strictEqual(byName.length, 1);
+
+    const restored = customers.restoreRedeemed('0501234567', 1);
+    assert.strictEqual(restored.points, 1);
+    assert.strictEqual(restored.customer.points, 11);
+    const revoked = customers.revokeEarned('0501234567', 1);
+    assert.strictEqual(revoked.points, 1);
+    assert.strictEqual(revoked.customer.points, 10);
+    customers.revokeEarned('0501234567', 100);
+    const after = customers.findByPhone('0501234567');
+    assert.strictEqual(after.customer.points, 0);
+    assert.strictEqual(customers.revokeEarned('0501234567', 5).points, 0);
   });
   const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
   const pay = src.slice(src.indexOf("app.post('/api/orders/pay'"), src.indexOf("app.post('/api/reservations"));
@@ -476,9 +487,35 @@ test('loyalty: 100 AZN → 1 ball; redeem; closed-only hesablama', function () {
   assert.ok(pay.indexOf('gifts.redeem') >= 0);
   assert.ok(pay.indexOf('if (closed)') >= 0);
   const refund = src.slice(src.indexOf("app.post('/api/orders/refund'"), src.indexOf("app.get('/api/shifts'"));
-  assert.ok(refund.indexOf('TODO') >= 0);
+  assert.ok(refund.indexOf('restoreRedeemed') >= 0);
+  assert.ok(refund.indexOf('revokeEarned') >= 0);
   assert.ok(refund.indexOf('gifts.restore') >= 0);
-  assert.ok(refund.indexOf('earnClosed') === -1);
+  assert.ok(refund.indexOf('loyaltyRestored') >= 0);
+  assert.ok(refund.indexOf('TODO') === -1);
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'receipts-ui.js'), 'utf8');
+  assert.ok(ui.indexOf('loyaltyRestored') >= 0);
+  assert.ok(ui.indexOf('ball qaytarıldı') >= 0);
+});
+
+test('loyalty refund: redeem→restore; earn→revoke; ≥0', function () {
+  withTempDb(function () {
+    const cfg = { enabled: true, earnPer100: 1, pointValueMinor: 1, minRedeem: 1 };
+    const a = customers.findOrCreate('0509998877', 'A');
+    customers.adjustPoints(a.customer.id, 5, 'seed', 't');
+    customers.redeemPoints('0509998877', 3, cfg);
+    assert.strictEqual(customers.findByPhone('0509998877').customer.points, 2);
+    customers.restoreRedeemed('0509998877', 3);
+    assert.strictEqual(customers.findByPhone('0509998877').customer.points, 5);
+    customers.earnClosed('0509998877', 20000, 0, cfg);
+    assert.strictEqual(customers.findByPhone('0509998877').customer.points, 7);
+    const rev = customers.revokeEarned('0509998877', 2);
+    assert.strictEqual(rev.points, 2);
+    assert.strictEqual(customers.findByPhone('0509998877').customer.points, 5);
+    const over = customers.revokeEarned('0509998877', 99);
+    assert.strictEqual(over.points, 5);
+    assert.strictEqual(over.clamped, true);
+    assert.strictEqual(customers.findByPhone('0509998877').customer.points, 0);
+  });
 });
 
 test('növbə yalnız öz terminalını sayır', function () {

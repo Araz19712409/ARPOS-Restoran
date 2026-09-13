@@ -303,6 +303,15 @@
       lastReceipt = body.data.order;
       document.getElementById('refund-modal').classList.add('hidden');
       openReceipt(lastReceipt);
+      var ref = lastReceipt && lastReceipt.refund;
+      var parts = ['Geri ödəniş edildi.'];
+      if (ref && ref.loyaltyRestored) {
+        parts.push(ref.loyaltyRestored + ' ball qaytarıldı');
+      }
+      if (ref && ref.loyaltyRevoked) {
+        parts.push(ref.loyaltyRevoked + ' ball silindi');
+      }
+      document.getElementById('receipt-msg').textContent = parts.join(' ');
       loadList();
     }).catch(function (error) {
       document.getElementById('receipt-msg').textContent = error.message;

@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` gələcəkdə: `pay.js` (ödəniş modal), `shift-badge.js` (növbə/Z), `zones.js` (zal/menyu/çek). Risk yüksək — ayrıca sprint.
 
+- **1.2.43** — 2026-09-13 — Loyalty Faza 2: tam refund-da ball bərpa/revoke
 - **1.2.42** — 2026-09-13 — Printer: Windows/USB adı + TCP; Win32 RAW
 - **1.2.41** — 2026-09-13 — Çek logo Faza 1b (ekran/brauzer; termal raster TODO)
 - **1.2.40** — 2026-09-13 — Kassir: favoritlər (localStorage) + barkod fokus

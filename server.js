@@ -3724,6 +3724,9 @@ app.post('/api/orders/pay', function (req, res) {
         );
         if (earned && !earned.error) {
           order.loyaltyEarned = earned.earned;
+          if (order.payment) {
+            order.payment.loyaltyEarned = earned.earned;
+          }
         }
       }
     } else {
@@ -4805,7 +4808,32 @@ app.post('/api/orders/refund', function (req, res) {
         }
       }
     });
-    // TODO: refund/void — ball qaytarılmır.
+    let loyaltyRestored = 0;
+    let loyaltyRevoked = 0;
+    const loyaltyByPhone = {};
+    (order.payments || []).forEach(function (row) {
+      const pts = Math.round(Number(row.loyaltyPoints) || 0);
+      const phone = customers.cleanPhone(row.loyaltyPhone || order.customerPhone);
+      if (pts > 0 && phone.length >= 7) {
+        loyaltyByPhone[phone] = (loyaltyByPhone[phone] || 0) + pts;
+      }
+    });
+    Object.keys(loyaltyByPhone).forEach(function (phone) {
+      const back = customers.restoreRedeemed(phone, loyaltyByPhone[phone]);
+      if (back && !back.error && back.points) {
+        loyaltyRestored += back.points;
+      }
+    });
+    const earnedPts = Math.round(Number(order.loyaltyEarned) ||
+      (order.payment && order.payment.loyaltyEarned) || 0);
+    const earnPhone = customers.cleanPhone(order.customerPhone ||
+      (order.payment && order.payment.loyaltyPhone) || '');
+    if (earnedPts > 0 && earnPhone.length >= 7) {
+      const revoked = customers.revokeEarned(earnPhone, earnedPts);
+      if (revoked && !revoked.error && revoked.points) {
+        loyaltyRevoked = revoked.points;
+      }
+    }
     order.status = 'refunded';
     order.refund = {
       at: new Date().toISOString(),
@@ -4815,14 +4843,24 @@ app.post('/api/orders/refund', function (req, res) {
       cashAmount: minor.fromMinor(minor.toMinor(pay.cashAmount)),
       cardAmount: minor.fromMinor(minor.toMinor(pay.cardAmount)),
       giftAmount: minor.fromMinor(giftBack),
-      total: minor.fromMinor(minor.toMinor(pay.total))
+      total: minor.fromMinor(minor.toMinor(pay.total)),
+      loyaltyRestored: loyaltyRestored,
+      loyaltyRevoked: loyaltyRevoked
     };
     order.updatedAt = order.refund.at;
     orders.writeOrders(store);
     return order;
   }).then(function (order) {
+    const loyNote = [];
+    if (order.refund && order.refund.loyaltyRestored) {
+      loyNote.push('+' + order.refund.loyaltyRestored + ' ball geri');
+    }
+    if (order.refund && order.refund.loyaltyRevoked) {
+      loyNote.push('-' + order.refund.loyaltyRevoked + ' ball earn');
+    }
     audit(req, 'refund', order.tableName + ' #' + order.id + ' — ' +
-      Number(order.refund && order.refund.total || 0).toFixed(2) + ' AZN');
+      Number(order.refund && order.refund.total || 0).toFixed(2) + ' AZN' +
+      (loyNote.length ? ' • ' + loyNote.join(', ') : ''));
     res.json({ success: true, data: { order: order } });
   }).catch(function (error) {
     sendFail(res, error);
