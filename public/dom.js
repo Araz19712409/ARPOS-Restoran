@@ -14,11 +14,29 @@
       .replace(/'/g, '&#39;');
   }
 
-  function text(el, value) {
-    if (!el) {
+  function el(id) {
+    return document.getElementById(id);
+  }
+
+  function setText(id, text) {
+    var n = el(id);
+    if (n) {
+      n.textContent = text == null ? '' : String(text);
+    }
+  }
+
+  function setVal(id, val) {
+    var n = el(id);
+    if (n) {
+      n.value = val == null ? '' : String(val);
+    }
+  }
+
+  function text(node, value) {
+    if (!node) {
       return;
     }
-    el.textContent = value == null ? '' : String(value);
+    node.textContent = value == null ? '' : String(value);
   }
 
   function fillOptions(select, list, toRow, first) {
@@ -68,6 +86,9 @@
 
   return {
     escapeHtml: escapeHtml,
+    el: el,
+    setText: setText,
+    setVal: setVal,
     text: text,
     fillOptions: fillOptions,
     kpis: kpis

@@ -928,6 +928,10 @@
   align-items: flex-start;
 }
 
+#pay-modal.modal {
+  z-index: 60;
+}
+
 #pay-modal .pay-card {
   width: min(520px, 100%);
   max-height: calc(100vh - 16px);
@@ -1339,17 +1343,18 @@
   }
 
   .order-page[data-zone="floor"] .menu-col,
-  .order-page[data-zone="floor"] .check-col,
   .order-page[data-zone="menu"] .floor-col,
   .order-page[data-zone="check"] .floor-col,
   .order-page[data-zone="check"] .menu-col {
     display: none;
   }
 
+  .order-page[data-zone="floor"] .floor-col,
   .order-page[data-zone="menu"] .menu-col {
     padding-bottom: 92px;
   }
 
+  .order-page[data-zone="floor"] .check-col,
   .order-page[data-zone="menu"] .check-col {
     display: flex;
     background: transparent;
@@ -1357,6 +1362,11 @@
     z-index: 8;
   }
 
+  .order-page[data-zone="floor"] .check-head,
+  .order-page[data-zone="floor"] .check-list,
+  .order-page[data-zone="floor"] .check-sum-box,
+  .order-page[data-zone="floor"] .sec-actions,
+  .order-page[data-zone="floor"] .check-more,
   .order-page[data-zone="menu"] .check-head,
   .order-page[data-zone="menu"] .check-list,
   .order-page[data-zone="menu"] .check-sum-box,
@@ -1365,18 +1375,30 @@
     display: none;
   }
 
+  .order-page[data-zone="floor"] .check-foot,
   .order-page[data-zone="menu"] .check-foot {
     pointer-events: auto;
+    position: relative;
+    z-index: 20;
     margin-top: auto;
     background: #221d17;
     padding: 8px 10px;
     border-top: 1px solid #3d3428;
   }
 
+  .order-page[data-zone="floor"] #pay-open,
+  .order-page[data-zone="floor"] #accept-order,
   .order-page[data-zone="menu"] #pay-open,
   .order-page[data-zone="menu"] #accept-order {
     min-height: 52px;
     font-size: 1.05rem;
+  }
+
+  .order-page[data-zone="floor"] #pay-open,
+  .order-page[data-zone="menu"] #pay-open {
+    pointer-events: auto;
+    position: relative;
+    z-index: 21;
   }
 }
 

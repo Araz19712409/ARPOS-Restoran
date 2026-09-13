@@ -1,5 +1,10 @@
 # Arpos Restoran — versiyalar
 
+- **1.2.30** — 2026-09-13 — Modal z-index + PosDom null-safe; növbə açıq/bağlı
+- **1.2.29** — 2026-09-13 — Hotfix: pay-share null (ödəniş modal)
+- **1.2.28** — 2026-09-13 — Ödəniş modal PIN üstündə (z-index 60)
+- **1.2.27** — 2026-09-13 — Ödəniş düyməsi: zona + banner, səssiz return yox
+- **1.2.26** — 2026-09-13 — Zal/Menyuda Ödəniş basılır (dar ekran)
 - **1.2.25** — 2026-09-13 — Porsiya qiyməti tam satış; ekstra + qalır
 - **1.2.24** — 2026-09-13 — Hotfix: orders-ui splitDueMinor (PIN ölü)
 - **1.2.23** — 2026-09-13 — Anbar satış kilidi + ball Faza 1 (refund ball bərpası yox)

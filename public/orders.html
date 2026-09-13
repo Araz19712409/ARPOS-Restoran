@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sifariş</title>
-  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="app.css?v=19">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css">
+  <link rel="stylesheet" href="orders.css?v=19">
   <link rel="stylesheet" href="dates.css">
 </head>
 <body class="order-page" data-zone="floor">
@@ -191,10 +191,11 @@
   </div>
 
   <div id="pay-modal" class="modal hidden">
-    <form id="pay-form" class="modal-card pay-card">
+    <form id="pay-form" class="modal-card pay-card" novalidate>
       <div class="pay-head">
         <h3 id="pay-title">Ödəniş</h3>
         <p id="pay-table-label" class="pay-table-label"></p>
+        <p id="pay-share" class="hint"></p>
       </div>
       <div class="pay-scroll">
       <section class="pay-step">
@@ -404,7 +405,7 @@
   <div id="shift-z-modal" class="modal hidden">
     <form id="shift-z-form" class="modal-card">
       <h3>Növbə / Z</h3>
-      <p id="shift-z-status" class="hint">Yox</p>
+      <p id="shift-z-status" class="hint">Növbə bağlı</p>
       <p id="shift-z-tables" class="hint"></p>
       <p id="shift-z-expected" class="hint"></p>
       <label>Sayılan nağd
@@ -417,7 +418,7 @@
     </form>
   </div>
 
-  <div id="pin-lock" class="pin-lock">
+  <div id="pin-lock" class="pin-lock hidden">
     <div class="pin-card">
       <p class="eyebrow">Ofisiant girişi</p>
       <h2>PIN yazın</h2>
@@ -446,12 +447,12 @@
   <script src="log-client.js"></script>
   <script src="confirm.js"></script>
   <script src="offline.js"></script>
-  <script src="dom.js"></script>
+  <script src="dom.js?v=19"></script>
   <script src="nav.js"></script>
   <script src="receipt-view.js"></script>
   <script src="dates.js"></script>
   <script src="group-icons.js?v=3"></script>
   <script src="money.js?v=1"></script>
-  <script src="orders-ui.js?v=14"></script>
+  <script src="orders-ui.js?v=20"></script>
 </body>
 </html>

@@ -15,6 +15,33 @@
   var payLock = false;
 
   var M = window.PosMoney;
+  var Dom = window.PosDom || {};
+
+  function el(id) {
+    return Dom.el ? Dom.el(id) : document.getElementById(id);
+  }
+
+  function setText(id, text) {
+    if (Dom.setText) {
+      Dom.setText(id, text);
+      return;
+    }
+    var n = document.getElementById(id);
+    if (n) {
+      n.textContent = text == null ? '' : String(text);
+    }
+  }
+
+  function setVal(id, val) {
+    if (Dom.setVal) {
+      Dom.setVal(id, val);
+      return;
+    }
+    var n = document.getElementById(id);
+    if (n) {
+      n.value = val == null ? '' : String(val);
+    }
+  }
 
   function dec(value) {
     return M && M.parseDec
@@ -88,11 +115,16 @@
   function say(text, kind) {
     if (window.PosNav && window.PosNav.banner) {
       window.PosNav.banner(text, kind);
-      return;
     }
-    var box = document.getElementById('message');
-    if (box) {
-      box.textContent = text || '';
+    setText('message', text || '');
+  }
+
+  function payFail(msg) {
+    say(msg, 'err');
+    setText('check-hint', msg);
+    setText('message', msg);
+    if (window.PosNav && window.PosNav.banner) {
+      window.PosNav.banner(msg, 'err');
     }
   }
 
@@ -261,7 +293,7 @@
     }
     return api('/api/shifts?terminalId=' + encodeURIComponent(terminal.id)).then(function (body) {
       shiftPack = body.data || {};
-      btn.textContent = shiftPack.current ? 'Növbə: Açıq' : 'Növbə: Yox';
+      btn.textContent = shiftPack.current ? 'Növbə açıq' : 'Növbə bağlı';
     }).catch(function () {
       btn.textContent = 'Növbə / Z';
     });
@@ -275,7 +307,7 @@
     var closeBtn = document.getElementById('shift-z-close');
     var cur = shiftPack && shiftPack.current;
     var openList = (shiftPack && shiftPack.openTables) || [];
-    status.textContent = cur ? 'Açıq' : 'Yox';
+    status.textContent = cur ? 'Növbə açıq' : 'Növbə bağlı';
     tablesEl.textContent = openList.length ? ('Açıq masa: ' + openList.join(', ') + '. Əvvəl bağlayın.') : '';
     expected.textContent = cur ? ('Gözlənilən: ' + money(cur.expectedCash) + ' AZN') : '';
     if (counted && document.activeElement !== counted) {
@@ -1099,8 +1131,8 @@
     var table = tableById(tableId);
     var order = openOrder();
     var hasSeat = !!table || isServiceId(tableId);
-    document.getElementById('check-table').textContent = checkTitle(order, table);
-    var guestsBox = document.getElementById('order-guests');
+    setText('check-table', checkTitle(order, table));
+    var guestsBox = el('order-guests');
     var orderGuests = order ? Number(order.guests) || 0 : pendingGuests;
     if (!hasSeat) {
       pendingGuests = 0;
@@ -1108,95 +1140,127 @@
     } else if (order) {
       pendingGuests = orderGuests;
     }
-    guestsBox.disabled = !hasSeat;
-    var svc = document.getElementById('service-guest');
+    if (guestsBox) {
+      guestsBox.disabled = !hasSeat;
+    }
+    var svc = el('service-guest');
     var showSvc = isServiceId(tableId) || !!(order && (order.channel === 'takeaway' || order.channel === 'delivery'));
-    svc.classList.toggle('hidden', !showSvc);
+    if (svc) {
+      svc.classList.toggle('hidden', !showSvc);
+    }
     if (showSvc) {
-      var nameBox = document.getElementById('order-guest-name');
-      var phoneBox = document.getElementById('order-guest-phone');
-      if (document.activeElement !== nameBox) {
-        nameBox.value = order ? (order.guestName || pendingGuestName) : pendingGuestName;
+      var nameBox = el('order-guest-name');
+      var phoneBox = el('order-guest-phone');
+      if (nameBox && document.activeElement !== nameBox) {
+        setVal('order-guest-name', order ? (order.guestName || pendingGuestName) : pendingGuestName);
       }
-      if (document.activeElement !== phoneBox) {
-        phoneBox.value = order ? (order.guestPhone || pendingGuestPhone) : pendingGuestPhone;
+      if (phoneBox && document.activeElement !== phoneBox) {
+        setVal('order-guest-phone', order ? (order.guestPhone || pendingGuestPhone) : pendingGuestPhone);
       }
       var isDeliv = tableId === -2 || tableId <= -2000 ||
         !!(order && order.channel === 'delivery');
-      document.querySelectorAll('.svc-deliv').forEach(function (el) {
-        el.classList.toggle('hidden', !isDeliv);
+      document.querySelectorAll('.svc-deliv').forEach(function (node) {
+        node.classList.toggle('hidden', !isDeliv);
       });
       if (isDeliv) {
-        var addr = document.getElementById('order-guest-address');
-        var cour = document.getElementById('order-courier');
-        if (document.activeElement !== addr) {
-          addr.value = order ? (order.guestAddress || pendingGuestAddress) : pendingGuestAddress;
+        var addr = el('order-guest-address');
+        var cour = el('order-courier');
+        if (addr && document.activeElement !== addr) {
+          setVal('order-guest-address', order ? (order.guestAddress || pendingGuestAddress) : pendingGuestAddress);
         }
-        if (document.activeElement !== cour) {
-          cour.value = order ? (order.courierName || pendingCourier) : pendingCourier;
+        if (cour && document.activeElement !== cour) {
+          setVal('order-courier', order ? (order.courierName || pendingCourier) : pendingCourier);
         }
       }
     }
     renderRunStatus(order);
-    if (document.activeElement !== guestsBox) {
-      guestsBox.value = String(orderGuests);
+    if (guestsBox && document.activeElement !== guestsBox) {
+      setVal('order-guests', String(orderGuests));
     }
     var booked = table ? bookingFor(table.id) : null;
-    var info = document.getElementById('reserve-info');
     var prepaidText = booked && booked.prepay
       ? (' • İlkin: ' + Number(booked.prepay.total).toFixed(2) + ' AZN')
       : '';
-    info.textContent = booked
+    setText('reserve-info', booked
       ? (booked.name + ' • ' + booked.guests + ' nəfər • ' + String(booked.at).replace('T', ' ') + prepaidText)
-      : '';
+      : '');
     var state = table ? tableState(table) : 'empty';
-    document.getElementById('reserve-table').style.display = table && state === 'empty' ? '' : 'none';
-    document.getElementById('cancel-reserve').style.display = table && state === 'reserved' ? '' : 'none';
-    document.getElementById('prepay-open').style.display =
-      booked && can('payments.take') && (state === 'reserved' || state === 'busy') ? '' : 'none';
+    var reserveBtn = el('reserve-table');
+    if (reserveBtn) {
+      reserveBtn.style.display = table && state === 'empty' ? '' : 'none';
+    }
+    var cancelRes = el('cancel-reserve');
+    if (cancelRes) {
+      cancelRes.style.display = table && state === 'reserved' ? '' : 'none';
+    }
+    var prepayOpen = el('prepay-open');
+    if (prepayOpen) {
+      prepayOpen.style.display =
+        booked && can('payments.take') && (state === 'reserved' || state === 'busy') ? '' : 'none';
+    }
     var canPay = !!(order && can('payments.take'));
-    document.getElementById('pay-open').style.display = canPay ? '' : 'none';
-    document.getElementById('reprint-order').style.display = order && order.items && order.items.length ? '' : 'none';
-    document.getElementById('discount-open').style.display =
-      order && can('orders.discount') ? '' : 'none';
-    document.getElementById('move-open').style.display =
-      order && !(order.linkedTableIds || []).length &&
-      (table || order.channel === 'takeaway' || order.channel === 'delivery' ||
-        (Number(order.tableId) < 0 && !isDraftSeat(order.tableId))) &&
-      (can('orders.move') || can('orders.create')) ? '' : 'none';
+    var payOpen = el('pay-open');
+    if (payOpen) {
+      payOpen.style.display = canPay ? '' : 'none';
+    }
+    var reprintOrder = el('reprint-order');
+    if (reprintOrder) {
+      reprintOrder.style.display = order && order.items && order.items.length ? '' : 'none';
+    }
+    var discountOpen = el('discount-open');
+    if (discountOpen) {
+      discountOpen.style.display = order && can('orders.discount') ? '' : 'none';
+    }
+    var moveOpen = el('move-open');
+    if (moveOpen) {
+      moveOpen.style.display =
+        order && !(order.linkedTableIds || []).length &&
+        (table || order.channel === 'takeaway' || order.channel === 'delivery' ||
+          (Number(order.tableId) < 0 && !isDraftSeat(order.tableId))) &&
+        (can('orders.move') || can('orders.create')) ? '' : 'none';
+    }
     var held = !!(order && (order.items || []).some(function (item) {
       return !item.voided && !item.sent;
     }));
-    var fireBtn = document.getElementById('fire-course');
+    var fireBtn = el('fire-course');
     var autoAll = settings.autoSendAllOnAccept !== false;
-    if (autoAll) {
-      fireBtn.style.display = 'none';
-      fireBtn.disabled = true;
-      fireBtn.title = 'Qəbulda bütün kurslar mətbəxə gedir.';
-    } else {
-      fireBtn.disabled = false;
-      fireBtn.title = '';
-      fireBtn.style.display = held && can('orders.create') ? '' : 'none';
-    }
-    document.getElementById('handoff-open').style.display =
-      order && can('orders.create') ? '' : 'none';
-    document.getElementById('merge-open').style.display =
-      order && table && can('orders.create') ? '' : 'none';
-    document.getElementById('unmerge-open').style.display =
-      order && (order.linkedTableIds || []).length && can('orders.create') ? '' : 'none';
-
-    var hint = document.getElementById('check-hint');
-    if (hint) {
-      if (!tableId) {
-        hint.textContent = 'Masa seçin.';
-      } else if (pending.length) {
-        hint.textContent = 'Qəbul et: ' + pending.length + ' sətir.';
+    if (fireBtn) {
+      if (autoAll) {
+        fireBtn.style.display = 'none';
+        fireBtn.disabled = true;
+        fireBtn.title = 'Qəbulda bütün kurslar mətbəxə gedir.';
       } else {
-        hint.textContent = '';
+        fireBtn.disabled = false;
+        fireBtn.title = '';
+        fireBtn.style.display = held && can('orders.create') ? '' : 'none';
       }
     }
+    var handoffOpen = el('handoff-open');
+    if (handoffOpen) {
+      handoffOpen.style.display = order && can('orders.create') ? '' : 'none';
+    }
+    var mergeOpen = el('merge-open');
+    if (mergeOpen) {
+      mergeOpen.style.display = order && table && can('orders.create') ? '' : 'none';
+    }
+    var unmergeOpen = el('unmerge-open');
+    if (unmergeOpen) {
+      unmergeOpen.style.display =
+        order && (order.linkedTableIds || []).length && can('orders.create') ? '' : 'none';
+    }
 
-    var box = document.getElementById('check-list');
+    if (!tableId) {
+      setText('check-hint', 'Masa seçin.');
+    } else if (pending.length) {
+      setText('check-hint', 'Qəbul et: ' + pending.length + ' sətir.');
+    } else {
+      setText('check-hint', '');
+    }
+
+    var box = el('check-list');
+    if (!box) {
+      return;
+    }
     box.textContent = '';
     var sent = order ? order.items : [];
     if (!sent.length && !pending.length) {
@@ -1292,35 +1356,42 @@
       box.appendChild(row);
     });
 
-    var order = openOrder();
+    order = openOrder();
     var view = {
       items: sent.concat(pending),
       discount: order && order.discount,
       tipAmount: order && order.tipAmount
     };
     var parts = billAfter(view);
-    document.getElementById('check-items').textContent = parts.items.toFixed(2) + ' AZN';
-    var discRow = document.getElementById('check-discount-row');
+    setText('check-items', parts.items.toFixed(2) + ' AZN');
+    var discRow = el('check-discount-row');
     if (parts.off > 0) {
-      discRow.classList.remove('hidden');
-      document.getElementById('check-discount-label').textContent =
-        'Endirim' + (order && order.discount && order.discount.type === 'percent' ? ' (' + order.discount.value + '%)' : '');
-      document.getElementById('check-discount').textContent = '-' + parts.off.toFixed(2) + ' AZN';
-    } else {
+      if (discRow) {
+        discRow.classList.remove('hidden');
+      }
+      setText('check-discount-label',
+        'Endirim' + (order && order.discount && order.discount.type === 'percent' ? ' (' + order.discount.value + '%)' : ''));
+      setText('check-discount', '-' + parts.off.toFixed(2) + ' AZN');
+    } else if (discRow) {
       discRow.classList.add('hidden');
     }
-    document.getElementById('check-service').textContent = parts.service.toFixed(2) + ' AZN';
-    document.getElementById('check-service-label').textContent =
-      'Xidmət' + (settings.serviceChargePercent ? ' (' + settings.serviceChargePercent + '%)' : '');
-    document.getElementById('check-service-row').style.display = '';
-    var tipRow = document.getElementById('check-tip-row');
+    setText('check-service', parts.service.toFixed(2) + ' AZN');
+    setText('check-service-label',
+      'Xidmət' + (settings.serviceChargePercent ? ' (' + settings.serviceChargePercent + '%)' : ''));
+    var serviceRow = el('check-service-row');
+    if (serviceRow) {
+      serviceRow.style.display = '';
+    }
+    var tipRow = el('check-tip-row');
     if (parts.tip > 0) {
-      tipRow.classList.remove('hidden');
-      document.getElementById('check-tip').textContent = parts.tip.toFixed(2) + ' AZN';
-    } else {
+      if (tipRow) {
+        tipRow.classList.remove('hidden');
+      }
+      setText('check-tip', parts.tip.toFixed(2) + ' AZN');
+    } else if (tipRow) {
       tipRow.classList.add('hidden');
     }
-    document.getElementById('check-total').textContent = parts.total.toFixed(2) + ' AZN';
+    setText('check-total', parts.total.toFixed(2) + ' AZN');
   }
 
   function render() {
@@ -1900,6 +1971,9 @@
   function setPayRow(wrapId, valueId, amount) {
     var wrap = document.getElementById(wrapId);
     var value = document.getElementById(valueId);
+    if (!wrap || !value) {
+      return;
+    }
     var show = M.toMinor(amount) > 0;
     wrap.classList.toggle('hidden', !show);
     if (show) {
@@ -1974,8 +2048,12 @@
     if (!loyaltyOn()) {
       return;
     }
-    var phone = (document.getElementById('pay-loy-phone').value || '').replace(/\D/g, '');
+    var phoneEl = document.getElementById('pay-loy-phone');
     var bal = document.getElementById('pay-loy-bal');
+    var phone = ((phoneEl && phoneEl.value) || '').replace(/\D/g, '');
+    if (!bal) {
+      return;
+    }
     if (phone.length < 7) {
       bal.textContent = '';
       return;
@@ -2103,68 +2181,93 @@
   }
 
   function openPay() {
-    var order = openOrder();
-    if (!order) {
-      say('Açıq hesab yoxdur.', 'err');
-      return;
+    try {
+      if (!M || !M.toMinor) {
+        payFail('money.js yuklenmedi. Sehifeni yenileyin.');
+        return;
+      }
+      var order = openOrder();
+      if (!order) {
+        payFail('Açıq hesab yoxdur.');
+        return;
+      }
+      if (pending.length) {
+        payFail('Əvvəlcə yeni sətirləri qəbul edin.');
+        return;
+      }
+      var payModal = el('pay-modal');
+      if (payModal && payModal.classList.contains('hidden')) {
+        payPickIds = [];
+        paySeatId = 0;
+      }
+      var tipBox = el('pay-tip');
+      var hasShares = !!(order.payments && order.payments.length);
+      if (tipBox) {
+        tipBox.disabled = hasShares;
+        if (hasShares) {
+          setVal('pay-tip', Number(order.tipAmount || 0).toFixed(2));
+        } else if (payModal && payModal.classList.contains('hidden')) {
+          setVal('pay-tip', Number(order.tipAmount || 0).toFixed(2));
+        }
+        order.tipAmount = M.fromMinor(M.toMinor(tipBox.value));
+      }
+      setVal('pay-voen', order.buyerVoen || '');
+      setVal('pay-buyer', order.buyerName || '');
+      var parts = billAfter(order);
+      var booked = bookingFor(tableId);
+      var prepaidM = M.toMinor(booked && booked.prepay ? booked.prepay.total : 0);
+      var remainingM = Math.max(0, M.subMinor(M.subMinor(M.toMinor(parts.total), prepaidM), paidSharesMinor(order)));
+      var remaining = M.fromMinor(remainingM);
+      if ((order.items || []).some(function (item) { return !item.voided && !item.sent; })) {
+        payFail(settings.autoSendAllOnAccept !== false
+          ? 'Əvvəlcə sətirləri qəbul edin.'
+          : 'Əvvəlcə isti kursu göndərin.');
+        return;
+      }
+      var keepMethod = (payModal && payModal.classList.contains('hidden')) ? 'cash' : payMethod;
+      payMode = 'order';
+      setText('pay-title', 'Ödəniş');
+      setText('pay-table-label', (el('check-table') && el('check-table').textContent) || '');
+      var prepayWrap = el('prepay-amt-wrap');
+      if (prepayWrap) {
+        prepayWrap.classList.add('hidden');
+      }
+      var tipWrap = el('pay-tip-wrap');
+      if (tipWrap) {
+        tipWrap.classList.remove('hidden');
+      }
+      var breakdown = el('pay-breakdown');
+      if (breakdown) {
+        breakdown.classList.remove('hidden');
+      }
+      var splitWrap = el('split-wrap');
+      if (splitWrap) {
+        splitWrap.classList.remove('hidden');
+      }
+      var splitBox = el('pay-split');
+      if (splitBox && !splitBox.value) {
+        setVal('pay-split', '1');
+      }
+      fillPayPicks(order);
+      setSplitLocked(order);
+      var cut = currentShare(remaining, order);
+      payDue = pickingPay() ? pickDueAmount(order, remaining) : cut.share;
+      setText('pay-submit',
+        M.subMinor(remainingM, M.toMinor(payDue)) > 1 ? 'Payı ödə' : 'Satışı bitir');
+      fillPayBreakdown(parts, M.fromMinor(prepaidM), M.fromMinor(paidSharesMinor(order)), remaining);
+      refreshLoyaltyUi();
+      lookupLoyalty();
+      setText('pay-share', pickingPay()
+        ? 'Seçilmiş sətirlər'
+        : (cut.n > 1 ? (cut.n + ' nəfər • hər pay ' + payDue.toFixed(2) + ' AZN') : ''));
+      setPayDueView();
+      setPayMethod(keepMethod);
+      if (payModal) {
+        payModal.classList.remove('hidden');
+      }
+    } catch (err) {
+      payFail((err && err.message) ? err.message : 'Odenis acilmadi.');
     }
-    if (pending.length) {
-      say('Əvvəlcə yeni sətirləri qəbul edin.', 'err');
-      return;
-    }
-    if (document.getElementById('pay-modal').classList.contains('hidden')) {
-      payPickIds = [];
-      paySeatId = 0;
-    }
-    var tipBox = document.getElementById('pay-tip');
-    var hasShares = !!(order.payments && order.payments.length);
-    tipBox.disabled = hasShares;
-    if (hasShares) {
-      tipBox.value = Number(order.tipAmount || 0).toFixed(2);
-    } else if (document.getElementById('pay-modal').classList.contains('hidden')) {
-      tipBox.value = Number(order.tipAmount || 0).toFixed(2);
-    }
-    order.tipAmount = M.fromMinor(M.toMinor(tipBox.value));
-    document.getElementById('pay-voen').value = order.buyerVoen || '';
-    document.getElementById('pay-buyer').value = order.buyerName || '';
-    var parts = billAfter(order);
-    var booked = bookingFor(tableId);
-    var prepaidM = M.toMinor(booked && booked.prepay ? booked.prepay.total : 0);
-    var remainingM = Math.max(0, M.subMinor(M.subMinor(M.toMinor(parts.total), prepaidM), paidSharesMinor(order)));
-    var remaining = M.fromMinor(remainingM);
-    if ((order.items || []).some(function (item) { return !item.voided && !item.sent; })) {
-      say(settings.autoSendAllOnAccept !== false
-        ? 'Əvvəlcə sətirləri qəbul edin.'
-        : 'Əvvəlcə isti kursu göndərin.', 'err');
-      return;
-    }
-    var keepMethod = document.getElementById('pay-modal').classList.contains('hidden') ? 'cash' : payMethod;
-    payMode = 'order';
-    document.getElementById('pay-title').textContent = 'Ödəniş';
-    document.getElementById('pay-table-label').textContent =
-      document.getElementById('check-table').textContent || '';
-    document.getElementById('prepay-amt-wrap').classList.add('hidden');
-    document.getElementById('pay-tip-wrap').classList.remove('hidden');
-    document.getElementById('pay-breakdown').classList.remove('hidden');
-    document.getElementById('split-wrap').classList.remove('hidden');
-    if (!document.getElementById('pay-split').value) {
-      document.getElementById('pay-split').value = '1';
-    }
-    fillPayPicks(order);
-    setSplitLocked(order);
-    var cut = currentShare(remaining, order);
-    payDue = pickingPay() ? pickDueAmount(order, remaining) : cut.share;
-    document.getElementById('pay-submit').textContent =
-      M.subMinor(remainingM, M.toMinor(payDue)) > 1 ? 'Payı ödə' : 'Satışı bitir';
-    fillPayBreakdown(parts, M.fromMinor(prepaidM), M.fromMinor(paidSharesMinor(order)), remaining);
-    refreshLoyaltyUi();
-    lookupLoyalty();
-    document.getElementById('pay-share').textContent = pickingPay()
-      ? 'Seçilmiş sətirlər'
-      : (cut.n > 1 ? (cut.n + ' nəfər • hər pay ' + payDue.toFixed(2) + ' AZN') : '');
-    setPayDueView();
-    setPayMethod(keepMethod);
-    document.getElementById('pay-modal').classList.remove('hidden');
   }
 
   function openPrepay() {
@@ -2176,21 +2279,36 @@
     var already = booked.prepay ? Number(booked.prepay.total) : 0;
     payMode = 'reserve';
     payDue = 10;
-    document.getElementById('pay-title').textContent = 'İlkin ödəniş';
-    document.getElementById('pay-table-label').textContent = booked.name || '';
-    document.getElementById('split-wrap').classList.add('hidden');
-    document.getElementById('pay-share').textContent = '';
-    document.getElementById('pay-breakdown').classList.add('hidden');
-    document.getElementById('pay-tip-wrap').classList.add('hidden');
-    document.getElementById('prepay-amt-wrap').classList.remove('hidden');
-    document.getElementById('pay-prepay-amt').value = '10.00';
-    document.getElementById('pay-submit').textContent = 'Qəbul et';
+    setText('pay-title', 'İlkin ödəniş');
+    setText('pay-table-label', booked.name || '');
+    var splitWrap = el('split-wrap');
+    if (splitWrap) {
+      splitWrap.classList.add('hidden');
+    }
+    setText('pay-share', '');
+    var breakdown = el('pay-breakdown');
+    if (breakdown) {
+      breakdown.classList.add('hidden');
+    }
+    var tipWrap = el('pay-tip-wrap');
+    if (tipWrap) {
+      tipWrap.classList.add('hidden');
+    }
+    var prepayWrap = el('prepay-amt-wrap');
+    if (prepayWrap) {
+      prepayWrap.classList.remove('hidden');
+    }
+    setVal('pay-prepay-amt', '10.00');
+    setText('pay-submit', 'Qəbul et');
     if (already > 0) {
-      document.getElementById('pay-share').textContent = 'Artıq alındı: ' + already.toFixed(2) + ' AZN';
+      setText('pay-share', 'Artıq alındı: ' + already.toFixed(2) + ' AZN');
     }
     setPayDueView();
     setPayMethod('cash');
-    document.getElementById('pay-modal').classList.remove('hidden');
+    var payModal = el('pay-modal');
+    if (payModal) {
+      payModal.classList.remove('hidden');
+    }
   }
 
   document.getElementById('pay-cash-amt').addEventListener('input', function () { syncPayFields('cash'); });
@@ -2232,9 +2350,7 @@
     syncPayFields('tender');
   });
   document.getElementById('pay-open').addEventListener('click', function () {
-    if (window.matchMedia && window.matchMedia('(max-width: 980px)').matches) {
-      setOrderZone('check');
-    }
+    setOrderZone('check');
     openPay();
   });
   document.getElementById('prepay-open').addEventListener('click', openPrepay);
@@ -2448,6 +2564,8 @@
   document.getElementById('pay-form').addEventListener('submit', function (event) {
     event.preventDefault();
     if (!waiter) {
+      payFail('PIN ilə daxil olun.');
+      busy = false;
       return;
     }
     var cashAmount = M.fromMinor(M.toMinor(document.getElementById('pay-cash-amt').value));
@@ -2456,11 +2574,12 @@
     if (payMode === 'reserve') {
       var booked = bookingFor(tableId);
       if (!booked) {
-        say('Aktiv rezerv yoxdur.', 'err');
+        payFail('Aktiv rezerv yoxdur.');
         return;
       }
       window.askYes('İlkin ödəniş', 'İlkin ödəniş qəbul edilsin?').then(function (ok) {
         if (!ok) {
+          busy = false;
           return;
         }
         busy = true;
@@ -2479,18 +2598,20 @@
         say('İlkin ödəniş qəbul edildi.');
         return load();
       }).catch(function (error) {
-        say(error.message, 'err');
+        payFail(error.message);
       }).then(function () {
           busy = false;
         });
       }).catch(function (error) {
-        say(error.message, 'err');
+        payFail(error.message);
         busy = false;
       });
       return;
     }
     var order = openOrder();
     if (!order) {
+      payFail('Açıq hesab yoxdur.');
+      busy = false;
       return;
     }
     var splitN = Number(document.getElementById('pay-split').value) || 1;
@@ -2502,6 +2623,7 @@
         : 'Bu pay ödənsin?');
     window.askYes('Ödəniş', payText).then(function (ok) {
       if (!ok) {
+        busy = false;
         return;
       }
       busy = true;
@@ -2572,7 +2694,7 @@
       say(result.closed ? 'Satış bitdi. Masa boşdur.' : ('Pay alındı. Qalıq: ' + Number(result.remaining || 0).toFixed(2) + ' AZN'));
       return load();
     }).catch(function (error) {
-      say(error.message, 'err');
+      payFail(error.message);
     }).then(function () {
       busy = false;
     });

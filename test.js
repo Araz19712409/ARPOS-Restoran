@@ -1429,6 +1429,9 @@ test('HTML qaçışı etiket işlətmir', function () {
   );
   assert.strictEqual(posDom.escapeHtml('<b>x</b>'), '&lt;b&gt;x&lt;/b&gt;');
   assert.strictEqual(posDom.escapeHtml("a'b\"c"), 'a&#39;b&quot;c');
+  assert.strictEqual(typeof posDom.el, 'function');
+  assert.strictEqual(typeof posDom.setText, 'function');
+  assert.strictEqual(typeof posDom.setVal, 'function');
 });
 
 test('yeniləmə checksum və təsdiq', function () {
