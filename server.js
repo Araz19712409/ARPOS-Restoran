@@ -5198,24 +5198,34 @@ app.post('/api/shifts/close', function (req, res) {
   }).then(function (result) {
     audit(req, 'shift', result.terminalName + ' — növbə bağlandı');
     const packed = result.packed;
+    const cfg = settings.readSettings();
     packed.terminalName = result.terminalName;
-    packed.branchName = settings.readSettings().branchName || '';
-    printers.sendZTickets(packed).then(function (print) {
+    packed.branchName = cfg.branchName || '';
+    packed.receipt = cfg.receipt || {};
+    const autoPrintZ = !(cfg.shift && cfg.shift.autoPrintZ === false);
+
+    function finish(print) {
       return fiscal.probe('close').then(function () {
         return print || {};
       }).catch(function () {
         const warn = (print && print.warning) ? print.warning + ' ' : '';
         return { warning: warn + 'E-kassa növbə bağlanması alınmadı.' };
+      }).then(function (out) {
+        res.json({
+          success: true,
+          data: packed,
+          warning: out && out.warning ? out.warning : ''
+        });
       });
-    }).then(function (print) {
-      res.json({
-        success: true,
-        data: packed,
-        warning: print && print.warning ? print.warning : ''
+    }
+
+    if (autoPrintZ) {
+      printers.sendZTickets(packed).then(finish).catch(function () {
+        finish({ warning: 'Z çapı getmədi.' });
       });
-    }).catch(function () {
-      res.json({ success: true, data: packed, warning: 'Z çapı getmədi.' });
-    });
+    } else {
+      finish({});
+    }
   }).catch(function (error) {
     sendFail(res, error);
   });
@@ -5249,14 +5259,16 @@ app.post('/api/shifts/print-z', function (req, res) {
     return;
   }
   const packed = shifts.withExpected(row, orders.readOrders().orders, reservations.readReservations());
+  const cfg = settings.readSettings();
   packed.terminalName = terminal.name;
-  packed.branchName = settings.readSettings().branchName || '';
+  packed.branchName = cfg.branchName || '';
+  packed.receipt = cfg.receipt || {};
   printers.sendZTickets(packed).then(function (print) {
-    if (print && print.warning && !print.anyOk) {
-      res.status(400).json({ success: false, message: print.warning });
-      return;
-    }
-    res.json({ success: true, data: packed, warning: print && print.warning ? print.warning : '' });
+    res.json({
+      success: true,
+      data: packed,
+      warning: print && print.warning ? print.warning : ''
+    });
   }).catch(function (error) {
     res.status(500).json({ success: false, message: error.message || 'Z çapı getmədi.' });
   });

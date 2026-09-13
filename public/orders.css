@@ -1436,8 +1436,14 @@
   display: none;
 }
 
-.receipt-card {
-  width: min(420px, 100%);
+.z-sum-grid {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 12px;
+}
+
+.z-sum-grid .hint {
+  margin: 0;
 }
 
 .receipt-paper {

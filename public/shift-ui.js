@@ -470,11 +470,20 @@
       }
       document.getElementById('shift-counted').value = '';
       document.getElementById('shift-note').value = '';
+      if (window.ShiftZView && body.data) {
+        window.ShiftZView.show(body.data, {
+          terminalId: terminalId,
+          warning: body.warning || ''
+        });
+      }
       loadShift();
     }).catch(function (error) {
       say(error.message, 'err');
     });
   });
+  if (window.ShiftZView) {
+    window.ShiftZView.bind(api, say);
+  }
   document.getElementById('shift-print-z').addEventListener('click', function () {
     if (!can('payments.take')) {
       return;

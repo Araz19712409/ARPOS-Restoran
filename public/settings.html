@@ -152,7 +152,11 @@
             <input id="shift-auto-open" type="checkbox" checked>
             İlk satışda növbəni avtomatik aç
           </label>
-          <p class="hint">ON: yalnız ödənişdə növbə yoxdursa açır (başlanğıc nağd 0). Qəbul/fire açmır. Ətraflı kassa: Ofis → Kassa.</p>
+          <label class="ops-choice">
+            <input id="shift-auto-print-z" type="checkbox" checked>
+            Növbə bağlananda Z çap et
+          </label>
+          <p class="hint">ON: yalnız ödənişdə növbə yoxdursa açır (başlanğıc nağd 0). Qəbul/fire açmır. Z OFF olsa bağlanışda çap yox, ekran xülasə qalır.</p>
         </section>
         <section>
           <h3>Çatdırılma</h3>
@@ -514,6 +518,6 @@
   <script src="offline.js"></script>
   <script src="dom.js"></script>
   <script src="nav.js"></script>
-  <script src="settings-ui.js?v=12"></script>
+  <script src="settings-ui.js?v=13"></script>
 </body>
 </html>

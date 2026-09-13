@@ -1609,11 +1609,21 @@
         say(msg);
       }
       document.getElementById('shift-z-modal').classList.add('hidden');
+      if (window.ShiftZView && body.data) {
+        window.ShiftZView.show(body.data, {
+          terminalId: terminal.id,
+          warning: body.warning || ''
+        });
+      }
       return refreshShiftBadge();
     }).catch(function (error) {
       say(error.message, 'err');
     });
   });
+
+  if (window.ShiftZView) {
+    window.ShiftZView.bind(api, say);
+  }
 
   pingTimer = window.setInterval(function () {
     if (!waiter || !terminal || !tableId || isDraftSeat(tableId)) {

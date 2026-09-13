@@ -1666,6 +1666,7 @@ test('forPos secret sızdırmır; POS sahələri qalır', function () {
     assert.ok(pub.listenLan === undefined);
     assert.strictEqual(pub.autoSendAllOnAccept, true);
     assert.strictEqual(pub.shift.autoOpenOnSale, true);
+    assert.strictEqual(pub.shift.autoPrintZ, true);
     assert.strictEqual(pub.stock.salesWarehouseId, 1);
     assert.strictEqual(pub.stock.blockSaleIfShort, true);
     assert.deepStrictEqual(Object.keys(pub.stock).sort(), ['blockSaleIfShort', 'salesWarehouseId']);
@@ -1813,6 +1814,77 @@ test('kassir UX: simpleMode default; pay-open accept axını; dock CSS', functio
   assert.ok(css.indexOf('position: fixed') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8');
   assert.ok(html.indexOf('id="pay-simple-mode"') >= 0);
+});
+
+test('Z: autoPrintZ; queue z; receipt brand; açıq masa blok', function () {
+  withTempDb(function () {
+    assert.strictEqual(settings.readSettings().shift.autoPrintZ, true);
+    settings.writeSettings({ shift: { autoPrintZ: false, autoOpenOnSale: true, defaultStartingCash: 0 } });
+    assert.strictEqual(settings.readSettings().shift.autoPrintZ, false);
+    assert.strictEqual(settings.forPos().shift.autoPrintZ, false);
+    settings.writeSettings({
+      branchName: 'Kafe Z',
+      receipt: {
+        title: 'Z Cafe',
+        address: 'Nizami 1',
+        phone: '012',
+        headerLines: ['Hdr'],
+        footerLines: ['Ftr']
+      },
+      shift: { autoPrintZ: true, autoOpenOnSale: true, defaultStartingCash: 0 }
+    });
+    assert.strictEqual(settings.forPos().shift.autoPrintZ, true);
+    printers.writeStore({ nextPrinterId: 1, printers: [] });
+    const packed = {
+      shift: {
+        id: 9,
+        openedAt: '2026-09-13T10:00:00',
+        closedAt: '2026-09-13T22:00:00',
+        closedByName: 'Ali',
+        startingCash: 0,
+        countedCash: 10,
+        drops: []
+      },
+      totals: { count: 1, total: 10, cash: 10, card: 0, gift: 0, prepaid: 0, refundCash: 0, refundCard: 0 },
+      drops: [],
+      expectedCash: 10,
+      difference: 0,
+      terminalName: 'Kassa 1',
+      branchName: 'Kafe Z',
+      receipt: settings.readSettings().receipt
+    };
+    const ticket = printers.buildZTicket({ paperWidth: 80, charsPerLine: 48, font: 'A' }, packed);
+    const text = ticket.toString('ascii');
+    assert.ok(text.indexOf('Z Cafe') >= 0);
+    assert.ok(text.indexOf('Nizami 1') >= 0);
+    assert.ok(text.indexOf('Hdr') >= 0);
+    assert.ok(text.indexOf('Ftr') >= 0);
+    assert.ok(text.indexOf('Z-hesabat') >= 0);
+
+    const prSrc = fs.readFileSync(path.join(__dirname, 'printers.js'), 'utf8');
+    assert.ok(prSrc.indexOf("kind: 'z'") >= 0);
+    assert.ok(prSrc.indexOf("job.kind === 'z'") >= 0);
+    assert.ok(prSrc.indexOf('Z növbəyə düşdü') >= 0);
+    assert.ok(prSrc.indexOf('appendReceiptBrand') >= 0);
+
+    assert.ok(shifts.closeBlockMessage([
+      { status: 'open', terminalId: 1, tableName: 'M1', items: [{ voided: false }] }
+    ], 1));
+    assert.strictEqual(shifts.closeBlockMessage([
+      { status: 'paid', terminalId: 1, tableName: 'M1', items: [] }
+    ], 1), '');
+  });
+  const serverSrc = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  const close = serverSrc.slice(
+    serverSrc.indexOf("app.post('/api/shifts/close'"),
+    serverSrc.indexOf("app.post('/api/shifts/print-z'")
+  );
+  assert.ok(close.indexOf('autoPrintZ') >= 0);
+  assert.ok(close.indexOf("fiscal.probe('close')") >= 0);
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(ui.indexOf('ShiftZView') >= 0);
+  assert.ok(fs.existsSync(path.join(__dirname, 'public', 'shift-z-view.js')));
+  assert.ok(fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8').indexOf('shift-auto-print-z') >= 0);
 });
 
 console.log('Bütün testlər keçdi.');

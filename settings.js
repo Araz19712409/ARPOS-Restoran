@@ -68,6 +68,7 @@ function publicLoyalty(row) {
 function emptyShift() {
   return {
     autoOpenOnSale: true,
+    autoPrintZ: true,
     defaultStartingCash: 0
   };
 }
@@ -77,6 +78,8 @@ function cleanShift(raw) {
   const cash = Number(src.defaultStartingCash);
   return {
     autoOpenOnSale: src.autoOpenOnSale !== false,
+    autoPrintZ: !(src.autoPrintZ === false || src.autoPrintZ === 0 ||
+      src.autoPrintZ === '0' || src.autoPrintZ === 'false'),
     defaultStartingCash: Number.isFinite(cash) && cash >= 0 ? Number(cash.toFixed(2)) : 0
   };
 }
@@ -265,6 +268,7 @@ function forPos(cfg) {
     autoSendAllOnAccept: row.autoSendAllOnAccept !== false,
     shift: {
       autoOpenOnSale: shift.autoOpenOnSale !== false,
+      autoPrintZ: shift.autoPrintZ !== false,
       defaultStartingCash: Number.isFinite(cash) && cash >= 0 ? Number(cash.toFixed(2)) : 0
     },
     stock: {

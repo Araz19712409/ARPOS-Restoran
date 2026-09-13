@@ -519,6 +519,8 @@
         shift: {
           autoOpenOnSale: !(document.getElementById('shift-auto-open') &&
             !document.getElementById('shift-auto-open').checked),
+          autoPrintZ: !(document.getElementById('shift-auto-print-z') &&
+            !document.getElementById('shift-auto-print-z').checked),
           defaultStartingCash: 0
         },
         autoSendAllOnAccept: !(document.getElementById('auto-send-all') &&
@@ -643,6 +645,7 @@
     }
     setChecked('till-locked', current.tillLocked === true);
     setChecked('shift-auto-open', !(current.shift && current.shift.autoOpenOnSale === false));
+    setChecked('shift-auto-print-z', !(current.shift && current.shift.autoPrintZ === false));
     setVal('backup-folder', current.backupFolder || '');
     var ek = current.ekassa || {};
     var del = current.delivery || {};

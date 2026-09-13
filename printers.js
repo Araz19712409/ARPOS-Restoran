@@ -426,11 +426,21 @@ function writeQueue(data) {
 function publicJob(job) {
   const payload = job.payload || {};
   const order = job.order || {};
+  let title = payload.stationName || '';
+  if (!title) {
+    if (job.kind === 'receipt') {
+      title = 'Kassa çeki';
+    } else if (job.kind === 'z') {
+      title = 'Z hesabat';
+    } else {
+      title = 'Stansiya';
+    }
+  }
   return {
     id: job.id,
     kind: job.kind,
-    title: payload.stationName || (job.kind === 'receipt' ? 'Kassa çeki' : 'Stansiya'),
-    tableName: payload.tableName || order.tableName || '',
+    title: title,
+    tableName: payload.tableName || order.tableName || (job.kind === 'z' ? (payload.terminalName || '') : ''),
     tries: Number(job.tries) || 0,
     maxTries: QUEUE_MAX_TRIES,
     status: job.status || 'wait',
@@ -556,12 +566,65 @@ function formatWhen(iso) {
   return two(d.getDate()) + '.' + two(d.getMonth() + 1) + ' ' + two(d.getHours()) + ':' + two(d.getMinutes());
 }
 
+function appendReceiptBrand(lines, packed) {
+  let cfg = {};
+  try {
+    cfg = require('./settings').readSettings();
+  } catch (error) {
+    cfg = {};
+  }
+  const receipt = (packed && packed.receipt) || cfg.receipt || {};
+  let title = '';
+  try {
+    title = require('./settings').receiptTitle({
+      branchName: (packed && packed.branchName) || cfg.branchName || '',
+      receipt: receipt
+    });
+  } catch (error) {
+    title = (packed && packed.branchName) || 'Arpos Restoran';
+  }
+  lines.push(toPrinterText(title));
+  if (receipt.address) {
+    lines.push(toPrinterText(receipt.address));
+  }
+  if (receipt.phone) {
+    lines.push(toPrinterText(receipt.phone));
+  }
+  if (receipt.showBranchCode) {
+    const code = String(cfg.branchCode || (packed && packed.branchCode) || '').trim();
+    if (code) {
+      lines.push(toPrinterText('Filial: ' + code));
+    }
+  }
+  (Array.isArray(receipt.headerLines) ? receipt.headerLines : []).forEach(function (row) {
+    if (row) {
+      lines.push(toPrinterText(row));
+    }
+  });
+}
+
+function appendReceiptFooter(lines, packed) {
+  let cfg = {};
+  try {
+    cfg = require('./settings').readSettings();
+  } catch (error) {
+    cfg = {};
+  }
+  const receipt = (packed && packed.receipt) || cfg.receipt || {};
+  const footers = Array.isArray(receipt.footerLines) ? receipt.footerLines.filter(Boolean) : [];
+  if (footers.length) {
+    footers.forEach(function (row) {
+      lines.push(toPrinterText(row));
+    });
+  }
+}
+
 function buildZTicket(printer, packed) {
   const width = contentWidth(printer);
   const row = packed.shift || {};
   const tot = packed.totals || {};
   const lines = [];
-  lines.push(toPrinterText(packed.branchName || 'Arpos Restoran'));
+  appendReceiptBrand(lines, packed);
   lines.push(toPrinterText((packed.terminalName || '') + '  Z-hesabat'));
   lines.push(dash(width));
   lines.push(toPrinterText('Acildi  ' + formatWhen(row.openedAt)));
@@ -587,20 +650,37 @@ function buildZTicket(printer, packed) {
   lines.push(line(width, 'Sayilan', Number(row.countedCash || 0).toFixed(2)));
   lines.push(line(width, 'Ferq', Number(packed.difference || 0).toFixed(2)));
   lines.push(eq(width));
+  appendReceiptFooter(lines, packed);
   return ticketBytes(Object.assign({}, printer, { openDrawer: true }), 'Z', lines);
 }
 
-async function sendZTickets(packed) {
+async function deliverZ(packed) {
   const store = readStore();
   const list = store.printers.filter(function (item) {
     return item.enabled && item.role === 'receipt';
   });
   if (!list.length) {
-    return { anyOk: false, results: [], warning: 'Kassa printeri yoxdur.' };
+    return { anyOk: false, results: [], warning: 'Kassa printeri yoxdur.', noPrinter: true };
   }
   return tryPrinters(list, function (printer) {
     return buildZTicket(printer, packed);
   }, 'Z capi');
+}
+
+async function sendZTickets(packed) {
+  const out = await deliverZ(packed);
+  if (out.anyOk) {
+    return { results: out.results };
+  }
+  enqueue({
+    kind: 'z',
+    payload: packed,
+    lastError: out.lastError || out.warning || 'Çap getmədi'
+  });
+  const warn = out.noPrinter
+    ? 'Kassa printeri yoxdur. Z növbəyə düşdü.'
+    : 'Z növbəyə düşdü.';
+  return { results: out.results || [], warning: warn, queued: true };
 }
 
 async function sendStationTickets(stationId, payload) {
@@ -645,6 +725,9 @@ async function sendReceiptTickets(order) {
 async function runJob(job) {
   if (job.kind === 'receipt') {
     return deliverReceipt(job.order);
+  }
+  if (job.kind === 'z') {
+    return deliverZ(job.payload || {});
   }
   return deliverStation(job.stationId, job.payload || {});
 }
@@ -818,6 +901,7 @@ module.exports = {
   sendStationTickets: sendStationTickets,
   sendReceiptTickets: sendReceiptTickets,
   sendZTickets: sendZTickets,
+  buildZTicket: buildZTicket,
   buildReceiptTicket: buildReceiptTicket,
   toPrinterText: toPrinterText,
   listQueue: listQueue,
