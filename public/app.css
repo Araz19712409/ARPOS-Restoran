@@ -116,7 +116,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  z-index: 20;
+  z-index: 50;
 }
 
 .more-nav-list a {

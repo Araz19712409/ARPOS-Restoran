@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 
+- **1.2.47** — 2026-09-13 — Ofis details: kənar klik + Esc bağlanır
 - **1.2.46** — 2026-09-13 — Z: ekran çap pəncərəsi + «Z hesabat çap edildi»
 - **1.2.45** — 2026-09-13 — Z Çap et: modal içi status + banner z-index
 - **1.2.44** — 2026-09-13 — orders-ui Faza 1: zones/shift/pay bind (davranış eyni)

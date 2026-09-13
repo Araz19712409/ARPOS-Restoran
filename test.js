@@ -2022,6 +2022,24 @@ test('Z: autoPrintZ; queue z; receipt brand; açıq masa blok', function () {
   assert.ok(bannerBlock.indexOf('z-index: 45') < 0);
 });
 
+test('Ofis more-nav: kənar klik + Esc bağlanır', function () {
+  const nav = fs.readFileSync(path.join(__dirname, 'public', 'nav.js'), 'utf8');
+  assert.ok(nav.indexOf('function closeMoreNav') >= 0);
+  assert.ok(nav.indexOf('function bindMoreNav') >= 0);
+  assert.ok(nav.indexOf("details.more-nav[open]") >= 0);
+  assert.ok(nav.indexOf("event.key === 'Escape'") >= 0);
+  assert.ok(nav.indexOf('.more-nav-list a') >= 0);
+  assert.ok(nav.indexOf('moreNavBound') >= 0);
+  const css = fs.readFileSync(path.join(__dirname, 'public', 'app.css'), 'utf8');
+  const box = css.slice(css.indexOf('.more-nav-list {'), css.indexOf('.more-nav-list a'));
+  assert.ok(box.indexOf('z-index: 50') >= 0);
+  assert.ok(box.indexOf('max-height') >= 0);
+  assert.ok(box.indexOf('overflow') >= 0);
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
+  assert.ok(html.indexOf('nav.js?v=1') >= 0);
+  assert.ok(html.indexOf('app.css?v=21') >= 0);
+});
+
 test('zal yaş: age-ok/warn/alert; vaxt format; boşda age yox', function () {
   function ageClass(mins) {
     if (!(mins >= 0)) {
