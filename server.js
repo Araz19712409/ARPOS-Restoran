@@ -482,19 +482,29 @@ app.delete('/api/tables/:id', function (req, res) {
   });
 });
 
-// Kataloqu qaytarırıq
+// Kataloqu qaytarırıq (POS: maya/resept yox)
 function sendCatalog(res, data) {
   const sold = orders.soldProductIds();
-  data.products = (data.products || []).map(function (item) {
-    return Object.assign({}, item, {
-      sold: !!sold[item.id],
-      nowPrice: catalog.salePriceNow(item)
-    });
-  });
   const stamp = settings.branchStamp();
-  data.branchCode = stamp.code;
-  data.branchName = stamp.name;
-  res.json({ success: true, data: data });
+  res.json({
+    success: true,
+    data: {
+      nextGroupId: data.nextGroupId,
+      nextProductId: data.nextProductId,
+      nextStationId: data.nextStationId,
+      soldOutDay: data.soldOutDay,
+      groups: data.groups,
+      stations: data.stations,
+      products: (data.products || []).map(function (item) {
+        return Object.assign({}, catalog.publicProduct(item), {
+          sold: !!sold[item.id],
+          nowPrice: catalog.salePriceNow(item)
+        });
+      }),
+      branchCode: stamp.code,
+      branchName: stamp.name
+    }
+  });
 }
 
 app.get('/api/catalog', function (req, res) {
@@ -509,6 +519,47 @@ app.get('/api/catalog', function (req, res) {
       return;
     }
     sendCatalog(res, catalog.readCatalog());
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
+app.get('/api/catalog/manage', function (req, res) {
+  try {
+    if (!needPerm(req, res, 'products.edit')) {
+      return;
+    }
+    const sold = orders.soldProductIds();
+    const stamp = settings.branchStamp();
+    function sendManage(data) {
+      res.json({
+        success: true,
+        data: {
+          nextGroupId: data.nextGroupId,
+          nextProductId: data.nextProductId,
+          nextStationId: data.nextStationId,
+          soldOutDay: data.soldOutDay,
+          groups: data.groups,
+          stations: data.stations,
+          products: (data.products || []).map(function (item) {
+            return Object.assign({}, item, {
+              sold: !!sold[item.id],
+              nowPrice: catalog.salePriceNow(item)
+            });
+          }),
+          branchCode: stamp.code,
+          branchName: stamp.name
+        }
+      });
+    }
+    const peek = catalog.loadCatalogRaw();
+    if (catalog.needsSoldOutRoll(peek)) {
+      catalog.readCatalogLocked().then(sendManage).catch(function (error) {
+        res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+      });
+      return;
+    }
+    sendManage(catalog.readCatalog());
   } catch (error) {
     res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
   }
@@ -3177,6 +3228,9 @@ app.post('/api/orders/void', async function (req, res) {
       if (order.status !== 'open') {
         reject(400, 'Yalnız açıq hesab ləğv oluna bilər.');
       }
+      if (order.payments && order.payments.length) {
+        reject(400, 'Ödəniş başlayıb. Sətiri ləğv etmək olmaz.');
+      }
       needOrderTables(order, terminal);
       const line = order.items.find(function (item) { return item.id === Number(body.itemId); });
       if (!line || line.voided) {
@@ -4407,6 +4461,9 @@ app.post('/api/orders/discount', function (req, res) {
     if (!order) {
       reject(404, 'Açıq hesab tapılmadı.');
     }
+    if (order.payments && order.payments.length) {
+      reject(400, 'Ödəniş başlayıb. Endirim dəyişməz.');
+    }
     needOrderTables(order, terminal);
     const type = body.type === 'amount' ? 'amount' : 'percent';
     const value = Number(body.value);
@@ -4467,6 +4524,9 @@ app.post('/api/orders/discount/clear', function (req, res) {
     });
     if (!order) {
       reject(404, 'Açıq hesab tapılmadı.');
+    }
+    if (order.payments && order.payments.length) {
+      reject(400, 'Ödəniş başlayıb. Endirim dəyişməz.');
     }
     needOrderTables(order, terminal);
     delete order.discount;

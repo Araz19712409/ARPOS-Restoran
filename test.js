@@ -1992,6 +1992,71 @@ test('Z 1.2.49: çekmece yox; tarixdə il; tip; logo settings.edit', function ()
   assert.ok(pr.indexOf('getFullYear()') >= 0);
 });
 
+test('katalog maya strip; void/endirim payments blok', function () {
+  const raw = {
+    id: 7,
+    groupId: 1,
+    name: 'Dolma',
+    salePrice: 12,
+    stationId: 1,
+    image: '/uploads/products/p-7.png',
+    blocked: false,
+    soldOut: false,
+    barcode: '123',
+    allergens: '',
+    happyPrice: 10,
+    happyFrom: 12,
+    happyTo: 15,
+    comboIds: [2],
+    course: 2,
+    prices: { M1: 11 },
+    buyPrice: 4.5,
+    costPrice: 4.5,
+    ingredients: [{ itemId: 1, qty: 0.2, unit: 'kq' }],
+    portions: [{ id: 1, name: 'Tam', price: 12, ingredients: [{ itemId: 1, qty: 0.2, unit: 'kq' }] }],
+    extras: [{ id: 1, name: 'Sous', price: 1, ingredients: [{ itemId: 2, qty: 0.01, unit: 'kq' }] }]
+  };
+  const pub = catalog.publicProduct(raw);
+  const dump = JSON.stringify(pub);
+  assert.ok(dump.indexOf('buyPrice') < 0);
+  assert.ok(dump.indexOf('costPrice') < 0);
+  assert.ok(dump.indexOf('ingredients') < 0);
+  assert.strictEqual(pub.salePrice, 12);
+  assert.strictEqual(pub.name, 'Dolma');
+  assert.strictEqual(pub.portions[0].name, 'Tam');
+  assert.strictEqual(pub.portions[0].price, 12);
+  assert.ok(!('ingredients' in pub.portions[0]));
+  const now = catalog.salePriceNow(raw);
+  assert.ok(Number.isFinite(now));
+
+  const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  const sendFn = src.slice(src.indexOf('function sendCatalog'), src.indexOf("app.get('/api/catalog'"));
+  assert.ok(sendFn.indexOf('publicProduct') >= 0);
+  assert.ok(sendFn.indexOf('nowPrice') >= 0);
+  assert.ok(sendFn.indexOf('sold:') >= 0 || sendFn.indexOf('sold: ') >= 0);
+  const getCat = src.slice(src.indexOf("app.get('/api/catalog'"), src.indexOf("app.get('/api/catalog/manage'"));
+  assert.ok(getCat.indexOf('sendCatalog') >= 0);
+  const manage = src.slice(src.indexOf("app.get('/api/catalog/manage'"), src.indexOf("app.get('/api/catalog/prices'"));
+  assert.ok(manage.indexOf("products.edit") >= 0);
+
+  const voidFn = src.slice(src.indexOf("app.post('/api/orders/void'"), src.indexOf("app.post('/api/orders/reprint'"));
+  assert.ok(voidFn.indexOf('order.payments') >= 0);
+  assert.ok(voidFn.indexOf('Ödəniş başlayıb. Sətiri ləğv etmək olmaz.') >= 0);
+  const discFn = src.slice(src.indexOf("app.post('/api/orders/discount'"), src.indexOf("app.post('/api/orders/discount/clear'"));
+  assert.ok(discFn.indexOf('order.payments') >= 0);
+  assert.ok(discFn.indexOf('Ödəniş başlayıb. Endirim dəyişməz.') >= 0);
+  const clearFn = src.slice(src.indexOf("app.post('/api/orders/discount/clear'"), src.indexOf("app.post('/api/orders/move'"));
+  assert.ok(clearFn.indexOf('Ödəniş başlayıb. Endirim dəyişməz.') >= 0);
+
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(ui.indexOf("can('orders.void') && !(order.payments && order.payments.length)") >= 0);
+  assert.ok(ui.indexOf("can('orders.discount') && !(order.payments && order.payments.length)") >= 0);
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
+  assert.ok(html.indexOf('orders-ui.js?v=32') >= 0);
+  const prodJs = fs.readFileSync(path.join(__dirname, 'public', 'products.js'), 'utf8');
+  assert.ok(prodJs.indexOf('/api/catalog/manage') >= 0);
+});
+
 test('orders-pay.js null-safe split/due/cash', function () {
   const pay = fs.readFileSync(path.join(__dirname, 'public', 'orders-pay.js'), 'utf8');
   assert.ok(pay.indexOf('function node(') >= 0);

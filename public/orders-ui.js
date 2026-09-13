@@ -1481,7 +1481,8 @@
     }
     var discountOpen = el('discount-open');
     if (discountOpen) {
-      discountOpen.style.display = order && can('orders.discount') ? '' : 'none';
+      discountOpen.style.display =
+        order && can('orders.discount') && !(order.payments && order.payments.length) ? '' : 'none';
     }
     var moveOpen = el('move-open');
     if (moveOpen) {
@@ -1566,7 +1567,7 @@
           });
           actions.appendChild(reprintBtn);
         }
-        if (can('orders.void')) {
+        if (can('orders.void') && !(order.payments && order.payments.length)) {
           var voidBtn = document.createElement('button');
           voidBtn.type = 'button';
           voidBtn.textContent = 'Ləğv';

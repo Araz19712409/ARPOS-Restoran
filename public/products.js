@@ -48,7 +48,7 @@
   }
 
   function load() {
-    var jobs = [api('/api/catalog')];
+    var jobs = [api('/api/catalog/manage')];
     if (canCost() || (window.PosNav && window.PosNav.isStockMode() &&
         (window.PosNav.can('stock.view') || window.PosNav.can('products.edit')))) {
       jobs.push(api('/api/stock'));

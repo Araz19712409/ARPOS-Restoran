@@ -297,6 +297,40 @@ function parseAllergens(value) {
     .slice(0, 80);
 }
 
+function publicChoice(row) {
+  return {
+    id: row && row.id,
+    name: row && row.name,
+    price: Number(row && row.price) || 0
+  };
+}
+
+function publicProduct(row) {
+  if (!row) {
+    return null;
+  }
+  return {
+    id: row.id,
+    groupId: row.groupId,
+    name: row.name,
+    salePrice: row.salePrice,
+    stationId: row.stationId,
+    image: row.image || '',
+    blocked: !!row.blocked,
+    soldOut: !!row.soldOut,
+    portions: (row.portions || []).map(publicChoice),
+    extras: (row.extras || []).map(publicChoice),
+    barcode: row.barcode || '',
+    allergens: row.allergens || '',
+    happyPrice: row.happyPrice,
+    happyFrom: row.happyFrom,
+    happyTo: row.happyTo,
+    comboIds: Array.isArray(row.comboIds) ? row.comboIds.slice() : [],
+    course: row.course,
+    prices: row.prices && typeof row.prices === 'object' ? Object.assign({}, row.prices) : {}
+  };
+}
+
 function markText(item) {
   const names = (item && item.modifiers || []).map(function (row) { return row.name; });
   if (item && item.note) {
@@ -324,5 +358,6 @@ module.exports = {
   parseComboIds,
   cleanBarcode,
   parseAllergens,
+  publicProduct,
   markText
 };
