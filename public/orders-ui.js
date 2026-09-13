@@ -844,15 +844,14 @@
   }
 
   function linePrice(product, portionId, extraIds) {
-    var sum = livePrice(product);
-    if (product.portions) {
-      var portion = product.portions.find(function (row) { return row.id === portionId; });
-      if (portion) {
-        sum += Number(portion.price) || 0;
-      }
-    }
+    var portion = (product.portions || []).find(function (row) {
+      return Number(row.id) === Number(portionId);
+    });
+    var sum = portion ? (Number(portion.price) || 0) : livePrice(product);
     (extraIds || []).forEach(function (id) {
-      var extra = (product.extras || []).find(function (row) { return row.id === id; });
+      var extra = (product.extras || []).find(function (row) {
+        return Number(row.id) === Number(id);
+      });
       if (extra) {
         sum += Number(extra.price) || 0;
       }
@@ -887,7 +886,9 @@
   function markNames(product, portionId, extraIds) {
     var names = [];
     if (product.portions) {
-      var portion = product.portions.find(function (row) { return row.id === portionId; });
+    var portion = (product.portions || []).find(function (row) {
+      return Number(row.id) === Number(portionId);
+    });
       if (portion) {
         names.push(portion.name);
       }
@@ -956,7 +957,7 @@
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'opt-chip' + (row.id === optionPortionId ? ' active' : '');
-      btn.textContent = row.name + (Number(row.price) ? ' +' + Number(row.price).toFixed(2) : '');
+      btn.textContent = row.name + ' ' + (Number(row.price) || 0).toFixed(2);
       btn.addEventListener('click', function () {
         optionPortionId = row.id;
         drawOptionChips();
@@ -992,7 +993,7 @@
     var portionBtns = document.querySelectorAll('#option-portions .opt-chip');
     (optionProduct.portions || []).forEach(function (row, i) {
       if (portionBtns[i]) {
-        portionBtns[i].classList.toggle('active', row.id === optionPortionId);
+        portionBtns[i].classList.toggle('active', Number(row.id) === Number(optionPortionId));
       }
     });
     var extraBtns = document.querySelectorAll('#option-extras .opt-chip');

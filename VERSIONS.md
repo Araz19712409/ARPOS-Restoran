@@ -1,5 +1,6 @@
 # Arpos Restoran — versiyalar
 
+- **1.2.25** — 2026-09-13 — Porsiya qiyməti tam satış; ekstra + qalır
 - **1.2.24** — 2026-09-13 — Hotfix: orders-ui splitDueMinor (PIN ölü)
 - **1.2.23** — 2026-09-13 — Anbar satış kilidi + ball Faza 1 (refund ball bərpası yox)
 - **1.2.22** — 2026-09-13 — GET /api/orders forPos: sms/update/github token sızmır

@@ -167,9 +167,10 @@ function applyLineChoices(product, chosen) {
   const extras = Array.isArray(product.extras) ? product.extras : [];
   const picks = [];
   let add = 0;
+  let base = 0;
   if (portions.length) {
     const pid = Number(chosen && chosen.portionId);
-    const portion = portions.find(function (row) { return row.id === pid; });
+    const portion = portions.find(function (row) { return Number(row.id) === pid; });
     if (!portion) {
       return { error: product.name + ': porsiya seçin.' };
     }
@@ -180,13 +181,15 @@ function applyLineChoices(product, chosen) {
       price: Number(portion.price) || 0,
       ingredients: stock.parseRecipe(portion.ingredients)
     });
-    add += Number(portion.price) || 0;
+    base = Number(portion.price) || 0;
+  } else {
+    base = Number(product.salePrice) || 0;
   }
   const ids = Array.isArray(chosen && chosen.extraIds)
     ? chosen.extraIds.map(function (id) { return Number(id); })
     : [];
   extras.forEach(function (ex) {
-    if (ids.indexOf(ex.id) === -1) {
+    if (ids.indexOf(Number(ex.id)) === -1) {
       return;
     }
     picks.push({
@@ -200,7 +203,7 @@ function applyLineChoices(product, chosen) {
   });
   return {
     modifiers: picks,
-    salePrice: Number((Number(product.salePrice) + add).toFixed(2))
+    salePrice: Number((base + add).toFixed(2))
   };
 }
 

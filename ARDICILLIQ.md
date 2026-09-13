@@ -182,6 +182,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 166. [x] 1.2.22 — forPos: sms/update/github token ofisianta sızmır
 167. [x] 1.2.23 — Anbar satış kilidi + ball Faza 1 (refund ball yox)
 168. [x] 1.2.24 — Hotfix: ofisiant PIN (orders-ui splitDueMinor)
+169. [x] 1.2.25 — Porsiya qiyməti tam satış; ekstra + qalır
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı

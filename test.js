@@ -798,6 +798,23 @@ test('az qalıq yalnız min yazılanda', function () {
   assert.strictEqual(low.low, true);
 });
 
+test('porsiya qiyməti tamdır, ekstra əlavə olunur', function () {
+  const product = {
+    name: 'Pizza',
+    salePrice: 10,
+    portions: [{ id: 1, name: 'Orta', price: 5 }],
+    extras: [{ id: 2, name: 'Sous', price: 2 }]
+  };
+  assert.strictEqual(catalog.applyLineChoices(product, { portionId: 1 }).salePrice, 5);
+  assert.strictEqual(catalog.applyLineChoices(product, { portionId: '1', extraIds: ['2'] }).salePrice, 7);
+  assert.strictEqual(catalog.applyLineChoices({
+    name: 'Pizza',
+    salePrice: 10,
+    portions: [],
+    extras: []
+  }, {}).salePrice, 10);
+});
+
 test('barkod təmizlənir', function () {
   assert.strictEqual(catalog.cleanBarcode(' 12 34! '), '1234');
   assert.strictEqual(catalog.cleanBarcode('AB-12'), 'AB-12');

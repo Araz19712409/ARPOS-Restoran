@@ -231,7 +231,7 @@
     priceInput.setAttribute('inputmode', 'decimal');
     priceInput.autocomplete = 'off';
     priceInput.className = 'mod-price dec';
-    priceInput.placeholder = '+ AZN';
+    priceInput.placeholder = boxId === 'portion-rows' ? 'Qiymət, AZN' : '+ AZN';
     priceInput.value = price != null ? String(price) : '0';
     var del = document.createElement('button');
     del.type = 'button';
