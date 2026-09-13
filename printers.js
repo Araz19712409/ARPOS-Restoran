@@ -721,29 +721,45 @@ function buildReceiptTicket(printer, order) {
   const itemsTotal = Number(pay.itemsTotal);
   const service = Number(pay.serviceCharge) || 0;
   const total = Number(pay.total) || 0;
-  const branch = (function () {
+  let cfg = null;
+  try {
+    cfg = require('./settings').readSettings();
+  } catch (error) {
+    cfg = null;
+  }
+  const receipt = (order && order.receipt) || (cfg && cfg.receipt) || {};
+  const title = (function () {
     try {
-      return require('./settings').readSettings().branchName || '';
+      return require('./settings').receiptTitle(cfg || { branchName: order && order.branchName, receipt: receipt });
     } catch (error) {
-      return '';
+      return (order && order.branchName) || 'Arpos Restoran';
     }
   }());
+  const branchCode = String((cfg && cfg.branchCode) || (order && order.branchCode) || '').trim();
   const lines = [
     eq(width),
-    (branch ? toPrinterText(branch) : ''),
-    toPrinterText('CEK #' + order.id),
-    eq(width),
-    line(width, 'Masa', order.tableName || '-'),
-    line(width, 'Ofisiant', pay.waiterName || order.waiterName || '-'),
-    (order.buyerVoen || pay.buyerVoen
-      ? line(width, 'VOEN', order.buyerVoen || pay.buyerVoen)
-      : ''),
-    (order.buyerName || pay.buyerName
-      ? line(width, 'Sirket', order.buyerName || pay.buyerName)
-      : ''),
-    line(width, 'Vaxt', dateText),
-    dash(width)
+    toPrinterText(title),
+    (receipt.address ? toPrinterText(receipt.address) : ''),
+    (receipt.phone ? toPrinterText(receipt.phone) : ''),
+    (receipt.showBranchCode && branchCode ? toPrinterText('Filial: ' + branchCode) : '')
   ].filter(Boolean);
+  (Array.isArray(receipt.headerLines) ? receipt.headerLines : []).forEach(function (row) {
+    if (row) {
+      lines.push(toPrinterText(row));
+    }
+  });
+  lines.push(toPrinterText('CEK #' + order.id));
+  lines.push(eq(width));
+  lines.push(line(width, 'Masa', order.tableName || '-'));
+  lines.push(line(width, 'Ofisiant', pay.waiterName || order.waiterName || '-'));
+  if (order.buyerVoen || pay.buyerVoen) {
+    lines.push(line(width, 'VOEN', order.buyerVoen || pay.buyerVoen));
+  }
+  if (order.buyerName || pay.buyerName) {
+    lines.push(line(width, 'Sirket', order.buyerName || pay.buyerName));
+  }
+  lines.push(line(width, 'Vaxt', dateText));
+  lines.push(dash(width));
   (order.items || []).forEach(function (item) {
     if (item.voided) {
       return;
@@ -780,7 +796,14 @@ function buildReceiptTicket(printer, order) {
     lines.push(line(width, 'Qaytarilan', Number(pay.change).toFixed(2)));
   }
   lines.push(eq(width));
-  lines.push(toPrinterText('Tesekkur edirik'));
+  const footers = Array.isArray(receipt.footerLines) ? receipt.footerLines.filter(Boolean) : [];
+  if (footers.length) {
+    footers.forEach(function (row) {
+      lines.push(toPrinterText(row));
+    });
+  } else {
+    lines.push(toPrinterText('Tesekkur edirik'));
+  }
   lines.push('');
   lines.push('');
   return ticketBytes(printer, 'CEK', lines);
@@ -795,6 +818,8 @@ module.exports = {
   sendStationTickets: sendStationTickets,
   sendReceiptTickets: sendReceiptTickets,
   sendZTickets: sendZTickets,
+  buildReceiptTicket: buildReceiptTicket,
+  toPrinterText: toPrinterText,
   listQueue: listQueue,
   processQueue: processQueue,
   retryJob: retryJob,

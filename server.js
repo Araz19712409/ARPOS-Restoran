@@ -2053,7 +2053,8 @@ app.put('/api/settings', function (req, res) {
       orderCardScale: body.orderCardScale,
       vatPercent: body.vatPercent,
       tillLocked: body.tillLocked,
-      loyalty: body.loyalty
+      loyalty: body.loyalty,
+      receipt: body.receipt
     });
     if (next.tillLocked && !prev.tillLocked) {
       sessions.dropOthers(users.adminIds());

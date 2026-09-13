@@ -25,6 +25,7 @@ const totp = require('./totp');
 const backup = require('./backup');
 const updater = require('./updater');
 const posDom = require('./public/dom.js');
+const printers = require('./printers');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -699,6 +700,69 @@ test('ayarlarda filial və sms sahəsi var', function () {
   assert.strictEqual(typeof cfg.sms.reserveText, 'string');
   assert.strictEqual(typeof cfg.vatPercent, 'number');
   assert.strictEqual(typeof cfg.branchCode, 'string');
+  assert.ok(cfg.receipt);
+  assert.strictEqual(typeof cfg.receipt.title, 'string');
+  assert.ok(Array.isArray(cfg.receipt.headerLines));
+  assert.ok(Array.isArray(cfg.receipt.footerLines));
+});
+
+test('çek brendinqi: boş title → branchName; dolu → ticket/view', function () {
+  withTempDb(function () {
+    settings.writeSettings({ branchName: 'Kafe Test', receipt: settings.emptyReceipt() });
+    assert.strictEqual(settings.receiptTitle(), 'Kafe Test');
+    settings.writeSettings({ branchName: '', receipt: settings.emptyReceipt() });
+    assert.strictEqual(settings.receiptTitle(), 'Arpos Restoran');
+    const filled = settings.writeSettings({
+      branchName: 'Kafe Test',
+      branchCode: 'M1',
+      receipt: {
+        title: 'My Cafe',
+        address: 'Nizami 1',
+        phone: '012',
+        headerLines: ['Acigdir 10-22', 'WiFi: cafe', 'extra ignore'],
+        footerLines: ['Gelin yeniden', 'Instagram @cafe'],
+        showBranchCode: true
+      }
+    });
+    assert.strictEqual(filled.receipt.title, 'My Cafe');
+    assert.strictEqual(filled.receipt.headerLines.length, 2);
+    assert.strictEqual(filled.receipt.footerLines.length, 2);
+    assert.strictEqual(settings.receiptTitle(filled), 'My Cafe');
+    const pub = settings.forPos(filled);
+    assert.strictEqual(pub.receipt.title, 'My Cafe');
+    assert.strictEqual(pub.receipt.showBranchCode, true);
+
+    const ticket = printers.buildReceiptTicket({ paperWidth: 80, charsPerLine: 48, font: 'A' }, {
+      id: 7,
+      tableName: 'M1',
+      branchCode: 'M1',
+      receipt: filled.receipt,
+      items: [{ name: 'Cay', qty: 1, salePrice: 2 }],
+      payment: {
+        itemsTotal: 2,
+        serviceCharge: 0,
+        total: 2,
+        cashAmount: 2,
+        cardAmount: 0,
+        at: '2026-09-13T12:00:00'
+      }
+    });
+    const text = ticket.toString('ascii');
+    assert.ok(text.indexOf('My Cafe') >= 0);
+    assert.ok(text.indexOf('Nizami 1') >= 0);
+    assert.ok(text.indexOf('Acigdir 10-22') >= 0);
+    assert.ok(text.indexOf('Gelin yeniden') >= 0);
+    assert.ok(text.indexOf('Filial: M1') >= 0);
+    assert.ok(text.indexOf('CEK #7') >= 0);
+
+    const viewSrc = fs.readFileSync(path.join(__dirname, 'public', 'receipt-view.js'), 'utf8');
+    assert.ok(viewSrc.indexOf('receiptTitle') >= 0);
+    assert.ok(viewSrc.indexOf('headerLines') >= 0);
+    assert.ok(viewSrc.indexOf('footerLines') >= 0);
+    const html = fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8');
+    assert.ok(html.indexOf('data-tab="receipt"') >= 0);
+    assert.ok(html.indexOf('id="receipt-title"') >= 0);
+  });
 });
 
 test('qəbulda autoSendAllOnAccept isti kursu göndərir', function () {
@@ -1607,6 +1671,8 @@ test('forPos secret sızdırmır; POS sahələri qalır', function () {
     assert.deepStrictEqual(Object.keys(pub.stock).sort(), ['blockSaleIfShort', 'salesWarehouseId']);
     assert.deepStrictEqual(Object.keys(pub.loyalty).sort(), ['earnPer100', 'enabled', 'minRedeem', 'pointValueMinor']);
     assert.strictEqual(pub.loyalty.enabled, false);
+    assert.ok(pub.receipt);
+    assert.strictEqual(typeof pub.receipt.title, 'string');
     assert.strictEqual(pub.sms.enabled, true);
     assert.strictEqual(pub.sms.sender, 'ARPOS');
     const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');

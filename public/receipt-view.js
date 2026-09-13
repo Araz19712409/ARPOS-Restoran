@@ -16,20 +16,38 @@
       ' ' + twoDigits(d.getHours()) + ':' + twoDigits(d.getMinutes());
   }
 
+  function addText(parent, className, text) {
+    if (!text) {
+      return;
+    }
+    var p = document.createElement('p');
+    p.className = className;
+    p.textContent = text;
+    parent.appendChild(p);
+  }
+
+  function receiptTitle(order) {
+    var r = (order && order.receipt) || {};
+    var title = String(r.title || '').trim();
+    if (title) {
+      return title;
+    }
+    var branch = String((order && (order.branchName || (order.payment && order.payment.branchName))) || '').trim();
+    return branch || 'Arpos Restoran';
+  }
+
   function fill(root, order) {
     if (!root || !order) {
       return;
     }
     var pay = order.payment || {};
+    var receipt = order.receipt || {};
     var items = 0;
-    var rows = '';
     (order.items || []).forEach(function (item) {
       if (item.voided) {
         return;
       }
-      var line = Number(item.salePrice) * Number(item.qty);
-      items += line;
-      rows += '<div class="rc-row"><span></span><span></span></div>';
+      items += Number(item.salePrice) * Number(item.qty);
     });
     var service = Number(pay.serviceCharge) || 0;
     var itemsTotal = Number.isFinite(Number(pay.itemsTotal)) ? Number(pay.itemsTotal) : items;
@@ -43,38 +61,37 @@
       total = itemsTotal - discount + service + tip;
     }
     var refunded = order.status === 'refunded' || !!order.refund;
-    var branch = (order.branchName || pay.branchName || '').trim();
-    root.innerHTML =
-      '<p class="rc-brand"></p>' +
-      '<p class="rc-id"></p>' +
-      (refunded ? '<p class="rc-refund">QAYTARILIB</p>' : '') +
-      '<p class="rc-meta"></p>' +
-      '<p class="rc-meta"></p>' +
-      '<p class="rc-meta"></p>' +
-      '<div class="rc-lines"></div>' +
-      '<div class="rc-sum"><span>Məhsul</span><strong></strong></div>' +
-      '<div class="rc-sum"><span>Endirim</span><strong></strong></div>' +
-      '<div class="rc-sum"><span>Xidmət' + (pay.servicePercent ? ' (' + pay.servicePercent + '%)' : '') +
-      '</span><strong></strong></div>' +
-      (tip > 0 ? '<div class="rc-sum"><span>Bəxşiş</span><strong></strong></div>' : '') +
-      '<div class="rc-sum total"><span>Cəm</span><strong></strong></div>' +
-      '<div class="rc-sum"><span>Bu ödəniş</span><strong></strong></div>' +
-      '<div class="rc-sum"><span>Nağd</span><strong></strong></div>' +
-      '<div class="rc-sum"><span>Kart</span><strong></strong></div>' +
-      (gift > 0 ? '<div class="rc-sum"><span>Hədiyyə</span><strong></strong></div>' : '');
-
-    root.querySelector('.rc-brand').textContent = branch || 'ÇEK';
-    root.querySelector('.rc-id').textContent = '#' + order.id;
-    var metas = root.querySelectorAll('.rc-meta');
-    metas[0].textContent = 'Masa: ' + (order.tableName || order.tableId);
-    metas[1].textContent = 'Ofisiant: ' + (pay.waiterName || order.waiterName || '');
+    root.textContent = '';
+    addText(root, 'rc-brand', receiptTitle(order));
+    addText(root, 'rc-sub', receipt.address);
+    addText(root, 'rc-sub', receipt.phone);
+    if (receipt.showBranchCode && order.branchCode) {
+      addText(root, 'rc-sub', 'Filial: ' + order.branchCode);
+    }
+    (Array.isArray(receipt.headerLines) ? receipt.headerLines : []).forEach(function (row) {
+      addText(root, 'rc-sub', row);
+    });
+    addText(root, 'rc-id', '#' + order.id);
+    if (refunded) {
+      addText(root, 'rc-refund', 'QAYTARILIB');
+    }
+    addText(root, 'rc-meta', 'Masa: ' + (order.tableName || order.tableId));
+    addText(root, 'rc-meta', 'Ofisiant: ' + (pay.waiterName || order.waiterName || ''));
     var when = whenText(pay.at || order.updatedAt);
     var voen = order.buyerVoen || pay.buyerVoen;
-    metas[2].textContent = when + (voen ? ' • VÖEN ' + voen : '') +
+    var meta3 = when + (voen ? ' • VÖEN ' + voen : '') +
       (order.buyerName || pay.buyerName ? ' • ' + (order.buyerName || pay.buyerName) : '');
+    if (pay.discountReason) {
+      meta3 = whenText(pay.at || order.updatedAt) + ' • ' + pay.discountReason;
+    }
+    if (order.refund && order.refund.reason) {
+      meta3 = (meta3 ? meta3 + ' • ' : '') + 'Qaytarma: ' + order.refund.reason;
+    }
+    addText(root, 'rc-meta', meta3);
 
-    var box = root.querySelector('.rc-lines');
-    box.innerHTML = '';
+    var box = document.createElement('div');
+    box.className = 'rc-lines';
+    root.appendChild(box);
     (order.items || []).forEach(function (item) {
       if (item.voided) {
         return;
@@ -88,42 +105,55 @@
       row.appendChild(left);
       row.appendChild(right);
       box.appendChild(row);
-      var marks = (item.modifiers || []).map(function (row) { return row.name; });
+      var marks = (item.modifiers || []).map(function (mod) { return mod.name; });
       if (item.note) {
         marks.push(item.note);
       }
       if (marks.length) {
         var extra = document.createElement('div');
         extra.className = 'rc-row';
-        extra.innerHTML = '<span></span><span></span>';
-        extra.querySelector('span').textContent = marks.join(', ');
+        var markLeft = document.createElement('span');
+        markLeft.textContent = marks.join(', ');
+        extra.appendChild(markLeft);
+        extra.appendChild(document.createElement('span'));
         box.appendChild(extra);
       }
     });
 
-    var sums = root.querySelectorAll('.rc-sum strong');
-    sums[0].textContent = money(itemsTotal);
-    sums[1].textContent = (discount ? '-' : '') + money(discount);
-    sums[2].textContent = money(service);
-    var at = 3;
+    function addSum(label, value, totalClass) {
+      var row = document.createElement('div');
+      row.className = 'rc-sum' + (totalClass ? ' total' : '');
+      var span = document.createElement('span');
+      span.textContent = label;
+      var strong = document.createElement('strong');
+      strong.textContent = value;
+      row.appendChild(span);
+      row.appendChild(strong);
+      root.appendChild(row);
+    }
+
+    addSum('Məhsul', money(itemsTotal));
+    addSum('Endirim', (discount ? '-' : '') + money(discount));
+    addSum('Xidmət' + (pay.servicePercent ? ' (' + pay.servicePercent + '%)' : ''), money(service));
     if (tip > 0) {
-      sums[at].textContent = money(tip);
-      at += 1;
+      addSum('Bəxşiş', money(tip));
     }
-    sums[at].textContent = money(total) + ' AZN';
-    sums[at + 1].textContent = money(Number(pay.share) ||
-      (Number(pay.cashAmount || 0) + Number(pay.cardAmount || 0) + Number(gift || 0)));
-    sums[at + 2].textContent = money(pay.cashAmount);
-    sums[at + 3].textContent = money(pay.cardAmount);
+    addSum('Cəm', money(total) + ' AZN', true);
+    addSum('Bu ödəniş', money(Number(pay.share) ||
+      (Number(pay.cashAmount || 0) + Number(pay.cardAmount || 0) + Number(gift || 0))));
+    addSum('Nağd', money(pay.cashAmount));
+    addSum('Kart', money(pay.cardAmount));
     if (gift > 0) {
-      sums[at + 4].textContent = money(gift);
+      addSum('Hədiyyə', money(gift));
     }
-    if (pay.discountReason) {
-      metas[2].textContent = whenText(pay.at || order.updatedAt) + ' • ' + pay.discountReason;
-    }
-    if (order.refund && order.refund.reason) {
-      metas[2].textContent = (metas[2].textContent ? metas[2].textContent + ' • ' : '') +
-        'Qaytarma: ' + order.refund.reason;
+
+    var footers = Array.isArray(receipt.footerLines) ? receipt.footerLines.filter(Boolean) : [];
+    if (footers.length) {
+      footers.forEach(function (row) {
+        addText(root, 'rc-foot', row);
+      });
+    } else {
+      addText(root, 'rc-foot', 'Təşəkkür edirik');
     }
     root.setAttribute('data-order', String(order.id));
   }
@@ -148,10 +178,11 @@
       '@page{size:80mm auto;margin:3mm}' +
       'html,body{margin:0;padding:0;width:74mm;background:#fff;color:#000}' +
       'body{font-family:"Courier New",Consolas,monospace;font-size:14px;line-height:1.35}' +
-      '.rc-brand,.rc-id,.rc-refund{text-align:center;font-weight:800;margin:0 0 4px}' +
-      '.rc-brand{font-size:20px}' +
-      '.rc-id{font-size:18px}' +
-      '.rc-refund{letter-spacing:0.04em}' +
+      '.rc-brand,.rc-id,.rc-refund,.rc-sub,.rc-foot{text-align:center;margin:0 0 4px}' +
+      '.rc-brand{font-size:20px;font-weight:800}' +
+      '.rc-id{font-size:18px;font-weight:800}' +
+      '.rc-sub,.rc-foot{font-size:12px}' +
+      '.rc-refund{letter-spacing:0.04em;font-weight:800}' +
       '.rc-meta{margin:0 0 3px;font-size:13px}' +
       '.rc-lines{border-top:1px dashed #000;border-bottom:1px dashed #000;margin:8px 0;padding:6px 0}' +
       '.rc-row,.rc-sum{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0 0 4px}' +
@@ -168,4 +199,4 @@
   }
 
   global.ReceiptView = { fill: fill, printNow: printNow };
-})(window);
+})(typeof window !== 'undefined' ? window : globalThis);

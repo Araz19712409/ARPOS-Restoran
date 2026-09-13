@@ -1422,6 +1422,13 @@
   margin-bottom: 4px;
 }
 
+.rc-sub,
+.rc-foot {
+  text-align: center;
+  font-size: 0.8rem;
+  margin-bottom: 2px;
+}
+
 .rc-refund {
   letter-spacing: 0.04em;
 }

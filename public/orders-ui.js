@@ -2735,8 +2735,16 @@
         view = Object.assign({}, view, { payment: result.payment });
       }
       lastReceipt = view;
-      if (lastReceipt && settings.branchName) {
-        lastReceipt.branchName = settings.branchName;
+      if (lastReceipt && settings) {
+        if (settings.branchName) {
+          lastReceipt.branchName = settings.branchName;
+        }
+        if (settings.branchCode) {
+          lastReceipt.branchCode = settings.branchCode;
+        }
+        if (settings.receipt) {
+          lastReceipt.receipt = settings.receipt;
+        }
       }
       if (result.closed && lastReceipt && window.ReceiptView) {
         window.ReceiptView.fill(document.getElementById('receipt-paper'), lastReceipt);

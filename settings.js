@@ -183,6 +183,60 @@ function publicSms(row) {
   };
 }
 
+function emptyReceipt() {
+  return {
+    title: '',
+    address: '',
+    phone: '',
+    headerLines: [],
+    footerLines: [],
+    showBranchCode: false
+  };
+}
+
+function cleanLineList(list, maxCount, maxLen) {
+  const out = [];
+  (Array.isArray(list) ? list : String(list || '').split(/\r?\n/)).forEach(function (row) {
+    if (out.length >= maxCount) {
+      return;
+    }
+    const text = String(row == null ? '' : row).trim().slice(0, maxLen);
+    if (text) {
+      out.push(text);
+    }
+  });
+  return out;
+}
+
+function cleanReceipt(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  return {
+    title: String(src.title || '').trim().slice(0, 80),
+    address: String(src.address || '').trim().slice(0, 80),
+    phone: String(src.phone || '').trim().slice(0, 40),
+    headerLines: cleanLineList(src.headerLines, 2, 60),
+    footerLines: cleanLineList(src.footerLines, 3, 60),
+    showBranchCode: src.showBranchCode === true || src.showBranchCode === 1 ||
+      src.showBranchCode === '1' || src.showBranchCode === 'true'
+  };
+}
+
+function receiptTitle(cfg) {
+  const row = cfg || readSettings();
+  const r = row.receipt || emptyReceipt();
+  const title = String(r.title || '').trim();
+  if (title) {
+    return title;
+  }
+  const branch = String(row.branchName || '').trim();
+  return branch || 'Arpos Restoran';
+}
+
+function publicReceipt(cfg) {
+  const row = cfg || readSettings();
+  return cleanReceipt(row.receipt || emptyReceipt());
+}
+
 function forPos(cfg) {
   const row = cfg || readSettings();
   const shift = row.shift && typeof row.shift === 'object' ? row.shift : emptyShift();
@@ -209,7 +263,8 @@ function forPos(cfg) {
     ekassa: publicEkassa(row.ekassa),
     delivery: publicDelivery(row.delivery),
     sms: publicSms(row.sms),
-    loyalty: publicLoyalty(row.loyalty)
+    loyalty: publicLoyalty(row.loyalty),
+    receipt: publicReceipt(row)
   };
 }
 
@@ -234,7 +289,8 @@ function defaults() {
     backupGithub: emptyBackupGithub(),
     orderCardScale: 2,
     vatPercent: 0,
-    tillLocked: false
+    tillLocked: false,
+    receipt: emptyReceipt()
   };
 }
 
@@ -630,7 +686,8 @@ function normalize(raw, prev) {
     backupGithub: cleanBackupGithub(raw, prev || raw),
     orderCardScale: clampScale(raw && raw.orderCardScale != null ? raw.orderCardScale : 2),
     vatPercent: clampPercent(raw && raw.vatPercent),
-    tillLocked: raw && (raw.tillLocked === true || raw.tillLocked === 1 || raw.tillLocked === '1' || raw.tillLocked === 'true')
+    tillLocked: raw && (raw.tillLocked === true || raw.tillLocked === 1 || raw.tillLocked === '1' || raw.tillLocked === 'true'),
+    receipt: cleanReceipt(raw && raw.receipt)
   };
 }
 
@@ -664,7 +721,8 @@ function writeSettings(data) {
     backupGithub: data.backupGithub !== undefined ? data.backupGithub : prev.backupGithub,
     orderCardScale: data.orderCardScale !== undefined ? data.orderCardScale : prev.orderCardScale,
     vatPercent: data.vatPercent !== undefined ? data.vatPercent : prev.vatPercent,
-    tillLocked: data.tillLocked !== undefined ? data.tillLocked : prev.tillLocked
+    tillLocked: data.tillLocked !== undefined ? data.tillLocked : prev.tillLocked,
+    receipt: data.receipt !== undefined ? data.receipt : prev.receipt
   }, prev);
   if (next.backupFolder !== prev.backupFolder) {
     try {
@@ -762,6 +820,10 @@ module.exports = {
   publicEkassa: publicEkassa,
   publicDelivery: publicDelivery,
   emptyDelivery: emptyDelivery,
+  emptyReceipt: emptyReceipt,
+  cleanReceipt: cleanReceipt,
+  receiptTitle: receiptTitle,
+  publicReceipt: publicReceipt,
   autoSendAllOnAccept: autoSendAllOnAccept,
   unsentPayHint: unsentPayHint,
   blockSaleIfShort: blockSaleIfShort,

@@ -377,6 +377,39 @@
     setVal('backup-gh-token', gh.token || '');
   }
 
+  function receiptPayload() {
+    return {
+      title: (el('receipt-title') && el('receipt-title').value) || '',
+      address: (el('receipt-address') && el('receipt-address').value) || '',
+      phone: (el('receipt-phone') && el('receipt-phone').value) || '',
+      headerLines: [
+        (el('receipt-header-1') && el('receipt-header-1').value) || '',
+        (el('receipt-header-2') && el('receipt-header-2').value) || ''
+      ],
+      footerLines: [
+        (el('receipt-footer-1') && el('receipt-footer-1').value) || '',
+        (el('receipt-footer-2') && el('receipt-footer-2').value) || '',
+        (el('receipt-footer-3') && el('receipt-footer-3').value) || ''
+      ],
+      showBranchCode: !!(el('receipt-show-branch') && el('receipt-show-branch').checked)
+    };
+  }
+
+  function fillReceipt() {
+    var r = current.receipt || {};
+    setVal('receipt-title', r.title || '');
+    setVal('receipt-address', r.address || '');
+    setVal('receipt-phone', r.phone || '');
+    setChecked('receipt-show-branch', r.showBranchCode === true);
+    var headers = Array.isArray(r.headerLines) ? r.headerLines : [];
+    setVal('receipt-header-1', headers[0] || '');
+    setVal('receipt-header-2', headers[1] || '');
+    var footers = Array.isArray(r.footerLines) ? r.footerLines : [];
+    setVal('receipt-footer-1', footers[0] || '');
+    setVal('receipt-footer-2', footers[1] || '');
+    setVal('receipt-footer-3', footers[2] || '');
+  }
+
   function sendSmsTest() {
     if (!waiter) {
       say('PIN ilə daxil olun.', 'err');
@@ -494,7 +527,8 @@
             document.getElementById('loyalty-value').value) || 1,
           minRedeem: Number(document.getElementById('loyalty-min') &&
             document.getElementById('loyalty-min').value) || 1
-        }
+        },
+        receipt: receiptPayload()
       })
     }).then(function (body) {
       current = body.data || current;
@@ -673,6 +707,7 @@
     fillBranch();
     fillUpdate(body.data.version);
     fillBackupGithub();
+    fillReceipt();
     if (window.PosNav) {
       window.PosNav.rememberOps(mode, waiter);
     }

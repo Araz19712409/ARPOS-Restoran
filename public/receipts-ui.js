@@ -3,6 +3,7 @@
   var pinBuffer = '';
   var paid = [];
   var lastReceipt = null;
+  var posSettings = null;
 
   function api(url, options) {
     return fetch(url, options).then(function (res) {
@@ -130,8 +131,19 @@
   }
 
   function openReceipt(order) {
-    lastReceipt = order;
-    window.ReceiptView.fill(document.getElementById('receipt-paper'), order);
+    lastReceipt = Object.assign({}, order);
+    if (posSettings) {
+      if (posSettings.branchName) {
+        lastReceipt.branchName = posSettings.branchName;
+      }
+      if (posSettings.branchCode) {
+        lastReceipt.branchCode = posSettings.branchCode;
+      }
+      if (posSettings.receipt) {
+        lastReceipt.receipt = posSettings.receipt;
+      }
+    }
+    window.ReceiptView.fill(document.getElementById('receipt-paper'), lastReceipt);
     document.getElementById('receipt-msg').textContent = order.status === 'refunded'
       ? ('Qaytarılıb' + (order.refund && order.refund.reason ? ': ' + order.refund.reason : '.'))
       : 'Çapdan qabaq görünüş.';
@@ -153,6 +165,7 @@
     }
     say('');
     api('/api/orders').then(function (body) {
+      posSettings = (body.data && body.data.settings) || null;
       paid = (body.data.orders || []).filter(function (order) {
         return (order.status === 'paid' || order.status === 'refunded') && order.payment &&
           inRange(order.payment.at || order.updatedAt, from, to);

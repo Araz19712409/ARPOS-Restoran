@@ -40,6 +40,7 @@
   <aside class="panel catalog-side" aria-label="Ayar mövzuları">
     <nav class="settings-tabs" id="settings-tabs">
       <button type="button" class="settings-tab active" data-tab="general">Ümumi</button>
+      <button type="button" class="settings-tab" data-tab="receipt">Çek</button>
       <button type="button" class="settings-tab" data-tab="network">Şəbəkə və filial</button>
       <button type="button" class="settings-tab" data-tab="terminals">Terminallar</button>
       <button type="button" class="settings-tab" data-tab="bonus">Ofisiant bonusları</button>
@@ -166,6 +167,49 @@
           </label>
           <p class="hint">Header: X-Delivery-Secret. Boş olsa webhook 401. Secret loqa yazılmır.</p>
           <button id="delivery-sample" type="button">Nümunə sifariş yarat</button>
+        </section>
+      </article>
+
+      <article class="settings-panel hidden" data-tab="receipt">
+        <h2>Çek</h2>
+        <p class="hint">Qonaq çeki başlığı və alt yazı. Logo tezliklə (Faza 1b). USB/Bank POS yox.</p>
+        <section>
+          <h3>Başlıq</h3>
+          <label>Ad (boşdursa filial / Arpos Restoran)
+            <input id="receipt-title" type="text" maxlength="80" autocomplete="off">
+          </label>
+          <label>Ünvan
+            <input id="receipt-address" type="text" maxlength="80" autocomplete="off">
+          </label>
+          <label>Telefon
+            <input id="receipt-phone" type="text" maxlength="40" autocomplete="off">
+          </label>
+          <label class="ops-choice">
+            <input id="receipt-show-branch" type="checkbox">
+            Filial kodunu göstər
+          </label>
+        </section>
+        <section>
+          <h3>Yuxarı sətirlər (max 2)</h3>
+          <label>Sətir 1
+            <input id="receipt-header-1" type="text" maxlength="60" autocomplete="off">
+          </label>
+          <label>Sətir 2
+            <input id="receipt-header-2" type="text" maxlength="60" autocomplete="off">
+          </label>
+        </section>
+        <section>
+          <h3>Aşağı sətirlər (max 3)</h3>
+          <p class="hint">Boş olsa «Təşəkkür edirik» yazılır.</p>
+          <label>Sətir 1
+            <input id="receipt-footer-1" type="text" maxlength="60" autocomplete="off">
+          </label>
+          <label>Sətir 2
+            <input id="receipt-footer-2" type="text" maxlength="60" autocomplete="off">
+          </label>
+          <label>Sətir 3
+            <input id="receipt-footer-3" type="text" maxlength="60" autocomplete="off">
+          </label>
         </section>
       </article>
 
@@ -462,6 +506,6 @@
   <script src="offline.js"></script>
   <script src="dom.js"></script>
   <script src="nav.js"></script>
-  <script src="settings-ui.js?v=10"></script>
+  <script src="settings-ui.js?v=11"></script>
 </body>
 </html>

@@ -192,6 +192,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 176. [x] 1.2.32 — Stabilizasiya: reliz qaydası + modal/DOM null-safe
 177. [x] 1.2.33 — Pulsuz: pending + accept yalnız orders.discount
 178. [x] 1.2.34 — İcazə audit + accept kataloq 0 AZN OK; PERMISSIONS.md
+179. [x] 1.2.35 — Çek brendinqi Faza 1 (logo/USB yox)
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı
