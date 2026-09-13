@@ -26,10 +26,10 @@ const JSON_FILES = [
   'layout.json', 'catalog.json', 'orders.json', 'users.json', 'printers.json',
   'reservations.json', 'settings.json', 'tables.json', 'terminals.json',
   'stock.json', 'fiscal-queue.json', 'shifts.json', 'gifts.json', 'waitlist.json',
-  'print-queue.json', 'pin-lock.json'
+  'print-queue.json', 'pin-lock.json', 'customers.json'
 ];
 const MOVE_FILES = ['catalog.json', 'orders.json', 'stock.json'];
-const OFFICE_FILES = ['users.json', 'settings.json', 'shifts.json', 'terminals.json'];
+const OFFICE_FILES = ['users.json', 'settings.json', 'shifts.json', 'terminals.json', 'customers.json'];
 const KEEP_MS = 14 * 24 * 60 * 60 * 1000;
 
 let Database;

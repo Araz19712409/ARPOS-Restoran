@@ -27,6 +27,7 @@
           <a href="/" data-need="layout.edit">Çertyoj</a>
           <a href="/products.html" data-need="products.edit">Məhsullar</a>
           <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a href="/customers.html" data-need="payments.take">Müştərilər</a>
           <a href="/printers.html" data-need="printers.view">Printerlər</a>
           <a href="/users.html" data-need="users.view">İstifadəçilər</a>
           <a class="active" href="/settings.html" data-need="settings.view">Ayarlar</a>
@@ -93,6 +94,29 @@
           <label>Sklad
             <select id="sales-warehouse"></select>
           </label>
+          <label class="ops-choice">
+            <input id="stock-block-short" type="checkbox" checked>
+            Qalıq çatmasa satışı blokla
+          </label>
+          <p class="hint">ON: çatışmazlıqda qəbul/ödəniş 400. OFF: köhnə yumşaq xəbərdarlıq, satış gedir.</p>
+        </section>
+        <section>
+          <h3>Ballar</h3>
+          <p class="hint">OFF: ödənişdə telefon yox. 100 AZN nağd+kart → N ball. 1 ball = N qəpik. Refund ball geri yoxdur.</p>
+          <label class="ops-choice">
+            <input id="loyalty-enabled" type="checkbox">
+            Ball proqramı
+          </label>
+          <label>100 AZN-ə ball
+            <input id="loyalty-earn" type="text" inputmode="numeric" value="1">
+          </label>
+          <label>1 ball, qəpik
+            <input id="loyalty-value" type="text" inputmode="numeric" value="1">
+          </label>
+          <label>Min. istifadə
+            <input id="loyalty-min" type="text" inputmode="numeric" value="1">
+          </label>
+          <p class="hint">Müştəri axtar / ±ball: Ofis → Müştərilər.</p>
         </section>
         <section>
           <h3>Xidmət haqqı</h3>

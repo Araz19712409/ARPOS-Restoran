@@ -30,6 +30,7 @@
           <a href="/" data-need="layout.edit">Çertyoj</a>
           <a href="/products.html" data-need="products.edit">Məhsullar</a>
           <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a href="/customers.html" data-need="payments.take">Müştərilər</a>
           <a href="/printers.html" data-need="printers.view">Printerlər</a>
           <a href="/users.html" data-need="users.view">İstifadəçilər</a>
           <a href="/settings.html" data-need="settings.view">Ayarlar</a>
@@ -218,7 +219,7 @@
         <div id="pay-seats" class="pay-seats"></div>
         <div id="pay-pick" class="pay-pick"></div>
       </div>
-      <p id="pay-share" class="pay-share"></p>
+      <p id="pay-loy-bal" class="hint hidden"></p>
       <label id="pay-tip-wrap">Bəxşiş
         <input id="pay-tip" type="text" inputmode="decimal" autocomplete="off" value="0">
       </label>
@@ -241,6 +242,12 @@
           </label>
           <label>Hədiyyə
             <input id="pay-gift" type="text" maxlength="16" placeholder="Kod">
+          </label>
+          <label id="pay-loy-phone-wrap" class="hidden">Telefon
+            <input id="pay-loy-phone" type="tel" maxlength="15" placeholder="050..." inputmode="numeric">
+          </label>
+          <label id="pay-loy-amt-wrap" class="hidden">Ballarla
+            <input id="pay-loyalty-amt" type="text" inputmode="decimal" autocomplete="off" value="0">
           </label>
         </div>
       </details>

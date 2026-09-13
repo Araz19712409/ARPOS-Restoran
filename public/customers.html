@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arpos Restoran — Müştərilər</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="products.css">
+</head>
+<body class="catalog-page dense-office" data-need="payments.take">
+  <header class="top">
+    <div>
+      <h1>Müştərilər</h1>
+      <p id="waiter-line">Telefon axtar, ball əlavə/çıx.</p>
+    </div>
+    <nav class="app-nav waiter-nav">
+      <a href="/orders.html">Sifariş</a>
+      <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+      <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
+      <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
+      <details class="more-nav">
+        <summary>Ofis</summary>
+        <div class="more-nav-list">
+          <a href="/reports.html" data-need="reports.view">Hesabat</a>
+          <a href="/customers.html" data-need="payments.take">Müştərilər</a>
+          <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a href="/settings.html" data-need="settings.view">Ayarlar</a>
+        </div>
+      </details>
+      <button id="logout" type="button">Çıxış</button>
+    </nav>
+  </header>
+  <main class="catalog-main" style="padding:12px">
+    <p id="message" class="message"></p>
+    <div class="row">
+      <input id="cust-q" type="search" placeholder="Telefon və ya ad" maxlength="40">
+      <button id="cust-search" type="button">Axtar</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <input id="cust-phone" type="tel" placeholder="Yeni telefon" maxlength="15">
+      <input id="cust-name" type="text" placeholder="Ad" maxlength="40">
+      <button id="cust-add" class="gold" type="button">Yarat</button>
+    </div>
+    <div id="cust-list" class="user-grid" style="margin-top:12px"></div>
+  </main>
+  <script src="log-client.js"></script>
+  <script src="confirm.js"></script>
+  <script src="offline.js"></script>
+  <script src="dom.js"></script>
+  <script src="nav.js"></script>
+  <script src="customers-ui.js"></script>
+</body>
+</html>

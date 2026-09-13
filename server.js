@@ -24,6 +24,7 @@ const journal = require('./journal');
 const waitlist = require('./waitlist');
 const clock = require('./clock');
 const gifts = require('./gifts');
+const customers = require('./customers');
 const sms = require('./sms');
 const updater = require('./updater');
 const license = require('./license');
@@ -2051,7 +2052,8 @@ app.put('/api/settings', function (req, res) {
       backupGithub: body.backupGithub,
       orderCardScale: body.orderCardScale,
       vatPercent: body.vatPercent,
-      tillLocked: body.tillLocked
+      tillLocked: body.tillLocked,
+      loyalty: body.loyalty
     });
     if (next.tillLocked && !prev.tillLocked) {
       sessions.dropOthers(users.adminIds());
@@ -2427,6 +2429,16 @@ function ensureShiftAuto(req, terminal) {
     audit(req, 'shift', (terminal.name || '') + ' — növbə avtomatik açıldı');
   }
   return out.shift;
+}
+
+function takeStockWarns(out) {
+  if (out && out.error) {
+    reject(400, out.error);
+  }
+  if (Array.isArray(out)) {
+    return out;
+  }
+  return (out && out.warns) || [];
 }
 
 function needTerminal(body) {
@@ -2920,7 +2932,7 @@ app.post('/api/orders/accept', async function (req, res) {
         }
       }
       const stockWarns = useStock
-        ? stock.deductLines(catalogStore, fresh, { orderId: order.id })
+        ? takeStockWarns(stock.deductLines(catalogStore, fresh, { orderId: order.id }))
         : [];
       return { order: order, fresh: fresh, staff: staff, catalogStore: catalogStore, stockWarns: stockWarns };
     });
@@ -3234,7 +3246,7 @@ app.post('/api/orders/fire', async function (req, res) {
       order.updatedAt = new Date().toISOString();
       orders.writeOrders(store);
       const stockWarns = settings.isStockMode()
-        ? stock.deductLines(catalogStore, fresh, { orderId: order.id })
+        ? takeStockWarns(stock.deductLines(catalogStore, fresh, { orderId: order.id }))
         : [];
       return {
         order: order,
@@ -3357,7 +3369,7 @@ app.post('/api/orders/pay', function (req, res) {
       return !item.voided && !item.sent;
     });
     if (held) {
-      reject(400, 'Əvvəlcə isti kursu göndərin.');
+      reject(400, settings.unsentPayHint());
     }
     order.terminalId = terminal.id;
     const bonusWaiterId = order.waiterId || staff.user.id;
@@ -3455,9 +3467,33 @@ app.post('/api/orders/pay', function (req, res) {
         minor.toMinor(share)
       ));
     }
-    if (minor.addMinor(minor.addMinor(minor.toMinor(cashAmount), minor.toMinor(cardAmount)), minor.toMinor(giftOnShare)) !==
-        minor.toMinor(share)) {
-      reject(400, 'Nağd + kart + hədiyyə bu paya bərabər olmalıdır.');
+    const loyCfg = settings.readSettings().loyalty || {};
+    const loyaltyPhone = customers.cleanPhone(body.loyaltyPhone);
+    let loyaltyOnShare = 0;
+    let loyaltyPointsUsed = 0;
+    if (loyCfg.enabled && loyaltyPhone) {
+      const made = customers.findOrCreate(loyaltyPhone, body.customerName);
+      if (made.error) {
+        reject(400, made.error);
+      }
+      order.customerPhone = loyaltyPhone;
+      const loyWant = stock.parseDec(body.loyaltyAmount);
+      if (Number.isFinite(loyWant) && loyWant > 0) {
+        loyaltyPointsUsed = customers.pointsFromAmount(loyWant, loyCfg);
+        const chk = customers.canRedeem(loyaltyPhone, loyaltyPointsUsed, loyCfg);
+        if (chk.error) {
+          reject(400, chk.error);
+        }
+        loyaltyOnShare = chk.amount;
+      }
+    } else if (stock.parseDec(body.loyaltyAmount) > 0) {
+      reject(400, loyCfg.enabled ? 'Telefonu yazın.' : 'Ball proqramı bağlıdır.');
+    }
+    if (minor.addMinor(
+      minor.addMinor(minor.toMinor(cashAmount), minor.toMinor(cardAmount)),
+      minor.addMinor(minor.toMinor(giftOnShare), minor.toMinor(loyaltyOnShare))
+    ) !== minor.toMinor(share)) {
+      reject(400, 'Nağd + kart + hədiyyə + ball bu paya bərabər olmalıdır.');
     }
     let tendered = cashAmount;
     let change = 0;
@@ -3476,11 +3512,20 @@ app.post('/api/orders/pay', function (req, res) {
       }
       order.giftCode = giftCode;
     }
+    if (loyaltyPointsUsed > 0) {
+      const usedPts = customers.redeemPoints(loyaltyPhone, loyaltyPointsUsed, loyCfg);
+      if (usedPts.error) {
+        reject(400, usedPts.error);
+      }
+    }
     const shareRow = {
       cashAmount: cashAmount,
       cardAmount: cardAmount,
       giftAmount: giftOnShare,
       giftCode: giftOnShare ? giftCode : '',
+      loyaltyAmount: loyaltyOnShare,
+      loyaltyPoints: loyaltyPointsUsed,
+      loyaltyPhone: loyaltyPointsUsed || loyaltyPhone ? loyaltyPhone : '',
       tipAmount: tip,
       tendered: tendered,
       change: change,
@@ -3512,11 +3557,15 @@ app.post('/api/orders/pay', function (req, res) {
     const giftSum = minor.fromMinor((order.payments || []).reduce(function (sum, row) {
       return minor.addMinor(sum, minor.toMinor(row.giftAmount));
     }, 0));
+    const loyaltySum = minor.fromMinor((order.payments || []).reduce(function (sum, row) {
+      return minor.addMinor(sum, minor.toMinor(row.loyaltyAmount));
+    }, 0));
     const method = remaining === 0 && share === 0
       ? 'prepaid'
-      : (giftSum > 0 && cashSum === 0 && cardSum === 0
+      : (giftSum > 0 && loyaltySum === 0 && cashSum === 0 && cardSum === 0
         ? 'gift'
-        : ((cashSum > 0 && cardSum > 0) || (giftSum > 0 && (cashSum > 0 || cardSum > 0))
+        : ((cashSum > 0 && cardSum > 0) ||
+          ((giftSum > 0 || loyaltySum > 0) && (cashSum > 0 || cardSum > 0 || (giftSum > 0 && loyaltySum > 0)))
           ? 'mixed'
           : (cardSum > 0 && cashSum === 0 ? 'card' : 'cash')));
     const payment = {
@@ -3541,6 +3590,8 @@ app.post('/api/orders/pay', function (req, res) {
       cashAmount: shareRow.cashAmount,
       cardAmount: shareRow.cardAmount,
       giftAmount: giftOnShare,
+      loyaltyAmount: loyaltyOnShare,
+      loyaltyPoints: loyaltyPointsUsed,
       tendered: shareRow.tendered,
       change: change,
       at: shareRow.at,
@@ -3574,6 +3625,7 @@ app.post('/api/orders/pay', function (req, res) {
         cashAmount: cashSum,
         cardAmount: cardSum,
         giftAmount: giftSum,
+        loyaltyAmount: loyaltySum,
         tendered: minor.fromMinor((order.payments || []).reduce(function (sum, row) {
           return minor.addMinor(sum, minor.toMinor(row.tendered));
         }, 0)),
@@ -3595,6 +3647,17 @@ app.post('/api/orders/pay', function (req, res) {
       }
       freeOrderTables(order, terminal.id);
       fiscal.enqueue(order, order.payment);
+      if (loyCfg.enabled && (order.customerPhone || loyaltyPhone)) {
+        const earned = customers.earnClosed(
+          order.customerPhone || loyaltyPhone,
+          minor.toMinor(cashSum),
+          minor.toMinor(cardSum),
+          loyCfg
+        );
+        if (earned && !earned.error) {
+          order.loyaltyEarned = earned.earned;
+        }
+      }
     } else {
       order.payment = null;
     }
@@ -3602,7 +3665,10 @@ app.post('/api/orders/pay', function (req, res) {
     return { order: order, payment: payment, closed: closed, remaining: left };
   }).then(function (result) {
     audit(req, 'pay', result.order.tableName + ' #' + result.order.id + ' — ' +
-      Number(result.payment && result.payment.total || 0).toFixed(2) + ' AZN');
+      Number(result.payment && result.payment.total || 0).toFixed(2) + ' AZN' +
+      (result.closed && result.order.loyaltyEarned
+        ? (' • +' + result.order.loyaltyEarned + ' ball')
+        : ''));
     res.json({ success: true, data: result });
   }).catch(function (error) {
     sendFail(res, error);
@@ -4671,6 +4737,7 @@ app.post('/api/orders/refund', function (req, res) {
         }
       }
     });
+    // TODO: refund/void — ball qaytarılmır.
     order.status = 'refunded';
     order.refund = {
       at: new Date().toISOString(),
@@ -4901,6 +4968,68 @@ app.post('/api/clock', function (req, res) {
   } catch (error) {
     res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
   }
+});
+
+app.get('/api/customers', function (req, res) {
+  try {
+    if (!needAnyPerm(req, res, ['payments.take', 'settings.view'])) {
+      return;
+    }
+    const phone = customers.cleanPhone(req.query && req.query.phone);
+    if (phone) {
+      const one = customers.findByPhone(phone);
+      if (one.error && one.error.indexOf('tapılmadı') >= 0) {
+        res.json({ success: true, data: { customer: null, phone: phone } });
+        return;
+      }
+      if (one.error) {
+        res.status(400).json({ success: false, message: one.error });
+        return;
+      }
+      res.json({ success: true, data: { customer: one.customer } });
+      return;
+    }
+    res.json({ success: true, data: { customers: customers.search(req.query && req.query.q) } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
+app.post('/api/customers', function (req, res) {
+  if (!needPerm(req, res, 'payments.take')) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const body = req.body || {};
+    const out = customers.findOrCreate(body.phone, body.name);
+    if (out.error) {
+      reject(400, out.error);
+    }
+    return out.customer;
+  }).then(function (row) {
+    res.json({ success: true, data: row });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.post('/api/customers/:id/points', function (req, res) {
+  if (!needPerm(req, res, 'payments.take')) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const body = req.body || {};
+    const out = customers.adjustPoints(req.params.id, body.delta, body.reason, req.staff.user.name);
+    if (out.error) {
+      reject(400, out.error);
+    }
+    return out.customer;
+  }).then(function (row) {
+    audit(req, 'pay', row.phone + ' ball ' + (req.body && req.body.delta) + ' — ' + (req.body && req.body.reason || ''));
+    res.json({ success: true, data: row });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
 });
 
 app.get('/api/gifts', function (req, res) {

@@ -20,6 +20,7 @@ const crypto = require('crypto');
 const num = require('./num');
 const money = require('./public/money.js');
 const db = require('./db');
+const customers = require('./customers');
 const totp = require('./totp');
 const backup = require('./backup');
 const updater = require('./updater');
@@ -388,13 +389,95 @@ test('anbar satış sqlite-də qalığı azaldır', function () {
     const catalogStore = {
       products: [{ id: 1, ingredients: [{ itemId: 1, qty: 0.2, unit: 'kq' }] }]
     };
-    const warns = stock.deductLines(catalogStore, [{ productId: 1, qty: 2 }], { orderId: 9 });
-    assert.strictEqual(warns.length, 0);
+    const out = stock.deductLines(catalogStore, [{ productId: 1, qty: 2 }], { orderId: 9 });
+    assert.ok(!out.error);
+    assert.strictEqual(out.warns.length, 0);
     const after = stock.readStock();
     assert.strictEqual(after.items[0].qty, 4.6);
     assert.strictEqual(after.moves.length, 1);
     assert.strictEqual(after.moves[0].type, 'sale');
   });
+});
+
+test('blockSaleIfShort true qısa qalıqda error; false soft', function () {
+  withTempDb(function () {
+    stock.writeStock({
+      nextItemId: 2,
+      nextMoveId: 1,
+      nextPurchaseId: 1,
+      items: [{ id: 1, name: 'Ət', unit: 'kq', buyPrice: 10, qty: 0.1, minQty: 0 }],
+      moves: [],
+      purchases: [],
+      suppliers: []
+    });
+    const catalogStore = {
+      products: [{ id: 1, ingredients: [{ itemId: 1, qty: 0.2, unit: 'kq' }] }]
+    };
+    settings.writeSettings({ stock: { salesWarehouseId: 1, blockSaleIfShort: true } });
+    const blocked = stock.deductLines(catalogStore, [{ productId: 1, qty: 2 }], { orderId: 1 });
+    assert.ok(blocked.error);
+    assert.ok(blocked.error.indexOf('çatmır') >= 0);
+    assert.strictEqual(stock.readStock().items[0].qty, 0.1);
+    settings.writeSettings({ stock: { salesWarehouseId: 1, blockSaleIfShort: false } });
+    const soft = stock.deductLines(catalogStore, [{ productId: 1, qty: 2 }], { orderId: 1 });
+    assert.ok(!soft.error);
+    assert.ok(soft.warns.some(function (row) { return row.indexOf('çatmır') >= 0; }));
+    assert.strictEqual(stock.readStock().items[0].qty, 0.1);
+    assert.strictEqual(stock.readStock().moves.length, 0);
+  });
+});
+
+test('satış anbarını deaktiv etmək olmaz', function () {
+  withTempDb(function () {
+    const kitchen = stock.createWarehouse({ name: 'Mətbəx' });
+    assert.ok(!kitchen.error);
+    const off = stock.updateWarehouse(1, { active: false });
+    assert.strictEqual(off.error, 'Satış anbarını bağlamaq olmaz.');
+    assert.strictEqual(stock.readStock().warehouses[0].active, true);
+  });
+});
+
+test('ödəniş unsent mesajı autoSend-ə görə', function () {
+  withTempDb(function () {
+    settings.writeSettings({ autoSendAllOnAccept: true });
+    assert.strictEqual(settings.unsentPayHint(), 'Əvvəlcə sətirləri qəbul edin.');
+    settings.writeSettings({ autoSendAllOnAccept: false });
+    assert.strictEqual(settings.unsentPayHint(), 'Əvvəlcə isti kursu göndərin.');
+  });
+  const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  const pay = src.slice(src.indexOf("app.post('/api/orders/pay'"), src.indexOf("app.post('/api/reservations"));
+  assert.ok(pay.indexOf('unsentPayHint') >= 0);
+});
+
+test('loyalty: 100 AZN → 1 ball; redeem; closed-only hesablama', function () {
+  withTempDb(function () {
+    const cfg = { enabled: true, earnPer100: 1, pointValueMinor: 1, minRedeem: 1 };
+    assert.strictEqual(customers.pointsForPaid(10000, 0, cfg), 1);
+    assert.strictEqual(customers.pointsForPaid(9999, 0, cfg), 0);
+    assert.strictEqual(customers.pointsFromAmount(0.01, cfg), 1);
+    const made = customers.findOrCreate('0501234567', 'Test');
+    assert.ok(made.customer);
+    customers.adjustPoints(made.customer.id, 10, 'test', 'admin');
+    const used = customers.redeemPoints('0501234567', 1, cfg);
+    assert.ok(!used.error);
+    assert.strictEqual(used.points, 1);
+    assert.strictEqual(used.customer.points, 9);
+    const earned = customers.earnClosed('0501234567', 10000, 0, cfg);
+    assert.strictEqual(earned.earned, 1);
+    assert.strictEqual(earned.customer.points, 10);
+    const byName = customers.search('Tes');
+    assert.strictEqual(byName.length, 1);
+  });
+  const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  const pay = src.slice(src.indexOf("app.post('/api/orders/pay'"), src.indexOf("app.post('/api/reservations"));
+  assert.ok(pay.indexOf('hədiyyə + ball') >= 0);
+  assert.ok(pay.indexOf('earnClosed') >= 0);
+  assert.ok(pay.indexOf('gifts.redeem') >= 0);
+  assert.ok(pay.indexOf('if (closed)') >= 0);
+  const refund = src.slice(src.indexOf("app.post('/api/orders/refund'"), src.indexOf("app.get('/api/shifts'"));
+  assert.ok(refund.indexOf('TODO') >= 0);
+  assert.ok(refund.indexOf('gifts.restore') >= 0);
+  assert.ok(refund.indexOf('earnClosed') === -1);
 });
 
 test('növbə yalnız öz terminalını sayır', function () {
@@ -1500,6 +1583,10 @@ test('forPos secret sızdırmır; POS sahələri qalır', function () {
     assert.strictEqual(pub.autoSendAllOnAccept, true);
     assert.strictEqual(pub.shift.autoOpenOnSale, true);
     assert.strictEqual(pub.stock.salesWarehouseId, 1);
+    assert.strictEqual(pub.stock.blockSaleIfShort, true);
+    assert.deepStrictEqual(Object.keys(pub.stock).sort(), ['blockSaleIfShort', 'salesWarehouseId']);
+    assert.deepStrictEqual(Object.keys(pub.loyalty).sort(), ['earnPer100', 'enabled', 'minRedeem', 'pointValueMinor']);
+    assert.strictEqual(pub.loyalty.enabled, false);
     assert.strictEqual(pub.sms.enabled, true);
     assert.strictEqual(pub.sms.sender, 'ARPOS');
     const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');

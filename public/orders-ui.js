@@ -1709,6 +1709,7 @@
       sum = M.addMinor(sum, M.toMinor(row.cashAmount));
       sum = M.addMinor(sum, M.toMinor(row.cardAmount));
       sum = M.addMinor(sum, M.toMinor(row.giftAmount));
+      sum = M.addMinor(sum, M.toMinor(row.loyaltyAmount));
     });
     return sum;
   }
@@ -1946,7 +1947,53 @@
     return n;
   }
 
-  function splitDueMinor(source, cashM, cardM, dueM) {
+  function loyaltyOn() {
+    return !!(settings.loyalty && settings.loyalty.enabled);
+  }
+
+  function loyaltyMinor() {
+    if (!loyaltyOn()) {
+      return 0;
+    }
+    var box = document.getElementById('pay-loyalty-amt');
+    return box ? M.toMinor(box.value) : 0;
+  }
+
+  function refreshLoyaltyUi() {
+    var on = loyaltyOn();
+    ['pay-loy-phone-wrap', 'pay-loy-amt-wrap', 'pay-loy-bal'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.classList.toggle('hidden', !on);
+      }
+    });
+  }
+
+  function lookupLoyalty() {
+    if (!loyaltyOn()) {
+      return;
+    }
+    var phone = (document.getElementById('pay-loy-phone').value || '').replace(/\D/g, '');
+    var bal = document.getElementById('pay-loy-bal');
+    if (phone.length < 7) {
+      bal.textContent = '';
+      return;
+    }
+    api('/api/customers?phone=' + encodeURIComponent(phone)).then(function (body) {
+      var row = body.data && body.data.customer;
+      var value = Number(settings.loyalty && settings.loyalty.pointValueMinor) || 1;
+      if (!row) {
+        bal.textContent = 'Yeni müştəri. İlk ödənişdə yaradılacaq.';
+        return;
+      }
+      var azn = M.fromMinor(row.points * value);
+      bal.textContent = row.name
+        ? (row.name + ' • ' + row.points + ' ball (' + azn.toFixed(2) + ' AZN)')
+        : (row.points + ' ball (' + azn.toFixed(2) + ' AZN)');
+    }).catch(function () {
+      bal.textContent = '';
+    });
+  }
     dueM = Math.max(0, Math.round(Number(dueM) || 0));
     cashM = Math.round(Number(cashM) || 0);
     cardM = Math.round(Number(cardM) || 0);
@@ -1986,13 +2033,15 @@
     document.getElementById('pay-method-mix').classList.toggle('active', method === 'mix');
     document.getElementById('pay-mix-fields').classList.remove('hidden');
     if (method === 'cash') {
-      document.getElementById('pay-cash-amt').value = payDue.toFixed(2);
+      var cashDue = M.fromMinor(Math.max(0, M.subMinor(M.toMinor(payDue), loyaltyMinor())));
+      document.getElementById('pay-cash-amt').value = cashDue.toFixed(2);
       document.getElementById('pay-card-amt').value = '0.00';
-      document.getElementById('pay-tendered').value = payDue.toFixed(2);
+      document.getElementById('pay-tendered').value = cashDue.toFixed(2);
       syncPayFields('cash');
     } else if (method === 'card') {
+      var cardDue = M.fromMinor(Math.max(0, M.subMinor(M.toMinor(payDue), loyaltyMinor())));
       document.getElementById('pay-cash-amt').value = '0.00';
-      document.getElementById('pay-card-amt').value = payDue.toFixed(2);
+      document.getElementById('pay-card-amt').value = cardDue.toFixed(2);
       syncPayFields('card');
     } else {
       syncPayFields('cash');
@@ -2020,7 +2069,7 @@
       return;
     }
     payLock = true;
-    var dueM = M.toMinor(payDue);
+    var dueM = Math.max(0, M.subMinor(M.toMinor(payDue), loyaltyMinor()));
     var cashInput = document.getElementById('pay-cash-amt');
     var cardInput = document.getElementById('pay-card-amt');
     var split = splitDueMinor(source, M.toMinor(cashInput.value), M.toMinor(cardInput.value), dueM);
@@ -2081,7 +2130,9 @@
     var remainingM = Math.max(0, M.subMinor(M.subMinor(M.toMinor(parts.total), prepaidM), paidSharesMinor(order)));
     var remaining = M.fromMinor(remainingM);
     if ((order.items || []).some(function (item) { return !item.voided && !item.sent; })) {
-      say('Əvvəlcə isti kursu göndərin.', 'err');
+      say(settings.autoSendAllOnAccept !== false
+        ? 'Əvvəlcə sətirləri qəbul edin.'
+        : 'Əvvəlcə isti kursu göndərin.', 'err');
       return;
     }
     var keepMethod = document.getElementById('pay-modal').classList.contains('hidden') ? 'cash' : payMethod;
@@ -2103,6 +2154,8 @@
     document.getElementById('pay-submit').textContent =
       M.subMinor(remainingM, M.toMinor(payDue)) > 1 ? 'Payı ödə' : 'Satışı bitir';
     fillPayBreakdown(parts, M.fromMinor(prepaidM), M.fromMinor(paidSharesMinor(order)), remaining);
+    refreshLoyaltyUi();
+    lookupLoyalty();
     document.getElementById('pay-share').textContent = pickingPay()
       ? 'Seçilmiş sətirlər'
       : (cut.n > 1 ? (cut.n + ' nəfər • hər pay ' + payDue.toFixed(2) + ' AZN') : '');
@@ -2140,6 +2193,14 @@
   document.getElementById('pay-cash-amt').addEventListener('input', function () { syncPayFields('cash'); });
   document.getElementById('pay-card-amt').addEventListener('input', function () { syncPayFields('card'); });
   document.getElementById('pay-tendered').addEventListener('input', function () { syncPayFields('tender'); });
+  var loyPhone = document.getElementById('pay-loy-phone');
+  if (loyPhone) {
+    loyPhone.addEventListener('blur', lookupLoyalty);
+  }
+  var loyAmt = document.getElementById('pay-loyalty-amt');
+  if (loyAmt) {
+    loyAmt.addEventListener('input', function () { setPayMethod(payMethod); });
+  }
   document.getElementById('pay-prepay-amt').addEventListener('input', function () {
     if (payMode !== 'reserve') {
       return;
@@ -2444,16 +2505,18 @@
       var dueM = M.toMinor(payDue);
       var giftCode = document.getElementById('pay-gift').value.trim();
       var giftAmount = 0;
+      var loyM = loyaltyMinor();
+      var restM = Math.max(0, M.subMinor(dueM, loyM));
       var cashM = M.toMinor(document.getElementById('pay-cash-amt').value);
       var cardM = M.toMinor(document.getElementById('pay-card-amt').value);
       var tendM = M.toMinor(document.getElementById('pay-tendered').value);
       if (giftCode) {
-        giftAmount = M.fromMinor(dueM);
+        giftAmount = M.fromMinor(restM);
         cashAmount = 0;
         cardAmount = 0;
         tendered = 0;
       } else {
-        var splitPay = splitDueMinor('', cashM, cardM, dueM);
+        var splitPay = splitDueMinor('', cashM, cardM, restM);
         cashAmount = M.fromMinor(splitPay.cash);
         cardAmount = M.fromMinor(splitPay.card);
         giftAmount = 0;
@@ -2475,6 +2538,8 @@
         buyerName: document.getElementById('pay-buyer').value,
         giftCode: giftCode,
         giftAmount: giftAmount,
+        loyaltyPhone: loyaltyOn() ? document.getElementById('pay-loy-phone').value : '',
+        loyaltyAmount: loyaltyOn() ? M.fromMinor(loyM) : 0,
         itemIds: payPickIds,
         seatTableId: paySeatId,
         cashAmount: cashAmount,

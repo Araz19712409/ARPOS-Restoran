@@ -22,6 +22,7 @@ const FILES = [
   'stock.json',
   'fiscal-queue.json',
   'gifts.json',
+  'customers.json',
   'clock.json',
   'waitlist.json',
   'pin-lock.json',

@@ -442,7 +442,9 @@
         stock: {
           salesWarehouseId: document.getElementById('sales-warehouse')
             ? Number(document.getElementById('sales-warehouse').value) || 1
-            : 1
+            : 1,
+          blockSaleIfShort: !(document.getElementById('stock-block-short') &&
+            !document.getElementById('stock-block-short').checked)
         },
         opsMode: opsModeValue(),
         listenLan: listenLanValue(),
@@ -460,7 +462,17 @@
           defaultStartingCash: 0
         },
         autoSendAllOnAccept: !(document.getElementById('auto-send-all') &&
-          !document.getElementById('auto-send-all').checked)
+          !document.getElementById('auto-send-all').checked),
+        loyalty: {
+          enabled: !!(document.getElementById('loyalty-enabled') &&
+            document.getElementById('loyalty-enabled').checked),
+          earnPer100: Number(document.getElementById('loyalty-earn') &&
+            document.getElementById('loyalty-earn').value) || 1,
+          pointValueMinor: Number(document.getElementById('loyalty-value') &&
+            document.getElementById('loyalty-value').value) || 1,
+          minRedeem: Number(document.getElementById('loyalty-min') &&
+            document.getElementById('loyalty-min').value) || 1
+        }
       })
     }).then(function (body) {
       current = body.data || current;
@@ -641,6 +653,24 @@
         : '1';
       if (Array.prototype.some.call(saleWh.options, function (row) { return row.value === want; })) {
         saleWh.value = want;
+      }
+    }
+    var blockShort = document.getElementById('stock-block-short');
+    if (blockShort) {
+      blockShort.checked = !(current.stock && current.stock.blockSaleIfShort === false);
+    }
+    var loyOn = document.getElementById('loyalty-enabled');
+    if (loyOn) {
+      var loy = current.loyalty || {};
+      loyOn.checked = loy.enabled === true;
+      if (document.getElementById('loyalty-earn')) {
+        document.getElementById('loyalty-earn').value = String(loy.earnPer100 != null ? loy.earnPer100 : 1);
+      }
+      if (document.getElementById('loyalty-value')) {
+        document.getElementById('loyalty-value').value = String(loy.pointValueMinor != null ? loy.pointValueMinor : 1);
+      }
+      if (document.getElementById('loyalty-min')) {
+        document.getElementById('loyalty-min').value = String(loy.minRedeem != null ? loy.minRedeem : 1);
       }
     }
     var lanOn = current.listenLan !== false;

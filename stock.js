@@ -1594,31 +1594,42 @@ function changeLines(catalogStore, lines, sign, meta) {
   const box = readStock();
   const wid = salesWarehouseId(box);
   const warns = [];
-  (lines || []).forEach(function (line) {
+  const hardBlock = sign > 0 && require('./settings').blockSaleIfShort();
+  for (let i = 0; i < (lines || []).length; i += 1) {
+    const line = lines[i];
     if (line.voided) {
-      return;
+      continue;
     }
     const product = (catalogStore.products || []).find(function (row) {
       return row.id === Number(line.productId);
     });
     if (!product) {
-      return;
+      continue;
     }
-    lineIngredients(product, line).forEach(function (ing) {
+    const ings = lineIngredients(product, line);
+    for (let j = 0; j < ings.length; j += 1) {
+      const ing = ings[j];
       const item = box.items.find(function (row) { return row.id === ing.itemId; });
       if (!item) {
         warns.push('Resept xammalı tapılmadı.');
-        return;
+        continue;
       }
       const conv = recipeStockQty(ing, item);
       if (conv.error) {
         warns.push(item.name + ': ' + conv.error);
-        return;
+        continue;
       }
       const need = qtyOf(conv.qty * Number(line.qty || 0));
       if (sign > 0 && qtyAt(item, wid) < need) {
+        if (hardBlock) {
+          return {
+            error: item.name + ' çatmır. Lazım: ' + need + ' ' + item.unit +
+              ', qalıq: ' + qtyAt(item, wid),
+            warns: []
+          };
+        }
         warns.push(item.name + ' çatmır');
-        return;
+        continue;
       }
       const at = new Date().toISOString();
       const price = fifoAvg(item, wid);
@@ -1643,10 +1654,10 @@ function changeLines(catalogStore, lines, sign, meta) {
       if (qtyOf(item.minQty) > 0 && item.qty <= qtyOf(item.minQty)) {
         warns.push(item.name + ' az qalıb');
       }
-    });
-  });
+    }
+  }
   writeStock(box);
-  return warns;
+  return { warns: warns };
 }
 
 function listPurchasesForApi(box, limit) {
@@ -1724,6 +1735,9 @@ function updateWarehouse(id, body) {
     row.name = name;
   }
   if (body && body.active === false) {
+    if (salesWarehouseId(box) === row.id) {
+      return { error: 'Satış anbarını bağlamaq olmaz.' };
+    }
     if (activeWarehouseCount(box) <= 1) {
       return { error: 'Son aktiv skladu bağlamaq olmaz.' };
     }

@@ -180,6 +180,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 164. [x] 1.2.20 — Anbar Qalıq sklad filtri; növbə bağlandı mesajı
 165. [x] 1.2.21 — Növbə avto-açılış yalnız ödənişdə (qəbul/fire yox)
 166. [x] 1.2.22 — forPos: sms/update/github token ofisianta sızmır
+167. [x] 1.2.23 — Anbar satış kilidi + ball Faza 1 (refund ball yox)
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı

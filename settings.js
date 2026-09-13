@@ -21,14 +21,47 @@ function cleanHost(value) {
 }
 
 function emptyStock() {
-  return { salesWarehouseId: 1 };
+  return { salesWarehouseId: 1, blockSaleIfShort: true };
 }
 
 function cleanStock(raw) {
   const src = raw && raw.stock && typeof raw.stock === 'object' ? raw.stock : {};
   const n = Math.round(Number(src.salesWarehouseId));
   return {
-    salesWarehouseId: Number.isInteger(n) && n >= 1 ? n : 1
+    salesWarehouseId: Number.isInteger(n) && n >= 1 ? n : 1,
+    blockSaleIfShort: src.blockSaleIfShort !== false
+  };
+}
+
+function emptyLoyalty() {
+  return {
+    enabled: false,
+    earnPer100: 1,
+    pointValueMinor: 1,
+    minRedeem: 1
+  };
+}
+
+function cleanLoyalty(raw) {
+  const src = raw && raw.loyalty && typeof raw.loyalty === 'object' ? raw.loyalty : {};
+  const earn = Math.round(Number(src.earnPer100));
+  const value = Math.round(Number(src.pointValueMinor));
+  const minR = Math.round(Number(src.minRedeem));
+  return {
+    enabled: src.enabled === true || src.enabled === 1 || src.enabled === '1' || src.enabled === 'true',
+    earnPer100: Number.isInteger(earn) && earn >= 0 && earn <= 100 ? earn : 1,
+    pointValueMinor: Number.isInteger(value) && value >= 1 && value <= 10000 ? value : 1,
+    minRedeem: Number.isInteger(minR) && minR >= 1 && minR <= 100000 ? minR : 1
+  };
+}
+
+function publicLoyalty(row) {
+  const src = row && typeof row === 'object' ? row : emptyLoyalty();
+  return {
+    enabled: src.enabled === true,
+    earnPer100: src.earnPer100,
+    pointValueMinor: src.pointValueMinor,
+    minRedeem: src.minRedeem
   };
 }
 
@@ -164,7 +197,8 @@ function forPos(cfg) {
       defaultStartingCash: Number.isFinite(cash) && cash >= 0 ? Number(cash.toFixed(2)) : 0
     },
     stock: {
-      salesWarehouseId: Number(stock.salesWarehouseId) >= 1 ? Number(stock.salesWarehouseId) : 1
+      salesWarehouseId: Number(stock.salesWarehouseId) >= 1 ? Number(stock.salesWarehouseId) : 1,
+      blockSaleIfShort: stock.blockSaleIfShort !== false
     },
     opsMode: row.opsMode === 'sales' ? 'sales' : 'full',
     branchName: String(row.branchName || '').slice(0, 80),
@@ -174,7 +208,8 @@ function forPos(cfg) {
     tillLocked: row.tillLocked === true,
     ekassa: publicEkassa(row.ekassa),
     delivery: publicDelivery(row.delivery),
-    sms: publicSms(row.sms)
+    sms: publicSms(row.sms),
+    loyalty: publicLoyalty(row.loyalty)
   };
 }
 
@@ -188,6 +223,7 @@ function defaults() {
     stock: emptyStock(),
     autoSendAllOnAccept: true,
     shift: emptyShift(),
+    loyalty: emptyLoyalty(),
     opsMode: 'full',
     listenLan: true,
     httpsPort: 3443,
@@ -581,6 +617,7 @@ function normalize(raw, prev) {
     stock: cleanStock(raw),
     autoSendAllOnAccept: raw && raw.autoSendAllOnAccept === false ? false : true,
     shift: cleanShift(raw),
+    loyalty: cleanLoyalty(raw),
     opsMode: cleanOpsMode(raw && raw.opsMode),
     listenLan: raw && Object.prototype.hasOwnProperty.call(raw, 'listenLan')
       ? cleanListenLan(raw.listenLan)
@@ -616,6 +653,7 @@ function writeSettings(data) {
     stock: data.stock !== undefined ? data.stock : prev.stock,
     autoSendAllOnAccept: data.autoSendAllOnAccept !== undefined ? data.autoSendAllOnAccept : prev.autoSendAllOnAccept,
     shift: data.shift !== undefined ? data.shift : prev.shift,
+    loyalty: data.loyalty !== undefined ? data.loyalty : prev.loyalty,
     opsMode: data.opsMode !== undefined ? data.opsMode : prev.opsMode,
     listenLan: data.listenLan !== undefined ? data.listenLan : prev.listenLan,
     httpsPort: data.httpsPort !== undefined ? data.httpsPort : prev.httpsPort,
@@ -681,6 +719,18 @@ function autoSendAllOnAccept(cfg) {
   return row.autoSendAllOnAccept !== false;
 }
 
+function unsentPayHint(cfg) {
+  return autoSendAllOnAccept(cfg)
+    ? 'Əvvəlcə sətirləri qəbul edin.'
+    : 'Əvvəlcə isti kursu göndərin.';
+}
+
+function blockSaleIfShort(cfg) {
+  const row = cfg || readSettings();
+  const stock = row.stock && typeof row.stock === 'object' ? row.stock : emptyStock();
+  return stock.blockSaleIfShort !== false;
+}
+
 function nextFiredCourse(firedCourse, cfg) {
   const cur = Math.max(1, Number(firedCourse) || 1);
   return autoSendAllOnAccept(cfg) ? Math.max(cur, 2) : cur;
@@ -713,6 +763,8 @@ module.exports = {
   publicDelivery: publicDelivery,
   emptyDelivery: emptyDelivery,
   autoSendAllOnAccept: autoSendAllOnAccept,
+  unsentPayHint: unsentPayHint,
+  blockSaleIfShort: blockSaleIfShort,
   nextFiredCourse: nextFiredCourse,
   kitchenSendNow: kitchenSendNow
 };

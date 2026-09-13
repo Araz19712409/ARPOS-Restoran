@@ -1,5 +1,6 @@
 # Arpos Restoran — versiyalar
 
+- **1.2.23** — 2026-09-13 — Anbar satış kilidi + ball Faza 1 (refund ball bərpası yox)
 - **1.2.22** — 2026-09-13 — GET /api/orders forPos: sms/update/github token sızmır
 - **1.2.21** — 2026-09-13 — Növbə avto-açılış yalnız ödənişdə; qəbul/fire yox
 - **1.2.20** — 2026-09-13 — Anbar Qalıq sklad filtri; növbə bağlandı mesajı
