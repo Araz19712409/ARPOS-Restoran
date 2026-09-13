@@ -420,18 +420,61 @@ test('növbə avtomatik açılır; ikinci dəfə toxunmur; açıq masa close blo
     const store = { nextId: 1, shifts: [] };
     const term = { id: 1, name: 'Kassa 1' };
     const user = { id: 2, name: 'Ali' };
-    const first = shifts.ensureOpen(store, term, user, 0);
+    const first = shifts.maybeAutoOpen(store, term, user, { autoOpenOnSale: true, defaultStartingCash: 0 });
     assert.ok(first.created);
     assert.strictEqual(first.shift.startingCash, 0);
     assert.strictEqual(first.shift.autoOpened, true);
-    const second = shifts.ensureOpen(store, term, user, 0);
+    const second = shifts.maybeAutoOpen(store, term, user, { autoOpenOnSale: true, defaultStartingCash: 0 });
     assert.ok(!second.created);
     assert.strictEqual(second.shift.id, first.shift.id);
     const names = shifts.openTableNames([
       { status: 'open', terminalId: 1, tableName: 'M1' }
     ], 1);
     assert.deepStrictEqual(names, ['M1']);
+    assert.strictEqual(shifts.closeBlockMessage([
+      { status: 'open', terminalId: 1, tableName: 'M1' }
+    ], 1), 'Açıq masa var: M1.');
+    assert.strictEqual(shifts.closeBlockMessage([], 1), '');
   });
+});
+
+test('növbə avto yalnız pay; false-da yox; accept/fire yox', function () {
+  withTempDb(function () {
+    assert.strictEqual(settings.readSettings().shift.autoOpenOnSale, true);
+  });
+  const store = { nextId: 1, shifts: [] };
+  const term = { id: 1, name: 'Kassa 1' };
+  const off = shifts.maybeAutoOpen(store, term, { id: 1, name: 'Ali' }, { autoOpenOnSale: false });
+  assert.strictEqual(off.error, 'Əvvəlcə növbə açın.');
+  assert.strictEqual(store.shifts.length, 0);
+  const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  function sliceBetween(from, to) {
+    const i = src.indexOf(from);
+    const j = src.indexOf(to);
+    assert.ok(i >= 0 && j > i, from);
+    return src.slice(i, j);
+  }
+  assert.ok(sliceBetween("app.post('/api/orders/accept'", "app.post('/api/orders/fire'").indexOf('ensureShiftAuto') < 0);
+  assert.ok(sliceBetween("app.post('/api/orders/fire'", "app.post('/api/orders/pay'").indexOf('ensureShiftAuto') < 0);
+  assert.ok(sliceBetween("app.post('/api/orders/pay'", "app.post('/api/reservations/:id/prepay'").indexOf('ensureShiftAuto') >= 0);
+  const prepayAt = src.indexOf("app.post('/api/reservations/:id/prepay'");
+  assert.ok(prepayAt >= 0);
+  assert.ok(src.slice(prepayAt).indexOf('ensureShiftAuto') >= 0);
+});
+
+test('növbə Z bağlama gözlənilən nağd', function () {
+  const at = '2026-09-13T10:00:00';
+  const row = {
+    terminalId: 1,
+    startingCash: 0,
+    openedAt: '2026-09-13T09:00:00',
+    drops: []
+  };
+  const packed = shifts.withExpected(row, [
+    { status: 'paid', terminalId: 1, payment: { at: at, cashAmount: 12, cardAmount: 3, prepaid: 0, total: 15 } }
+  ], { reservations: [] });
+  assert.strictEqual(packed.expectedCash, 12);
+  assert.strictEqual(packed.totals.card, 3);
 });
 
 test('növbə nağd çıxarışı gözləniləndən düşür', function () {

@@ -2417,25 +2417,13 @@ function audit(req, kind, text) {
 
 function ensureShiftAuto(req, terminal) {
   const store = shifts.readStore();
-  const have = shifts.currentFor(store, terminal.id);
-  if (have) {
-    return have;
-  }
   const cfg = settings.readSettings();
-  if (cfg.shift && cfg.shift.autoOpenOnSale === false) {
-    reject(400, 'Əvvəlcə növbə açın.');
-  }
-  const out = shifts.ensureOpen(
-    store,
-    terminal,
-    req.staff && req.staff.user,
-    cfg.shift && cfg.shift.defaultStartingCash
-  );
+  const out = shifts.maybeAutoOpen(store, terminal, req.staff && req.staff.user, cfg.shift);
   if (out.error) {
     reject(400, out.error);
   }
-  shifts.writeStore(store);
   if (out.created) {
+    shifts.writeStore(store);
     audit(req, 'shift', (terminal.name || '') + ' — növbə avtomatik açıldı');
   }
   return out.shift;
@@ -2754,7 +2742,6 @@ app.post('/api/orders/accept', async function (req, res) {
         reject(403, staff ? 'Sifariş yazmağa icazəniz yoxdur.' : 'PIN ilə daxil olun.');
       }
       const terminal = needTerminal(body);
-      ensureShiftAuto(req, terminal);
       const tableId = Number(body.tableId);
       const lines = Array.isArray(body.items) ? body.items : [];
       const layout = readLayout();
@@ -5048,9 +5035,10 @@ app.post('/api/shifts/close', function (req, res) {
     if (!Number.isFinite(countedCash) || countedCash < 0) {
       reject(400, 'Sayılan nağd düzgün deyil.');
     }
-    const openTables = shifts.openTableNames(orders.readOrders().orders, terminal.id);
-    if (openTables.length) {
-      reject(400, 'Açıq masa var: ' + openTables.join(', ') + '.');
+    const orderList = orders.readOrders().orders;
+    const blocked = shifts.closeBlockMessage(orderList, terminal.id);
+    if (blocked) {
+      reject(400, blocked);
     }
     const store = shifts.readStore();
     const row = shifts.currentFor(store, terminal.id);

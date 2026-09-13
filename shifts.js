@@ -133,6 +133,25 @@ function openShiftForTill(store, terminalId) {
   return open.length === 1 ? open[0] : null;
 }
 
+function closeBlockMessage(orderList, terminalId) {
+  const names = openTableNames(orderList, terminalId);
+  if (!names.length) {
+    return '';
+  }
+  return 'Açıq masa var: ' + names.join(', ') + '.';
+}
+
+function maybeAutoOpen(store, terminal, user, shiftCfg) {
+  const have = currentFor(store, terminal && terminal.id);
+  if (have) {
+    return { shift: have, created: false };
+  }
+  if (shiftCfg && shiftCfg.autoOpenOnSale === false) {
+    return { error: 'Əvvəlcə növbə açın.' };
+  }
+  return ensureOpen(store, terminal, user, shiftCfg && shiftCfg.defaultStartingCash);
+}
+
 function ensureOpen(store, terminal, user, startingCash) {
   const term = terminal || {};
   const tid = Number(term.id);
@@ -194,6 +213,8 @@ module.exports = {
   currentFor: currentFor,
   withExpected: withExpected,
   openShiftForTill: openShiftForTill,
+  closeBlockMessage: closeBlockMessage,
+  maybeAutoOpen: maybeAutoOpen,
   ensureOpen: ensureOpen,
   addCashDrop: addCashDrop
 };
