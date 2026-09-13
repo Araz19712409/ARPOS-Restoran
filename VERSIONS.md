@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` gələcəkdə: `pay.js` (ödəniş modal), `shift-badge.js` (növbə/Z), `zones.js` (zal/menyu/çek). Risk yüksək — ayrıca sprint.
 
+- **1.2.38** — 2026-09-13 — Kassir UX: ödənişdən sonra «Növbəti masa» CTA
 - **1.2.37** — 2026-09-13 — Z: autoPrintZ, ekran xülasə, queue kind z, receipt brend
 - **1.2.36** — 2026-09-13 — Kassir UX: Qəbul+Ödəniş bir toxunuş, sadə ödəniş, planşet dock
 - **1.2.35** — 2026-09-13 — Çek brendinqi Faza 1 (title/ünvan/telefon/header/footer; logo yox)

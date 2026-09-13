@@ -1676,6 +1676,7 @@ test('forPos secret sızdırmır; POS sahələri qalır', function () {
     assert.strictEqual(typeof pub.receipt.title, 'string');
     assert.ok(pub.pay);
     assert.strictEqual(pub.pay.simpleMode, true);
+    assert.strictEqual(pub.pay.nextTableAfterClose, true);
     assert.strictEqual(pub.sms.enabled, true);
     assert.strictEqual(pub.sms.sender, 'ARPOS');
     const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
@@ -1792,19 +1793,31 @@ test('kassir UX: simpleMode default; pay-open accept axını; dock CSS', functio
     const cfg = settings.readSettings();
     assert.ok(cfg.pay);
     assert.strictEqual(cfg.pay.simpleMode, true);
+    assert.strictEqual(cfg.pay.nextTableAfterClose, true);
     const off = settings.writeSettings({ pay: { simpleMode: false } });
     assert.strictEqual(off.pay.simpleMode, false);
+    assert.strictEqual(off.pay.nextTableAfterClose, true);
     const pub = settings.forPos(off);
     assert.strictEqual(pub.pay.simpleMode, false);
-    const back = settings.writeSettings({ pay: { simpleMode: true } });
+    assert.strictEqual(pub.pay.nextTableAfterClose, true);
+    const nextOff = settings.writeSettings({ pay: { simpleMode: true, nextTableAfterClose: false } });
+    assert.strictEqual(nextOff.pay.nextTableAfterClose, false);
+    assert.strictEqual(settings.forPos().pay.nextTableAfterClose, false);
+    const back = settings.writeSettings({ pay: { simpleMode: true, nextTableAfterClose: true } });
     assert.strictEqual(back.pay.simpleMode, true);
+    assert.strictEqual(back.pay.nextTableAfterClose, true);
     assert.strictEqual(settings.forPos().pay.simpleMode, true);
+    assert.strictEqual(settings.forPos().pay.nextTableAfterClose, true);
   });
   const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
   assert.ok(ui.indexOf("askYes('Qəbul + ödəniş'") >= 0 || ui.indexOf('Qəbul + ödəniş') >= 0);
   assert.ok(ui.indexOf('postAccept') >= 0);
   assert.ok(ui.indexOf('applyPaySimpleMode') >= 0);
   assert.ok(ui.indexOf('function postAccept') >= 0);
+  assert.ok(ui.indexOf('function goNextTable') >= 0);
+  assert.ok(ui.indexOf('function nextTableAfterCloseOn') >= 0);
+  assert.ok(ui.indexOf("setOrderZone('floor')") >= 0);
+  assert.ok(ui.indexOf('wantNext') >= 0);
   const payOpen = ui.slice(ui.indexOf("getElementById('pay-open')"), ui.indexOf("getElementById('prepay-open')"));
   assert.ok(payOpen.indexOf('pending.length') >= 0);
   assert.ok(payOpen.indexOf('postAccept') >= 0);
@@ -1812,8 +1825,13 @@ test('kassir UX: simpleMode default; pay-open accept axını; dock CSS', functio
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
   assert.ok(css.indexOf('z-index: 25') >= 0);
   assert.ok(css.indexOf('position: fixed') >= 0);
+  assert.ok(css.indexOf('receipt-next-actions') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8');
   assert.ok(html.indexOf('id="pay-simple-mode"') >= 0);
+  assert.ok(html.indexOf('id="pay-next-table"') >= 0);
+  const ordersHtml = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
+  assert.ok(ordersHtml.indexOf('id="receipt-next"') >= 0);
+  assert.ok(ordersHtml.indexOf('id="post-pay-strip"') >= 0);
 });
 
 test('Z: autoPrintZ; queue z; receipt brand; açıq masa blok', function () {

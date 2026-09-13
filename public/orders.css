@@ -886,6 +886,48 @@
   padding: 4px 14px;
 }
 
+.receipt-next-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: stretch;
+  justify-content: flex-end;
+}
+
+.receipt-next-actions button {
+  flex: 1 1 120px;
+  min-height: 40px;
+  margin-top: 0;
+}
+
+.receipt-next-actions button.gold {
+  flex: 1.4 1 140px;
+  font-weight: 800;
+}
+
+#post-pay-strip .post-pay-card {
+  width: min(420px, 94vw);
+  max-width: 94vw;
+  padding: 14px 16px;
+}
+
+#post-pay-strip #post-pay-msg {
+  margin: 0 0 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 980px) {
+  .receipt-next-actions button {
+    flex: 1 1 100%;
+    min-height: 44px;
+  }
+
+  #receipt-modal .receipt-card {
+    max-height: 92vh;
+    overflow: auto;
+  }
+}
+
 #pay-open {
   width: 100%;
   margin: 0;
@@ -1544,7 +1586,8 @@
   .order-zones,
   .pin-lock,
   .modal-actions,
-  #receipt-msg {
+  #receipt-msg,
+  #post-pay-strip {
     display: none !important;
   }
 

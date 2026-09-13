@@ -6,7 +6,7 @@
   <title>Sifariş</title>
   <link rel="stylesheet" href="app.css?v=19">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css?v=19">
+  <link rel="stylesheet" href="orders.css?v=20">
   <link rel="stylesheet" href="dates.css">
 </head>
 <body class="order-page" data-zone="floor">
@@ -395,9 +395,24 @@
     <div class="modal-card receipt-card">
       <div id="receipt-paper" class="receipt-paper"></div>
       <p id="receipt-msg" class="message"></p>
-      <div class="modal-actions">
+      <div id="receipt-std-actions" class="modal-actions">
         <button id="receipt-close" type="button">Bağla</button>
         <button id="receipt-print" class="gold" type="button">Çap et</button>
+      </div>
+      <div id="receipt-next-actions" class="modal-actions receipt-next-actions hidden">
+        <button id="receipt-print-next" type="button">Çap et</button>
+        <button id="receipt-stay" type="button">Bu masada qal</button>
+        <button id="receipt-next" class="gold" type="button">Növbəti masa</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="post-pay-strip" class="modal hidden" role="dialog" aria-label="Növbəti masa">
+    <div class="modal-card post-pay-card">
+      <p id="post-pay-msg" class="message">Satış bitdi. Masa boşdur.</p>
+      <div class="modal-actions receipt-next-actions">
+        <button id="post-pay-stay" type="button">Bu masada qal</button>
+        <button id="post-pay-next" class="gold" type="button">Növbəti masa</button>
       </div>
     </div>
   </div>
@@ -478,6 +493,6 @@
   <script src="dates.js"></script>
   <script src="group-icons.js?v=3"></script>
   <script src="money.js?v=1"></script>
-  <script src="orders-ui.js?v=27"></script>
+  <script src="orders-ui.js?v=28"></script>
 </body>
 </html>

@@ -2660,18 +2660,75 @@
       say(error.message, 'err');
     });
   });
-  document.getElementById('cancel-pay').addEventListener('click', function () {
-    document.getElementById('pay-modal').classList.add('hidden');
-  });
-  document.getElementById('receipt-close').addEventListener('click', function () {
-    document.getElementById('receipt-modal').classList.add('hidden');
-  });
-  document.getElementById('receipt-print').addEventListener('click', function () {
-    function printPaper() {
-      window.ReceiptView.printNow(document.getElementById('receipt-paper'));
+  function nextTableAfterCloseOn() {
+    return !(settings.pay && settings.pay.nextTableAfterClose === false);
+  }
+
+  function setReceiptNextMode(on) {
+    var std = el('receipt-std-actions');
+    var next = el('receipt-next-actions');
+    if (std) {
+      std.classList.toggle('hidden', !!on);
     }
+    if (next) {
+      next.classList.toggle('hidden', !on);
+    }
+  }
+
+  function hidePostPayStrip() {
+    var strip = el('post-pay-strip');
+    if (strip) {
+      strip.classList.add('hidden');
+    }
+  }
+
+  function showPostPayStrip(msg) {
+    setText('post-pay-msg', msg || 'Satış bitdi. Masa boşdur.');
+    var strip = el('post-pay-strip');
+    if (strip) {
+      strip.classList.remove('hidden');
+    }
+  }
+
+  function stayAfterPay() {
+    var rm = el('receipt-modal');
+    if (rm) {
+      rm.classList.add('hidden');
+    }
+    hidePostPayStrip();
+    setReceiptNextMode(false);
+    if (isServiceId(tableId)) {
+      tableId = 0;
+    }
+    load();
+  }
+
+  function goNextTable() {
+    var pm = el('pay-modal');
+    if (pm) {
+      pm.classList.add('hidden');
+    }
+    var rm = el('receipt-modal');
+    if (rm) {
+      rm.classList.add('hidden');
+    }
+    hidePostPayStrip();
+    setReceiptNextMode(false);
+    pending = [];
+    tableId = 0;
+    setOrderZone('floor');
+    load();
+  }
+
+  function printReceiptPaper() {
+    if (window.ReceiptView && window.ReceiptView.printNow) {
+      window.ReceiptView.printNow(el('receipt-paper') || document.getElementById('receipt-paper'));
+    }
+  }
+
+  function requestReceiptPrint() {
     if (!lastReceipt || !waiter) {
-      printPaper();
+      printReceiptPaper();
       return;
     }
     api('/api/orders/receipt', {
@@ -2684,15 +2741,53 @@
       })
     }).then(function (body) {
       var warns = (body.data && body.data.warnings) || [];
-      document.getElementById('receipt-msg').textContent = warns.length ? warns.join(' ') : 'Çek göndərildi.';
+      setText('receipt-msg', warns.length ? warns.join(' ') : 'Çek göndərildi.');
       if (warns.length) {
-        printPaper();
+        printReceiptPaper();
       }
     }).catch(function (error) {
-      document.getElementById('receipt-msg').textContent = error.message;
-      printPaper();
+      setText('receipt-msg', error.message);
+      printReceiptPaper();
     });
+  }
+
+  document.getElementById('cancel-pay').addEventListener('click', function () {
+    document.getElementById('pay-modal').classList.add('hidden');
   });
+  var receiptCloseBtn = el('receipt-close');
+  if (receiptCloseBtn) {
+    receiptCloseBtn.addEventListener('click', function () {
+      var rm = el('receipt-modal');
+      if (rm) {
+        rm.classList.add('hidden');
+      }
+      setReceiptNextMode(false);
+    });
+  }
+  var receiptPrintBtn = el('receipt-print');
+  if (receiptPrintBtn) {
+    receiptPrintBtn.addEventListener('click', requestReceiptPrint);
+  }
+  var receiptPrintNextBtn = el('receipt-print-next');
+  if (receiptPrintNextBtn) {
+    receiptPrintNextBtn.addEventListener('click', requestReceiptPrint);
+  }
+  var receiptStayBtn = el('receipt-stay');
+  if (receiptStayBtn) {
+    receiptStayBtn.addEventListener('click', stayAfterPay);
+  }
+  var receiptNextBtn = el('receipt-next');
+  if (receiptNextBtn) {
+    receiptNextBtn.addEventListener('click', goNextTable);
+  }
+  var postPayStayBtn = el('post-pay-stay');
+  if (postPayStayBtn) {
+    postPayStayBtn.addEventListener('click', stayAfterPay);
+  }
+  var postPayNextBtn = el('post-pay-next');
+  if (postPayNextBtn) {
+    postPayNextBtn.addEventListener('click', goNextTable);
+  }
 
   document.getElementById('pay-form').addEventListener('submit', function (event) {
     event.preventDefault();
@@ -2805,7 +2900,10 @@
         tendered: tendered
       })
     }).then(function (body) {
-      document.getElementById('pay-modal').classList.add('hidden');
+      var payModal = el('pay-modal');
+      if (payModal) {
+        payModal.classList.add('hidden');
+      }
       pending = [];
       var result = body.data || {};
       var view = result.order || null;
@@ -2824,12 +2922,28 @@
           lastReceipt.receipt = settings.receipt;
         }
       }
+      var wantNext = !!(result.closed && nextTableAfterCloseOn());
+      var showedReceipt = false;
       if (result.closed && lastReceipt && window.ReceiptView) {
-        window.ReceiptView.fill(document.getElementById('receipt-paper'), lastReceipt);
-        document.getElementById('receipt-msg').textContent = 'Çapdan qabaq görünüş. Çap et və ya bağla.';
-        document.getElementById('receipt-modal').classList.remove('hidden');
+        window.ReceiptView.fill(el('receipt-paper') || document.getElementById('receipt-paper'), lastReceipt);
+        setText('receipt-msg', wantNext
+          ? 'Satış bitdi. Növbəti masa və ya bu masada qalın.'
+          : 'Çapdan qabaq görünüş. Çap et və ya bağla.');
+        setReceiptNextMode(wantNext);
+        var receiptModal = el('receipt-modal');
+        if (receiptModal) {
+          receiptModal.classList.remove('hidden');
+        }
+        showedReceipt = true;
+      } else {
+        setReceiptNextMode(false);
       }
-      if (result.closed && isServiceId(tableId)) {
+      if (wantNext && !showedReceipt) {
+        showPostPayStrip('Satış bitdi. Masa boşdur.');
+      } else {
+        hidePostPayStrip();
+      }
+      if (result.closed && !wantNext && isServiceId(tableId)) {
         tableId = 0;
       }
       say(result.closed ? 'Satış bitdi. Masa boşdur.' : ('Pay alındı. Qalıq: ' + Number(result.remaining || 0).toFixed(2) + ' AZN'));

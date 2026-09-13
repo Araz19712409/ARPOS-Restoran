@@ -241,14 +241,16 @@ function publicReceipt(cfg) {
 }
 
 function emptyPay() {
-  return { simpleMode: true };
+  return { simpleMode: true, nextTableAfterClose: true };
 }
 
 function cleanPay(raw) {
   const src = raw && typeof raw === 'object' ? raw : {};
   return {
     simpleMode: !(src.simpleMode === false || src.simpleMode === 0 ||
-      src.simpleMode === '0' || src.simpleMode === 'false')
+      src.simpleMode === '0' || src.simpleMode === 'false'),
+    nextTableAfterClose: !(src.nextTableAfterClose === false || src.nextTableAfterClose === 0 ||
+      src.nextTableAfterClose === '0' || src.nextTableAfterClose === 'false')
   };
 }
 

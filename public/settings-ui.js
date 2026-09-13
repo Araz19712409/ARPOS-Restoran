@@ -413,6 +413,7 @@
   function fillPay() {
     var pay = current.pay || {};
     setChecked('pay-simple-mode', pay.simpleMode !== false);
+    setChecked('pay-next-table', pay.nextTableAfterClose !== false);
   }
 
   function sendSmsTest() {
@@ -537,7 +538,8 @@
         },
         receipt: receiptPayload(),
         pay: {
-          simpleMode: !(el('pay-simple-mode') && !el('pay-simple-mode').checked)
+          simpleMode: !(el('pay-simple-mode') && !el('pay-simple-mode').checked),
+          nextTableAfterClose: !(el('pay-next-table') && !el('pay-next-table').checked)
         }
       })
     }).then(function (body) {
