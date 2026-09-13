@@ -493,7 +493,10 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ terminalId: terminalId })
     }).then(function (body) {
-      say(body.warning || 'Z çapıldı.', body.warning ? 'warn' : 'ok');
+      if (window.ShiftZView && window.ShiftZView.printNow) {
+        window.ShiftZView.printNow();
+      }
+      say(body.warning || 'Z hesabat çap edildi.', body.warning ? 'warn' : 'ok');
     }).catch(function (error) {
       say(error.message, 'err');
     });

@@ -2010,7 +2010,9 @@ test('Z: autoPrintZ; queue z; receipt brand; açıq masa blok', function () {
   assert.ok(fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8').indexOf('shift-auto-print-z') >= 0);
   const zView = fs.readFileSync(path.join(__dirname, 'public', 'shift-z-view.js'), 'utf8');
   assert.ok(zView.indexOf('Çap edilir') >= 0);
-  assert.ok(zView.indexOf('Z çapıldı.') >= 0);
+  assert.ok(zView.indexOf('Z hesabat çap edildi.') >= 0);
+  assert.ok(zView.indexOf('function printNow') >= 0);
+  assert.ok(zView.indexOf('contentWindow.print') >= 0);
   assert.ok(zView.indexOf('Z çapı getmədi.') >= 0);
   assert.ok(zView.indexOf('data-bound') >= 0);
   assert.ok(zView.indexOf('z-sum-warn') >= 0);

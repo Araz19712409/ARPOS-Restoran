@@ -65,6 +65,38 @@
     }
   }
 
+  function printNow() {
+    var grid = document.querySelector('#z-summary-modal .z-sum-grid');
+    if (!grid) {
+      window.print();
+      return;
+    }
+    var iframe = document.getElementById('z-print-frame');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'z-print-frame';
+      iframe.setAttribute('aria-hidden', 'true');
+      iframe.style.cssText = 'position:fixed;width:0;height:0;border:0;left:0;top:0;opacity:0';
+      document.body.appendChild(iframe);
+    }
+    var doc = iframe.contentDocument;
+    doc.open();
+    doc.write(
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Z-hesabat</title><style>' +
+      '@page{size:80mm auto;margin:3mm}' +
+      'html,body{margin:0;padding:0;width:74mm;background:#fff;color:#000}' +
+      'body{font-family:"Courier New",Consolas,monospace;font-size:14px;line-height:1.35}' +
+      'h1{font-size:18px;font-weight:800;text-align:center;margin:0 0 8px}' +
+      'p{margin:0 0 4px}' +
+      '</style></head><body><h1>Z-hesabat</h1>' + grid.innerHTML + '</body></html>'
+    );
+    doc.close();
+    setTimeout(function () {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    }, 50);
+  }
+
   function el(id) {
     return document.getElementById(id);
   }
@@ -98,6 +130,7 @@
           }
           return;
         }
+        printNow();
         var shiftId = lastPacked.shift && lastPacked.shift.id;
         apiFn('/api/shifts/print-z', {
           method: 'POST',
@@ -107,7 +140,7 @@
             shiftId: shiftId
           })
         }).then(function (body) {
-          var msg = (body && body.warning) || 'Z çapıldı.';
+          var msg = (body && body.warning) || 'Z hesabat çap edildi.';
           setWarn(msg);
           if (sayFn) {
             sayFn(msg, (body && body.warning) ? 'warn' : 'ok');
@@ -125,5 +158,5 @@
     }
   }
 
-  global.ShiftZView = { fill: fill, show: show, hide: hide, bind: bind };
+  global.ShiftZView = { fill: fill, show: show, hide: hide, bind: bind, printNow: printNow };
 })(typeof window !== 'undefined' ? window : globalThis);
