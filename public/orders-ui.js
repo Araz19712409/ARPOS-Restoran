@@ -1334,8 +1334,7 @@
         '<div><p class="name"></p><p class="note"></p></div>' +
         '<div class="qty"><button type="button" data-act="minus">−</button>' +
         '<span></span><button type="button" data-act="plus">+</button>' +
-        '<button type="button" data-act="note">Qeyd</button>' +
-        '<button type="button" data-act="comp">Pulsuz</button></div>';
+        '<button type="button" data-act="note">Qeyd</button></div>';
       row.querySelector('.name').textContent = item.name + (item.complimentary ? ' • pulsuz' : '');
       row.querySelector('.note').textContent = lineNote(item) || courseLabel(item.course);
       row.querySelector('span').textContent = String(item.qty);
@@ -1359,11 +1358,18 @@
         item.choiceKey = choiceKey(item.portionId, item.extraIds, item.note);
         renderCheck();
       });
-      row.querySelector('[data-act="comp"]').addEventListener('click', function () {
-        item.complimentary = !item.complimentary;
-        item.salePrice = item.complimentary ? 0 : (item.basePrice || item.salePrice);
-        renderCheck();
-      });
+      if (can('orders.discount')) {
+        var compBtn = document.createElement('button');
+        compBtn.type = 'button';
+        compBtn.setAttribute('data-act', 'comp');
+        compBtn.textContent = 'Pulsuz';
+        compBtn.addEventListener('click', function () {
+          item.complimentary = !item.complimentary;
+          item.salePrice = item.complimentary ? 0 : (item.basePrice || item.salePrice);
+          renderCheck();
+        });
+        row.querySelector('.qty').appendChild(compBtn);
+      }
       box.appendChild(row);
     });
 

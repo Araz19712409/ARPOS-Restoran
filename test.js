@@ -1615,4 +1615,61 @@ test('forPos secret sızdırmır; POS sahələri qalır', function () {
   });
 });
 
+test('pulsuz: Endirim yox → accept 403; pending gizlə; comp regressiya', function () {
+  withTempDb(function () {
+    const store = users.readStore();
+    const waiterRole = store.roles.find(function (row) { return row.id === 3; });
+    const cashierRole = store.roles.find(function (row) { return row.id === 4; });
+    const adminRole = store.roles.find(function (row) { return row.id === 1; });
+    assert.ok(waiterRole.permissions.indexOf('orders.discount') < 0);
+    assert.ok(cashierRole.permissions.indexOf('orders.discount') < 0);
+    assert.ok(adminRole.permissions.indexOf('orders.discount') >= 0);
+    store.nextUserId = Math.max(Number(store.nextUserId) || 1, 100);
+    store.users.push({
+      id: 99,
+      name: 'OfisTest',
+      roleId: 3,
+      active: true,
+      pinSalt: 'x',
+      pinHash: 'y'
+    });
+    users.writeStore(store);
+    const noDisc = users.canUser(99, 'orders.discount');
+    assert.ok(noDisc && !noDisc.ok);
+    const canCreate = users.canUser(99, 'orders.create');
+    assert.ok(canCreate && canCreate.ok);
+    assert.ok(users.hasPermission(waiterRole, 'orders.create'));
+    assert.ok(!users.hasPermission(waiterRole, 'orders.discount'));
+  });
+
+  const serverSrc = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  const accept = serverSrc.slice(
+    serverSrc.indexOf("app.post('/api/orders/accept'"),
+    serverSrc.indexOf("app.post('/api/orders/fire'")
+  );
+  assert.ok(accept.indexOf("orders.discount") >= 0);
+  assert.ok(accept.indexOf('Pulsuz sətirə icazəniz yoxdur.') >= 0);
+  assert.ok(accept.indexOf('complimentary || Number(line.salePrice) === 0') >= 0);
+  const discIdx = accept.indexOf("orders.discount");
+  const comboIdx = accept.indexOf('comboOf');
+  assert.ok(comboIdx > discIdx);
+  const childBlock = accept.slice(accept.indexOf('(product.comboIds || [])'), comboIdx + 40);
+  assert.ok(childBlock.indexOf('complimentary: true') >= 0);
+  assert.ok(childBlock.indexOf('orders.discount') < 0);
+
+  const compStart = serverSrc.indexOf("app.post('/api/orders/comp'");
+  const compEnd = serverSrc.indexOf("app.post('/api/orders/", compStart + 10);
+  const comp = serverSrc.slice(compStart, compEnd > compStart ? compEnd : compStart + 900);
+  assert.ok(comp.indexOf("orders.discount") >= 0);
+  assert.ok(comp.indexOf('Pulsuz sətirə icazəniz yoxdur.') >= 0);
+
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  const pendingStart = ui.indexOf('pending.forEach');
+  const pendingEnd = ui.indexOf('order = openOrder()', pendingStart);
+  const pending = ui.slice(pendingStart, pendingEnd);
+  assert.ok(pending.indexOf("can('orders.discount')") >= 0);
+  assert.ok(pending.indexOf("data-act', 'comp'") >= 0);
+  assert.ok(pending.indexOf('data-act="comp">Pulsuz') < 0);
+});
+
 console.log('Bütün testlər keçdi.');

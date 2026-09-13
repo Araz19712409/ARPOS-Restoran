@@ -2829,6 +2829,11 @@ app.post('/api/orders/accept', async function (req, res) {
         });
         const sendNow = settings.kitchenSendNow(course, order.firedCourse, cfg);
         const complimentary = !!line.complimentary;
+        if (complimentary || Number(line.salePrice) === 0) {
+          if (!users.hasPermission(staff.role, 'orders.discount')) {
+            reject(403, 'Pulsuz sətirə icazəniz yoxdur.');
+          }
+        }
         const item = {
           id: store.nextItemId,
           productId: product.id,
