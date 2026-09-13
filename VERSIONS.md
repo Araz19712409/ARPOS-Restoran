@@ -1,5 +1,6 @@
 # Arpos Restoran — versiyalar
 
+- **1.2.31** — 2026-09-13 — Hotfix: növbə açıq/bağlı (1.2.30 köhnə mətn)
 - **1.2.30** — 2026-09-13 — Modal z-index + PosDom null-safe; növbə açıq/bağlı
 - **1.2.29** — 2026-09-13 — Hotfix: pay-share null (ödəniş modal)
 - **1.2.28** — 2026-09-13 — Ödəniş modal PIN üstündə (z-index 60)
