@@ -1969,4 +1969,61 @@ test('zal yaş: age-ok/warn/alert; vaxt format; boşda age yox', function () {
   assert.ok(css.indexOf('box-shadow: 0 0 0 2px #e2b65a') >= 0);
 });
 
+test('favoritlər + barkod fokus', function () {
+  function normalizeFavIds(list) {
+    var out = [];
+    (Array.isArray(list) ? list : []).forEach(function (id) {
+      var n = Number(id);
+      if (!(n >= 1) || out.indexOf(n) >= 0) {
+        return;
+      }
+      if (out.length < 12) {
+        out.push(n);
+      }
+    });
+    return out;
+  }
+  function toggleFavId(list, id) {
+    var n = Number(id);
+    if (!(n >= 1)) {
+      return normalizeFavIds(list);
+    }
+    var next = normalizeFavIds(list).slice();
+    var i = next.indexOf(n);
+    if (i >= 0) {
+      next.splice(i, 1);
+    } else if (next.length < 12) {
+      next.unshift(n);
+    }
+    return next;
+  }
+  assert.deepStrictEqual(toggleFavId([], 5), [5]);
+  assert.deepStrictEqual(toggleFavId([5], 5), []);
+  assert.deepStrictEqual(toggleFavId([1, 2], 3), [3, 1, 2]);
+  var full = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  assert.deepStrictEqual(toggleFavId(full, 99), full);
+  assert.deepStrictEqual(normalizeFavIds([1, 1, 0, -2, 'x', 3]), [1, 3]);
+  assert.strictEqual(normalizeFavIds(full.concat([13])).length, 12);
+
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(ui.indexOf("FAV_KEY = 'arpos-favorites'") >= 0);
+  assert.ok(ui.indexOf('FAV_MAX = 12') >= 0);
+  assert.ok(ui.indexOf('function toggleFavorite') >= 0);
+  assert.ok(ui.indexOf('function renderFavRow') >= 0);
+  assert.ok(ui.indexOf('function maybeFocusBarcode') >= 0);
+  assert.ok(ui.indexOf('function uiBlockedForBarcode') >= 0);
+  assert.ok(ui.indexOf('takeBarcodeHit') >= 0);
+  assert.ok(ui.indexOf("event.key !== 'Enter'") >= 0 || ui.indexOf("event.key !== \"Enter\"") >= 0);
+  assert.ok(ui.indexOf("event.key !== '/'") >= 0 || ui.indexOf('event.key !== "/"') >= 0);
+  assert.ok(ui.indexOf('bindFavLongPress') >= 0);
+  assert.ok(ui.indexOf('fav-star') >= 0);
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
+  assert.ok(html.indexOf('id="fav-row"') >= 0);
+  assert.ok(html.indexOf('id="order-search"') >= 0);
+  const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
+  assert.ok(css.indexOf('.fav-row') >= 0);
+  assert.ok(css.indexOf('.fav-chip') >= 0);
+  assert.ok(css.indexOf('.order-card .fav-star') >= 0);
+});
+
 console.log('Bütün testlər keçdi.');

@@ -235,6 +235,83 @@
     };
   }
 
+  var FAV_KEY = 'arpos-favorites';
+  var FAV_MAX = 12;
+
+  function normalizeFavIds(list) {
+    var out = [];
+    (Array.isArray(list) ? list : []).forEach(function (id) {
+      var n = Number(id);
+      if (!(n >= 1) || out.indexOf(n) >= 0) {
+        return;
+      }
+      if (out.length < FAV_MAX) {
+        out.push(n);
+      }
+    });
+    return out;
+  }
+
+  function toggleFavId(list, id) {
+    var n = Number(id);
+    if (!(n >= 1)) {
+      return normalizeFavIds(list);
+    }
+    var next = normalizeFavIds(list).slice();
+    var i = next.indexOf(n);
+    if (i >= 0) {
+      next.splice(i, 1);
+    } else if (next.length < FAV_MAX) {
+      next.unshift(n);
+    }
+    return next;
+  }
+
+  function readFavorites() {
+    try {
+      var raw = window.localStorage.getItem(FAV_KEY);
+      if (!raw) {
+        return [];
+      }
+      return normalizeFavIds(JSON.parse(raw));
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function writeFavorites(ids) {
+    var next = normalizeFavIds(ids);
+    try {
+      window.localStorage.setItem(FAV_KEY, JSON.stringify(next));
+    } catch (error) {}
+    return next;
+  }
+
+  var favoriteIds = readFavorites();
+
+  function isFavorite(id) {
+    return favoriteIds.indexOf(Number(id)) >= 0;
+  }
+
+  function toggleFavorite(id) {
+    var before = favoriteIds.length;
+    favoriteIds = writeFavorites(toggleFavId(favoriteIds, id));
+    if (favoriteIds.length === before && !isFavorite(id) && before >= FAV_MAX) {
+      say('Favorit limiti: ' + FAV_MAX, 'warn');
+    }
+    renderFavRow();
+    renderProducts();
+  }
+
+  if (typeof window !== 'undefined') {
+    window.PosFavorites = {
+      KEY: FAV_KEY,
+      MAX: FAV_MAX,
+      normalizeFavIds: normalizeFavIds,
+      toggleFavId: toggleFavId
+    };
+  }
+
   function openOrder() {
     if (tableId === -1 || tableId === -2) {
       return null;
@@ -516,6 +593,7 @@
       setOrderZone('menu');
     }
     render();
+    maybeFocusBarcode();
   }
 
   function orderForId(id) {
@@ -892,10 +970,93 @@
     }
     addProduct(hit);
     searchQuery = '';
-    document.getElementById('order-search').value = '';
+    var searchEl = el('order-search') || document.getElementById('order-search');
+    if (searchEl) {
+      searchEl.value = '';
+    }
     renderGroups();
     renderProducts();
+    maybeFocusBarcode(true);
     return true;
+  }
+
+  function renderFavRow() {
+    var row = el('fav-row') || document.getElementById('fav-row');
+    if (!row) {
+      return;
+    }
+    row.innerHTML = '';
+    var list = favoriteIds.map(function (id) {
+      return products.find(function (p) {
+        return Number(p.id) === Number(id) && !p.blocked && !p.soldOut;
+      });
+    }).filter(Boolean);
+    if (!list.length) {
+      row.classList.add('hidden');
+      return;
+    }
+    row.classList.remove('hidden');
+    list.forEach(function (item) {
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'fav-chip';
+      chip.textContent = item.name;
+      chip.title = item.name;
+      chip.addEventListener('click', function () {
+        addProduct(item);
+      });
+      row.appendChild(chip);
+    });
+  }
+
+  function bindFavLongPress(card, product) {
+    var timer = 0;
+    var moved = false;
+    var didToggle = false;
+    function clear() {
+      if (timer) {
+        window.clearTimeout(timer);
+        timer = 0;
+      }
+    }
+    function start() {
+      moved = false;
+      didToggle = false;
+      clear();
+      timer = window.setTimeout(function () {
+        timer = 0;
+        didToggle = true;
+        toggleFavorite(product.id);
+      }, 550);
+    }
+    card.addEventListener('pointerdown', function (event) {
+      if (event.target && event.target.closest && event.target.closest('.fav-star')) {
+        return;
+      }
+      if (event.button != null && event.button !== 0) {
+        return;
+      }
+      start();
+    });
+    card.addEventListener('pointermove', function () {
+      moved = true;
+      clear();
+    });
+    card.addEventListener('pointerup', clear);
+    card.addEventListener('pointercancel', clear);
+    card.addEventListener('pointerleave', clear);
+    card.addEventListener('click', function (event) {
+      if (didToggle) {
+        event.preventDefault();
+        event.stopPropagation();
+        didToggle = false;
+        return;
+      }
+      if (moved) {
+        return;
+      }
+      addProduct(product);
+    });
   }
 
   function renderProducts() {
@@ -908,10 +1069,21 @@
       return;
     }
     list.forEach(function (item) {
-      var card = document.createElement('button');
-      card.type = 'button';
+      var card = document.createElement('div');
       card.className = 'order-card';
-      card.innerHTML = '<div class="photo"></div><div class="body"><h3></h3><p class="price"></p></div>';
+      card.setAttribute('role', 'button');
+      card.tabIndex = 0;
+      card.innerHTML = '<button type="button" class="fav-star" aria-label="Favorit">★</button>' +
+        '<div class="photo"></div><div class="body"><h3></h3><p class="price"></p></div>';
+      var star = card.querySelector('.fav-star');
+      if (star) {
+        star.classList.toggle('on', isFavorite(item.id));
+        star.addEventListener('click', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          toggleFavorite(item.id);
+        });
+      }
       var photo = card.querySelector('.photo');
       var group = groups.find(function (row) { return row.id === item.groupId; });
       if (item.image) {
@@ -931,8 +1103,12 @@
       card.title = item.allergens || item.name;
       card.querySelector('.price').textContent = Number(livePrice(item)).toFixed(2) + ' AZN' +
         (hasOptions(item) ? ' · seçim' : '');
-      card.addEventListener('click', function () {
-        addProduct(item);
+      bindFavLongPress(card, item);
+      card.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          addProduct(item);
+        }
       });
       grid.appendChild(card);
     });
@@ -1521,8 +1697,56 @@
   function render() {
     renderFloor();
     renderGroups();
+    renderFavRow();
     renderProducts();
     renderCheck();
+  }
+
+  function uiBlockedForBarcode() {
+    if (document.querySelector('.modal:not(.hidden)')) {
+      return true;
+    }
+    if (document.querySelector('.pos-ask:not(.hidden)')) {
+      return true;
+    }
+    var pin = el('pin-lock') || document.getElementById('pin-lock');
+    if (pin && !pin.classList.contains('hidden')) {
+      return true;
+    }
+    var term = el('terminal-lock') || document.getElementById('terminal-lock');
+    if (term && !term.classList.contains('hidden')) {
+      return true;
+    }
+    return false;
+  }
+
+  function maybeFocusBarcode(force) {
+    if (!force) {
+      var page = document.querySelector('.order-page');
+      var zone = page && page.getAttribute('data-zone');
+      if (zone && zone !== 'menu') {
+        return;
+      }
+    }
+    if (!tableId || !waiter) {
+      return;
+    }
+    if (uiBlockedForBarcode()) {
+      return;
+    }
+    var searchEl = el('order-search') || document.getElementById('order-search');
+    if (!searchEl) {
+      return;
+    }
+    window.setTimeout(function () {
+      if (uiBlockedForBarcode()) {
+        return;
+      }
+      searchEl.focus();
+      if (searchEl.select) {
+        searchEl.select();
+      }
+    }, 30);
   }
 
   document.getElementById('table-search').addEventListener('input', function (event) {
@@ -1582,8 +1806,17 @@
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) {
       return;
     }
+    if (uiBlockedForBarcode()) {
+      return;
+    }
     event.preventDefault();
-    document.getElementById('order-search').focus();
+    var searchEl = el('order-search') || document.getElementById('order-search');
+    if (searchEl) {
+      searchEl.focus();
+      if (searchEl.select) {
+        searchEl.select();
+      }
+    }
   });
 
   function runAction(url, extra, question) {
@@ -3604,6 +3837,7 @@
 
   window.setInterval(function () {
     if (waiter && products.length) {
+      renderFavRow();
       renderProducts();
     }
     if (waiter) {
@@ -3621,6 +3855,9 @@
     bar.querySelectorAll('button').forEach(function (btn) {
       btn.classList.toggle('active', btn.getAttribute('data-zone') === zone);
     });
+    if (zone === 'menu') {
+      maybeFocusBarcode(true);
+    }
   }
 
   var zoneBar = document.getElementById('order-zones');
