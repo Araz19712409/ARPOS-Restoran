@@ -300,20 +300,19 @@
   }
 
   function fillShiftModal() {
-    var status = document.getElementById('shift-z-status');
-    var tablesEl = document.getElementById('shift-z-tables');
-    var expected = document.getElementById('shift-z-expected');
-    var counted = document.getElementById('shift-z-counted');
-    var closeBtn = document.getElementById('shift-z-close');
     var cur = shiftPack && shiftPack.current;
     var openList = (shiftPack && shiftPack.openTables) || [];
-    status.textContent = cur ? 'Növbə açıq' : 'Növbə bağlı';
-    tablesEl.textContent = openList.length ? ('Açıq masa: ' + openList.join(', ') + '. Əvvəl bağlayın.') : '';
-    expected.textContent = cur ? ('Gözlənilən: ' + money(cur.expectedCash) + ' AZN') : '';
+    setText('shift-z-status', cur ? 'Növbə açıq' : 'Növbə bağlı');
+    setText('shift-z-tables', openList.length ? ('Açıq masa: ' + openList.join(', ') + '. Əvvəl bağlayın.') : '');
+    setText('shift-z-expected', cur ? ('Gözlənilən: ' + money(cur.expectedCash) + ' AZN') : '');
+    var counted = el('shift-z-counted');
     if (counted && document.activeElement !== counted) {
-      counted.value = cur ? money(cur.expectedCash) : '';
+      setVal('shift-z-counted', cur ? money(cur.expectedCash) : '');
     }
-    closeBtn.disabled = !cur || openList.length > 0 || !can('payments.take');
+    var closeBtn = el('shift-z-close');
+    if (closeBtn) {
+      closeBtn.disabled = !cur || openList.length > 0 || !can('payments.take');
+    }
   }
 
   function openShiftModal() {
@@ -322,7 +321,10 @@
     }
     refreshShiftBadge().then(function () {
       fillShiftModal();
-      document.getElementById('shift-z-modal').classList.remove('hidden');
+      var modal = el('shift-z-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+      }
     });
   }
 
@@ -981,9 +983,12 @@
     optionProduct = product;
     optionPortionId = product.portions && product.portions[0] ? product.portions[0].id : 0;
     optionExtraIds = [];
-    document.getElementById('option-title').textContent = product.name;
-    document.getElementById('option-base').textContent = 'Satış: ' + Number(livePrice(product)).toFixed(2) + ' AZN';
-    var portionBox = document.getElementById('option-portions');
+    setText('option-title', product.name);
+    setText('option-base', 'Satış: ' + Number(livePrice(product)).toFixed(2) + ' AZN');
+    var portionBox = el('option-portions');
+    if (!portionBox) {
+      return;
+    }
     portionBox.innerHTML = '';
     (product.portions || []).forEach(function (row) {
       var btn = document.createElement('button');
@@ -996,7 +1001,10 @@
       });
       portionBox.appendChild(btn);
     });
-    var extraBox = document.getElementById('option-extras');
+    var extraBox = el('option-extras');
+    if (!extraBox) {
+      return;
+    }
     extraBox.innerHTML = '';
     (product.extras || []).forEach(function (row) {
       var btn = document.createElement('button');
@@ -1015,7 +1023,10 @@
       extraBox.appendChild(btn);
     });
     drawOptionChips();
-    document.getElementById('option-modal').classList.remove('hidden');
+    var modal = el('option-modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+    }
   }
 
   function drawOptionChips() {
@@ -1034,8 +1045,8 @@
         extraBtns[i].classList.toggle('active', optionExtraIds.indexOf(row.id) !== -1);
       }
     });
-    document.getElementById('option-sum').textContent =
-      linePrice(optionProduct, optionPortionId, optionExtraIds).toFixed(2) + ' AZN';
+    setText('option-sum',
+      linePrice(optionProduct, optionPortionId, optionExtraIds).toFixed(2) + ' AZN');
   }
 
   function closeOptions() {
@@ -2365,7 +2376,10 @@
       say('Köçürməyə icazəniz yoxdur.', 'err');
       return;
     }
-    var box = document.getElementById('move-table');
+    var box = el('move-table');
+    if (!box) {
+      return;
+    }
     box.innerHTML = '';
     tables.filter(function (table) {
       return table.id !== tableId && tableState(table) === 'empty';
@@ -2380,10 +2394,16 @@
       say('Boş masa yoxdur.', 'err');
       return;
     }
-    document.getElementById('move-modal').classList.remove('hidden');
+    var modal = el('move-modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+    }
   });
   document.getElementById('cancel-move').addEventListener('click', function () {
-    document.getElementById('move-modal').classList.add('hidden');
+    var modal = el('move-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
   });
   document.getElementById('fire-course').addEventListener('click', function () {
     var order = openOrder();
@@ -2397,11 +2417,17 @@
       say('Açıq hesab yoxdur.', 'err');
       return;
     }
-    document.getElementById('handoff-pin').value = '';
-    document.getElementById('handoff-modal').classList.remove('hidden');
+    setVal('handoff-pin', '');
+    var modal = el('handoff-modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+    }
   });
   document.getElementById('cancel-handoff').addEventListener('click', function () {
-    document.getElementById('handoff-modal').classList.add('hidden');
+    var modal = el('handoff-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
   });
   document.getElementById('handoff-form').addEventListener('submit', function (event) {
     event.preventDefault();
@@ -2467,14 +2493,23 @@
       say('Endirimə icazəniz yoxdur.', 'err');
       return;
     }
-    document.getElementById('discount-type').value = (order.discount && order.discount.type) || 'percent';
-    document.getElementById('discount-value').value = order.discount ? String(order.discount.value) : '';
-    document.getElementById('discount-reason').value = (order.discount && order.discount.reason) || '';
-    document.getElementById('discount-modal').classList.remove('hidden');
-    document.getElementById('discount-value').focus();
+    setVal('discount-type', (order.discount && order.discount.type) || 'percent');
+    setVal('discount-value', order.discount ? String(order.discount.value) : '');
+    setVal('discount-reason', (order.discount && order.discount.reason) || '');
+    var modal = el('discount-modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+    }
+    var valBox = el('discount-value');
+    if (valBox) {
+      valBox.focus();
+    }
   });
   document.getElementById('cancel-discount').addEventListener('click', function () {
-    document.getElementById('discount-modal').classList.add('hidden');
+    var modal = el('discount-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
   });
   document.getElementById('discount-form').addEventListener('submit', function (event) {
     event.preventDefault();
@@ -2482,6 +2517,9 @@
     if (!order || !waiter) {
       return;
     }
+    var typeEl = el('discount-type');
+    var valueEl = el('discount-value');
+    var reasonEl = el('discount-reason');
     api('/api/orders/discount', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2489,12 +2527,15 @@
         orderId: order.id,
         waiterId: waiter.user.id,
         terminalId: terminal ? terminal.id : 0,
-        type: document.getElementById('discount-type').value,
-        value: dec(document.getElementById('discount-value').value),
-        reason: document.getElementById('discount-reason').value
+        type: typeEl ? typeEl.value : 'percent',
+        value: dec(valueEl ? valueEl.value : 0),
+        reason: reasonEl ? reasonEl.value : ''
       })
     }).then(function () {
-      document.getElementById('discount-modal').classList.add('hidden');
+      var modal = el('discount-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+      }
       say('Endirim tətbiq olundu.');
       return load();
     }).catch(function (error) {
@@ -2702,7 +2743,10 @@
   });
 
   function fillWaitlistTables() {
-    var sel = document.getElementById('wl-table');
+    var sel = el('wl-table');
+    if (!sel) {
+      return;
+    }
     var keep = sel.value;
     sel.innerHTML = '<option value="">Seçin</option>';
     tables.forEach(function (table) {
@@ -2723,7 +2767,10 @@
 
   function renderWaitlist() {
     fillWaitlistTables();
-    var box = document.getElementById('waitlist-rows');
+    var box = el('waitlist-rows');
+    if (!box) {
+      return;
+    }
     box.innerHTML = '';
     if (!waitlist.length) {
       box.innerHTML = '<p class="hint">Növbə boşdur.</p>';
@@ -2737,7 +2784,8 @@
       seatBtn.type = 'button';
       seatBtn.textContent = 'Oturtdu';
       seatBtn.addEventListener('click', function () {
-        var dest = Number(document.getElementById('wl-table').value) || tableId;
+        var wlTable = el('wl-table');
+        var dest = Number(wlTable && wlTable.value) || tableId;
         if (!(dest > 0)) {
           say('Əvvəlcə masa seçin.', 'err');
           return;
@@ -2750,12 +2798,15 @@
           pendingGuests = row.guests;
           pendingGuestName = row.name;
           pendingGuestPhone = row.phone || '';
-          document.getElementById('waitlist-modal').classList.add('hidden');
+          var modal = el('waitlist-modal');
+          if (modal) {
+            modal.classList.add('hidden');
+          }
           writePendingGuests(dest, pendingGuests);
           say(row.name + ' oturduldu.');
           return selectSeat(dest);
         }).then(function () {
-          document.getElementById('order-guests').value = String(pendingGuests);
+          setVal('order-guests', String(pendingGuests));
           return load();
         }).catch(function (error) {
           say(error.message, 'err');
@@ -2800,25 +2851,40 @@
   });
   document.getElementById('waitlist-open').addEventListener('click', function () {
     renderWaitlist();
-    document.getElementById('waitlist-modal').classList.remove('hidden');
-    document.getElementById('wl-name').focus();
+    var modal = el('waitlist-modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+    }
+    var nameBox = el('wl-name');
+    if (nameBox) {
+      nameBox.focus();
+    }
   });
   document.getElementById('waitlist-close').addEventListener('click', function () {
-    document.getElementById('waitlist-modal').classList.add('hidden');
+    var modal = el('waitlist-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
   });
   document.getElementById('waitlist-form').addEventListener('submit', function (event) {
     event.preventDefault();
+    var nameEl = el('wl-name');
+    var phoneEl = el('wl-phone');
+    var guestsEl = el('wl-guests');
     api('/api/waitlist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: document.getElementById('wl-name').value,
-        phone: document.getElementById('wl-phone').value,
-        guests: Number(document.getElementById('wl-guests').value)
+        name: nameEl ? nameEl.value : '',
+        phone: phoneEl ? phoneEl.value : '',
+        guests: Number(guestsEl ? guestsEl.value : 0)
       })
     }).then(function () {
-      document.getElementById('waitlist-form').reset();
-      document.getElementById('wl-guests').value = '2';
+      var form = el('waitlist-form');
+      if (form) {
+        form.reset();
+      }
+      setVal('wl-guests', '2');
       return load();
     }).then(function () {
       renderWaitlist();
@@ -2958,17 +3024,26 @@
       say('Masa seçin.', 'err');
       return;
     }
-    document.getElementById('reserve-modal').classList.remove('hidden');
-    var at = document.getElementById('res-at');
-    if (window.PosDates && !at.value) {
+    var modal = el('reserve-modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+    }
+    var at = el('res-at');
+    if (window.PosDates && at && !at.value) {
       window.PosDates.fillSoon(at, 60);
-    } else if (window.PosDates) {
+    } else if (window.PosDates && at) {
       window.PosDates.refresh(at);
     }
-    document.getElementById('res-name').focus();
+    var nameBox = el('res-name');
+    if (nameBox) {
+      nameBox.focus();
+    }
   });
   document.getElementById('cancel-res-modal').addEventListener('click', function () {
-    document.getElementById('reserve-modal').classList.add('hidden');
+    var modal = el('reserve-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
   });
   document.getElementById('reserve-form').addEventListener('submit', function (event) {
     event.preventDefault();
@@ -2976,6 +3051,11 @@
       showLock();
       return;
     }
+    var nameEl = el('res-name');
+    var phoneEl = el('res-phone');
+    var atEl = el('res-at');
+    var guestsEl = el('res-guests');
+    var noteEl = el('res-note');
     api('/api/reservations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2983,15 +3063,21 @@
         waiterId: waiter.user.id,
         terminalId: terminal ? terminal.id : 0,
         tableId: tableId,
-        name: document.getElementById('res-name').value,
-        phone: document.getElementById('res-phone').value,
-        at: document.getElementById('res-at').value,
-        guests: Number(document.getElementById('res-guests').value),
-        note: document.getElementById('res-note').value
+        name: nameEl ? nameEl.value : '',
+        phone: phoneEl ? phoneEl.value : '',
+        at: atEl ? atEl.value : '',
+        guests: Number(guestsEl ? guestsEl.value : 0),
+        note: noteEl ? noteEl.value : ''
       })
     }).then(function () {
-      document.getElementById('reserve-modal').classList.add('hidden');
-      document.getElementById('reserve-form').reset();
+      var modal = el('reserve-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+      }
+      var form = el('reserve-form');
+      if (form) {
+        form.reset();
+      }
       say('Rezerv yazıldı.');
       return load();
     }).catch(function (error) {

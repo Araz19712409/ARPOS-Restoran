@@ -1,5 +1,14 @@
 # Arpos Restoran — versiyalar
 
+## Reliz qaydası
+- Hər hotfix Setup = yeni patch (məs. 1.2.31 → 1.2.32). Eyni semver ilə yeniləmə göndərilməz.
+- `package.json` = bu fayl = launcher; `SHA256SUMS.txt` məcburi.
+- Checklist: bump → `npm test` → setup → SHA → GitHub release.
+
+## TODO (parçalama — böyük split yox)
+- `orders-ui.js` gələcəkdə: `pay.js` (ödəniş modal), `shift-badge.js` (növbə/Z), `zones.js` (zal/menyu/çek). Risk yüksək — ayrıca sprint.
+
+- **1.2.32** — 2026-09-13 — Stabilizasiya: reliz qaydası + modal/DOM null-safe (orders/settings/stock); split yox
 - **1.2.31** — 2026-09-13 — Hotfix: növbə açıq/bağlı (1.2.30 köhnə mətn)
 - **1.2.30** — 2026-09-13 — Modal z-index + PosDom null-safe; növbə açıq/bağlı
 - **1.2.29** — 2026-09-13 — Hotfix: pay-share null (ödəniş modal)

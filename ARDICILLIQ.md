@@ -189,6 +189,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 173. [x] 1.2.29 — Hotfix: pay-share null (ödəniş modal)
 174. [x] 1.2.30 — Modal z-index + PosDom; növbə açıq/bağlı
 175. [x] 1.2.31 — Hotfix: növbə açıq/bağlı (1.2.30 köhnə mətn)
+176. [x] 1.2.32 — Stabilizasiya: reliz qaydası + modal/DOM null-safe
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı

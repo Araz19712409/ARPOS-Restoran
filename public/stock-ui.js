@@ -21,6 +21,33 @@
   var warehouseFilter = '';
   var stockTab = 'qty';
   var fillingWh = false;
+  var Dom = window.PosDom || {};
+
+  function el(id) {
+    return Dom.el ? Dom.el(id) : document.getElementById(id);
+  }
+
+  function setText(id, text) {
+    if (Dom.setText) {
+      Dom.setText(id, text);
+      return;
+    }
+    var n = document.getElementById(id);
+    if (n) {
+      n.textContent = text == null ? '' : String(text);
+    }
+  }
+
+  function setVal(id, val) {
+    if (Dom.setVal) {
+      Dom.setVal(id, val);
+      return;
+    }
+    var n = document.getElementById(id);
+    if (n) {
+      n.value = val == null ? '' : String(val);
+    }
+  }
 
   function dec(value) {
     return window.PosNav && window.PosNav.parseDec
@@ -153,21 +180,35 @@
   function openEdit(row) {
     editId = row.id;
     editQty = Number(row.qty) || 0;
-    document.getElementById('stock-edit-title').textContent = row.name;
-    document.getElementById('stock-edit-qty-line').textContent =
-      'Qalıq: ' + row.qty + ' ' + row.unit + ' — buradan dəyişmir, «Qalıq düzəlt» istifadə edin.';
-    document.getElementById('stock-edit-name').value = row.name;
-    document.getElementById('stock-edit-unit').value = row.unit;
-    document.getElementById('stock-edit-unit').disabled = unitLocked(row);
-    document.getElementById('stock-edit-unit-hint').classList.toggle('hidden', !unitLocked(row));
-    document.getElementById('stock-edit-min').value = String(row.minQty);
-    document.getElementById('stock-edit-buy').value = Number(row.buyPrice).toFixed(2);
-    document.getElementById('stock-edit-total').value = (editQty * Number(row.buyPrice)).toFixed(2);
-    document.getElementById('stock-edit-total').disabled = editQty <= 0;
-    document.getElementById('stock-edit-kind').value = row.kind === 'semi' ? 'semi' : 'raw';
+    setText('stock-edit-title', row.name);
+    setText(
+      'stock-edit-qty-line',
+      'Qalıq: ' + row.qty + ' ' + row.unit + ' — buradan dəyişmir, «Qalıq düzəlt» istifadə edin.'
+    );
+    setVal('stock-edit-name', row.name);
+    setVal('stock-edit-unit', row.unit);
+    var unitBox = el('stock-edit-unit');
+    if (unitBox) {
+      unitBox.disabled = unitLocked(row);
+    }
+    var unitHint = el('stock-edit-unit-hint');
+    if (unitHint) {
+      unitHint.classList.toggle('hidden', !unitLocked(row));
+    }
+    setVal('stock-edit-min', String(row.minQty));
+    setVal('stock-edit-buy', Number(row.buyPrice).toFixed(2));
+    setVal('stock-edit-total', (editQty * Number(row.buyPrice)).toFixed(2));
+    var totalBox = el('stock-edit-total');
+    if (totalBox) {
+      totalBox.disabled = editQty <= 0;
+    }
+    setVal('stock-edit-kind', row.kind === 'semi' ? 'semi' : 'raw');
     fillRecipeBox('stock-edit-recipe', row.recipe || []);
     toggleRecipeBox('edit');
-    document.getElementById('stock-edit-modal').classList.remove('hidden');
+    var modal = el('stock-edit-modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+    }
   }
 
   function deleteItem(row) {
@@ -242,21 +283,30 @@
         addAct(acts, 'Dəyiş', function () { openEdit(row); });
         addAct(acts, 'Zay', function () {
           offId = row.id;
-          document.getElementById('stock-off-title').textContent = row.name;
-          document.getElementById('stock-off-qty').value = '';
-          document.getElementById('stock-off-note').value = '';
-          document.getElementById('stock-off-reason').value = 'spoil';
-          document.getElementById('stock-off-modal').classList.remove('hidden');
+          setText('stock-off-title', row.name);
+          setVal('stock-off-qty', '');
+          setVal('stock-off-note', '');
+          setVal('stock-off-reason', 'spoil');
+          var offModal = el('stock-off-modal');
+          if (offModal) {
+            offModal.classList.remove('hidden');
+          }
         });
         addAct(acts, 'Qalıq', function () {
           moveId = row.id;
-          document.getElementById('stock-move-title').textContent = row.name;
-          document.getElementById('stock-move-qty').value = '';
-          document.getElementById('stock-move-note').value = '';
-          document.getElementById('stock-waste-reason').value = '';
-          document.getElementById('stock-move-type').value = 'count';
-          document.getElementById('stock-waste-wrap').style.display = 'none';
-          document.getElementById('stock-move-modal').classList.remove('hidden');
+          setText('stock-move-title', row.name);
+          setVal('stock-move-qty', '');
+          setVal('stock-move-note', '');
+          setVal('stock-waste-reason', '');
+          setVal('stock-move-type', 'count');
+          var wasteWrap = el('stock-waste-wrap');
+          if (wasteWrap) {
+            wasteWrap.style.display = 'none';
+          }
+          var moveModal = el('stock-move-modal');
+          if (moveModal) {
+            moveModal.classList.remove('hidden');
+          }
         });
       }
       if (can('stock.edit') || can('stock.delete')) {

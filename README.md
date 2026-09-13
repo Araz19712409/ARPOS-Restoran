@@ -38,6 +38,20 @@ node scripts/make-license.js --name "Kafe Adi" --machine ABCD-EF01-2345-6789
 
 Ayarlarda **Yoxla**, sonra **Quraşdır** (təsdiq pəncərəsi). Server `confirm` olmadan Setup işə salmır.
 
+### Reliz qaydası (məcburi)
+
+- Hər müştəriyə gedən hotfix / Setup = **yeni semver** (`patch + 1`). **Eyni versiya nömrəsi ilə yeniləmə göndərilməz** (kassa artıq həmin nömrədədirsə updater heç nə təklif etmir).
+- `package.json` = `VERSIONS.md` = Setup/launcher (`ArposVersion.cs`) eyni nömrə.
+- Hər release-də `dist/SHA256SUMS.txt` məcburidir.
+
+Checklist:
+
+1. Versiyanı artır (`package.json` + lock + `VERSIONS.md` + launcher)
+2. `npm test`
+3. `powershell -File scripts/build-setup.ps1`
+4. Setup üçün SHA-256 → `SHA256SUMS.txt`
+5. GitHub release (`Setup.exe` + `SHA256SUMS.txt`)
+
 Hər GitHub release-ə `SHA256SUMS.txt` qoyun:
 
 ```

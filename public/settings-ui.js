@@ -6,6 +6,40 @@
   var current = { serviceChargePercent: 0, waiterBonuses: {}, backupFolder: '', listenLan: true };
   var terminalList = [];
   var lanInfo = { live: '127.0.0.1', urls: [] };
+  var Dom = window.PosDom || {};
+
+  function el(id) {
+    return Dom.el ? Dom.el(id) : document.getElementById(id);
+  }
+
+  function setText(id, text) {
+    if (Dom.setText) {
+      Dom.setText(id, text);
+      return;
+    }
+    var n = document.getElementById(id);
+    if (n) {
+      n.textContent = text == null ? '' : String(text);
+    }
+  }
+
+  function setVal(id, val) {
+    if (Dom.setVal) {
+      Dom.setVal(id, val);
+      return;
+    }
+    var n = document.getElementById(id);
+    if (n) {
+      n.value = val == null ? '' : String(val);
+    }
+  }
+
+  function setChecked(id, on) {
+    var n = el(id);
+    if (n) {
+      n.checked = !!on;
+    }
+  }
 
   function dec(value) {
     return window.PosNav && window.PosNav.parseDec
@@ -315,44 +349,32 @@
   }
 
   function fillBranch() {
-    document.getElementById('branch-name').value = current.branchName || '';
-    var code = document.getElementById('branch-code');
-    if (code) {
-      code.value = current.branchCode || '';
-    }
+    setVal('branch-name', current.branchName || '');
+    setVal('branch-code', current.branchCode || '');
   }
 
   function fillSms() {
     var sms = current.sms || {};
-    document.getElementById('sms-on').checked = !!sms.enabled;
-    document.getElementById('sms-url').value = sms.url || '';
-    document.getElementById('sms-login').value = sms.login || '';
-    document.getElementById('sms-password').value = sms.password || '';
-    document.getElementById('sms-sender').value = sms.sender || '';
-    document.getElementById('sms-reserve').value = sms.reserveText || 'Rezerv: {name}, {table}, {time}';
-    document.getElementById('sms-wait').value = sms.waitText || 'Növbə: {name}, {guests} nəfər';
+    setChecked('sms-on', !!sms.enabled);
+    setVal('sms-url', sms.url || '');
+    setVal('sms-login', sms.login || '');
+    setVal('sms-password', sms.password || '');
+    setVal('sms-sender', sms.sender || '');
+    setVal('sms-reserve', sms.reserveText || 'Rezerv: {name}, {table}, {time}');
+    setVal('sms-wait', sms.waitText || 'Növbə: {name}, {guests} nəfər');
   }
 
   function fillUpdate(ver) {
     var upd = current.update || {};
-    document.getElementById('update-repo').value = upd.repo || '';
-    document.getElementById('update-token').value = upd.token || '';
-    var box = document.getElementById('update-ver');
-    if (box) {
-      box.textContent = 'İndi: ' + (ver || '1.1.13');
-    }
+    setVal('update-repo', upd.repo || '');
+    setVal('update-token', upd.token || '');
+    setText('update-ver', 'İndi: ' + (ver || '1.1.13'));
   }
 
   function fillBackupGithub() {
     var gh = current.backupGithub || {};
-    var repo = document.getElementById('backup-gh-repo');
-    var tok = document.getElementById('backup-gh-token');
-    if (repo) {
-      repo.value = gh.repo || '';
-    }
-    if (tok) {
-      tok.value = gh.token || '';
-    }
+    setVal('backup-gh-repo', gh.repo || '');
+    setVal('backup-gh-token', gh.token || '');
   }
 
   function sendSmsTest() {
@@ -567,69 +589,51 @@
     lanInfo = body.data.lan || { live: '127.0.0.1', urls: [] };
     staffList = body.data.users || [];
     roles = body.data.roles || roles;
-    document.getElementById('service-percent').value = String(current.serviceChargePercent || 0);
-    document.getElementById('service-percent').disabled = false;
-    var vatBox = document.getElementById('vat-percent');
+    setVal('service-percent', String(current.serviceChargePercent || 0));
+    var svc = el('service-percent');
+    if (svc) {
+      svc.disabled = false;
+    }
+    setVal('vat-percent', String(current.vatPercent || 0));
+    var vatBox = el('vat-percent');
     if (vatBox) {
-      vatBox.value = String(current.vatPercent || 0);
       vatBox.disabled = false;
     }
-    var tillBox = document.getElementById('till-locked');
-    if (tillBox) {
-      tillBox.checked = current.tillLocked === true;
-    }
-    var shiftAuto = document.getElementById('shift-auto-open');
-    if (shiftAuto) {
-      shiftAuto.checked = !(current.shift && current.shift.autoOpenOnSale === false);
-    }
-    document.getElementById('backup-folder').value = current.backupFolder || '';
+    setChecked('till-locked', current.tillLocked === true);
+    setChecked('shift-auto-open', !(current.shift && current.shift.autoOpenOnSale === false));
+    setVal('backup-folder', current.backupFolder || '');
     var ek = current.ekassa || {};
     var del = current.delivery || {};
-    var dProv = document.getElementById('delivery-provider');
-    if (dProv) {
-      dProv.value = del.provider || 'manual';
-    }
-    var dPrint = document.getElementById('delivery-autoprint');
-    if (dPrint) {
-      dPrint.checked = del.autoPrintKitchen !== false;
-    }
-    var dSec = document.getElementById('delivery-secret');
-    if (dSec) {
-      dSec.value = del.webhookSecret || '';
-    }
-    document.getElementById('ekassa-provider').value = ek.provider || 'none';
-    document.getElementById('ekassa-emulator').checked = ek.emulator !== false;
-    document.getElementById('ekassa-voen').value = ek.voen || '';
-    document.getElementById('ekassa-object').value = ek.objectName || '';
-    document.getElementById('ekassa-code').value = ek.objectCode || '';
-    document.getElementById('ekassa-note').value = ek.note || '';
-    var op = document.getElementById('ekassa-operator');
-    if (op) {
-      op.value = ek.operator || '';
-    }
+    setVal('delivery-provider', del.provider || 'manual');
+    setChecked('delivery-autoprint', del.autoPrintKitchen !== false);
+    setVal('delivery-secret', del.webhookSecret || '');
+    setVal('ekassa-provider', ek.provider || 'none');
+    setChecked('ekassa-emulator', ek.emulator !== false);
+    setVal('ekassa-voen', ek.voen || '');
+    setVal('ekassa-object', ek.objectName || '');
+    setVal('ekassa-code', ek.objectCode || '');
+    setVal('ekassa-note', ek.note || '');
+    setVal('ekassa-operator', ek.operator || '');
     var wz = ek.wizarpos || {};
-    document.getElementById('ekassa-wz-host').value = wz.host || '';
-    document.getElementById('ekassa-wz-port').value = String(wz.port || 9876);
-    document.getElementById('ekassa-wz-key').value = wz.apiKey || '';
-    document.getElementById('ekassa-wz-cashier').value = wz.cashier || '';
+    setVal('ekassa-wz-host', wz.host || '');
+    setVal('ekassa-wz-port', String(wz.port || 9876));
+    setVal('ekassa-wz-key', wz.apiKey || '');
+    setVal('ekassa-wz-cashier', wz.cashier || '');
     var om = ek.omnitech || {};
-    document.getElementById('ekassa-om-host').value = om.host || '';
-    document.getElementById('ekassa-om-port').value = String(om.port || 8989);
-    document.getElementById('ekassa-om-user').value = om.user || '';
-    document.getElementById('ekassa-om-pass').value = om.password || '';
+    setVal('ekassa-om-host', om.host || '');
+    setVal('ekassa-om-port', String(om.port || 8989));
+    setVal('ekassa-om-user', om.user || '');
+    setVal('ekassa-om-pass', om.password || '');
     var az = ek.azsmart || {};
-    document.getElementById('ekassa-az-host').value = az.host || '';
-    document.getElementById('ekassa-az-port').value = String(az.port || 8008);
-    document.getElementById('ekassa-az-mid').value = az.merchantId || '';
+    setVal('ekassa-az-host', az.host || '');
+    setVal('ekassa-az-port', String(az.port || 8008));
+    setVal('ekassa-az-mid', az.merchantId || '');
     showEkassaFields();
     var mode = current.opsMode === 'sales' ? 'sales' : 'full';
-    document.getElementById('ops-sales').checked = mode === 'sales';
-    document.getElementById('ops-full').checked = mode === 'full';
-    var autoSend = document.getElementById('auto-send-all');
-    if (autoSend) {
-      autoSend.checked = current.autoSendAllOnAccept !== false;
-    }
-    var saleWh = document.getElementById('sales-warehouse');
+    setChecked('ops-sales', mode === 'sales');
+    setChecked('ops-full', mode === 'full');
+    setChecked('auto-send-all', current.autoSendAllOnAccept !== false);
+    var saleWh = el('sales-warehouse');
     if (saleWh) {
       var list = body.data.warehouses || [];
       saleWh.innerHTML = '';
@@ -655,27 +659,15 @@
         saleWh.value = want;
       }
     }
-    var blockShort = document.getElementById('stock-block-short');
-    if (blockShort) {
-      blockShort.checked = !(current.stock && current.stock.blockSaleIfShort === false);
-    }
-    var loyOn = document.getElementById('loyalty-enabled');
-    if (loyOn) {
-      var loy = current.loyalty || {};
-      loyOn.checked = loy.enabled === true;
-      if (document.getElementById('loyalty-earn')) {
-        document.getElementById('loyalty-earn').value = String(loy.earnPer100 != null ? loy.earnPer100 : 1);
-      }
-      if (document.getElementById('loyalty-value')) {
-        document.getElementById('loyalty-value').value = String(loy.pointValueMinor != null ? loy.pointValueMinor : 1);
-      }
-      if (document.getElementById('loyalty-min')) {
-        document.getElementById('loyalty-min').value = String(loy.minRedeem != null ? loy.minRedeem : 1);
-      }
-    }
+    setChecked('stock-block-short', !(current.stock && current.stock.blockSaleIfShort === false));
+    var loy = current.loyalty || {};
+    setChecked('loyalty-enabled', loy.enabled === true);
+    setVal('loyalty-earn', String(loy.earnPer100 != null ? loy.earnPer100 : 1));
+    setVal('loyalty-value', String(loy.pointValueMinor != null ? loy.pointValueMinor : 1));
+    setVal('loyalty-min', String(loy.minRedeem != null ? loy.minRedeem : 1));
     var lanOn = current.listenLan !== false;
-    document.getElementById('lan-on').checked = lanOn;
-    document.getElementById('lan-off').checked = !lanOn;
+    setChecked('lan-on', lanOn);
+    setChecked('lan-off', !lanOn);
     fillLanHint();
     fillSms();
     fillBranch();
