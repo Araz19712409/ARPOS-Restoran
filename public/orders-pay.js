@@ -14,6 +14,36 @@
     var showLock = ctx.showLock;
     var ensureTerminal = ctx.ensureTerminal;
 
+    function node(id) {
+      return (el && el(id)) || document.getElementById(id);
+    }
+
+    function valOf(id) {
+      var n = node(id);
+      return n && n.value != null ? n.value : '';
+    }
+
+    function on(id, ev, fn) {
+      var n = node(id);
+      if (n) {
+        n.addEventListener(ev, fn);
+      }
+    }
+
+    function setDisabled(id, off) {
+      var n = node(id);
+      if (n) {
+        n.disabled = !!off;
+      }
+    }
+
+    function setCls(id, cls, onOff) {
+      var n = node(id);
+      if (n) {
+        n.classList.toggle(cls, !!onOff);
+      }
+    }
+
     function pickingPay() {
       return ctx.payPickIds.length > 0 || ctx.paySeatId > 0;
     }
@@ -59,9 +89,9 @@
     }
 
     function fillPayPicks(order) {
-      var wrap = document.getElementById('pay-pick-wrap');
-      var seatBox = document.getElementById('pay-seats');
-      var pickBox = document.getElementById('pay-pick');
+      var wrap = node('pay-pick-wrap');
+      var seatBox = node('pay-seats');
+      var pickBox = node('pay-pick');
       var splitBusy = !!(order.payments && order.payments.length && order.splitCount);
       if (!wrap || ctx.payMode !== 'order' || splitBusy) {
         if (wrap) {
@@ -80,8 +110,10 @@
           seats.push(id);
         }
       });
-      seatBox.innerHTML = '';
-      if (seats.length > 1) {
+      if (seatBox) {
+        seatBox.innerHTML = '';
+      }
+      if (seats.length > 1 && seatBox) {
         seats.forEach(function (id) {
           var btn = document.createElement('button');
           btn.type = 'button';
@@ -98,6 +130,9 @@
           });
           seatBox.appendChild(btn);
         });
+      }
+      if (!pickBox) {
+        return;
       }
       pickBox.innerHTML = '';
       lines.forEach(function (item) {
@@ -145,7 +180,7 @@
         }
         return { n: frozenN, share: M.fromMinor(frozenM) };
       }
-      var n = Number(document.getElementById('pay-split').value);
+      var n = Number(valOf('pay-split'));
       if (!Number.isInteger(n) || n < 1) {
         n = 1;
       }
@@ -162,21 +197,21 @@
     function setSplitLocked(order) {
       var settled = !!(order && (order.items || []).some(function (item) { return item.settled; }));
       var locked = ctx.payMode === 'order' && (splitFrozen(order) || pickingPay() || settled);
-      var splitEl = document.getElementById('pay-split');
-      splitEl.disabled = locked;
-      document.getElementById('pay-split-minus').disabled = locked;
-      document.getElementById('pay-split-plus').disabled = locked;
-      if (locked) {
+      var splitEl = node('pay-split');
+      setDisabled('pay-split', locked);
+      setDisabled('pay-split-minus', locked);
+      setDisabled('pay-split-plus', locked);
+      if (locked && splitEl) {
         splitEl.value = String(order.splitCount || 1);
       }
     }
 
     function setPayDueView() {
-      document.getElementById('pay-due-amt').textContent = ctx.payDue.toFixed(2);
-      var splitN = Number(document.getElementById('pay-split').value) || 1;
-      document.getElementById('pay-due-label').textContent = ctx.payMode === 'reserve'
+      setText('pay-due-amt', ctx.payDue.toFixed(2));
+      var splitN = Number(valOf('pay-split')) || 1;
+      setText('pay-due-label', ctx.payMode === 'reserve'
         ? 'İlkin məbləğ'
-        : (splitN > 1 ? 'Bu pay' : 'Ödəniləcək');
+        : (splitN > 1 ? 'Bu pay' : 'Ödəniləcək'));
     }
 
     function setPayRow(wrapId, valueId, amount) {
@@ -193,17 +228,20 @@
     }
 
     function fillPayBreakdown(parts, prepaid, already, remaining) {
-      document.getElementById('pay-row-items').textContent = parts.items.toFixed(2);
+      setText('pay-row-items', parts.items.toFixed(2));
       setPayRow('pay-row-off-wrap', 'pay-row-off', parts.off);
       setPayRow('pay-row-svc-wrap', 'pay-row-svc', parts.service);
       setPayRow('pay-row-tip-wrap', 'pay-row-tip', parts.tip || 0);
       setPayRow('pay-row-pre-wrap', 'pay-row-pre', prepaid);
       setPayRow('pay-row-paid-wrap', 'pay-row-paid', already);
-      document.getElementById('pay-row-remain').textContent = remaining.toFixed(2);
+      setText('pay-row-remain', remaining.toFixed(2));
     }
 
     function fillPayQuick(cash) {
-      var box = document.getElementById('pay-quick');
+      var box = node('pay-quick');
+      if (!box) {
+        return;
+      }
       var steps = [1, 5, 10, 20, 50, 100, 200];
       var cashM = M.toMinor(cash);
       var vals = [M.fromMinor(cashM)];
@@ -320,20 +358,23 @@
 
     function setPayMethod(method) {
       ctx.payMethod = method;
-      document.getElementById('pay-method-cash').classList.toggle('active', method === 'cash');
-      document.getElementById('pay-method-card').classList.toggle('active', method === 'card');
-      document.getElementById('pay-method-mix').classList.toggle('active', method === 'mix');
-      document.getElementById('pay-mix-fields').classList.remove('hidden');
+      setCls('pay-method-cash', 'active', method === 'cash');
+      setCls('pay-method-card', 'active', method === 'card');
+      setCls('pay-method-mix', 'active', method === 'mix');
+      var mix = node('pay-mix-fields');
+      if (mix) {
+        mix.classList.remove('hidden');
+      }
       if (method === 'cash') {
         var cashDue = M.fromMinor(Math.max(0, M.subMinor(M.toMinor(ctx.payDue), loyaltyMinor())));
-        document.getElementById('pay-cash-amt').value = cashDue.toFixed(2);
-        document.getElementById('pay-card-amt').value = '0.00';
-        document.getElementById('pay-tendered').value = cashDue.toFixed(2);
+        setVal('pay-cash-amt', cashDue.toFixed(2));
+        setVal('pay-card-amt', '0.00');
+        setVal('pay-tendered', cashDue.toFixed(2));
         syncPayFields('cash');
       } else if (method === 'card') {
         var cardDue = M.fromMinor(Math.max(0, M.subMinor(M.toMinor(ctx.payDue), loyaltyMinor())));
-        document.getElementById('pay-cash-amt').value = '0.00';
-        document.getElementById('pay-card-amt').value = cardDue.toFixed(2);
+        setVal('pay-cash-amt', '0.00');
+        setVal('pay-card-amt', cardDue.toFixed(2));
         syncPayFields('card');
       } else {
         syncPayFields('cash');
@@ -344,7 +385,10 @@
       if (ctx.payMode === 'order' && splitFrozen(ctx.openOrder())) {
         return;
       }
-      var splitEl = document.getElementById('pay-split');
+      var splitEl = node('pay-split');
+      if (!splitEl) {
+        return;
+      }
       var n = Number(splitEl.value) || 1;
       n = Math.min(10, Math.max(1, n + delta));
       splitEl.value = String(n);
@@ -360,21 +404,27 @@
       if (ctx.payMode === 'order' && !ctx.openOrder()) {
         return;
       }
+      var cashInput = node('pay-cash-amt');
+      var cardInput = node('pay-card-amt');
+      var changeEl = node('pay-change');
+      if (!cashInput || !cardInput || !changeEl) {
+        return;
+      }
       ctx.payLock = true;
       var dueM = Math.max(0, M.subMinor(M.toMinor(ctx.payDue), loyaltyMinor()));
-      var cashInput = document.getElementById('pay-cash-amt');
-      var cardInput = document.getElementById('pay-card-amt');
       var split = splitDueMinor(source, M.toMinor(cashInput.value), M.toMinor(cardInput.value), dueM);
       var cash = M.fromMinor(split.cash);
       var card = M.fromMinor(split.card);
-      var changeEl = document.getElementById('pay-change');
       cashInput.value = cash.toFixed(2);
       cardInput.value = card.toFixed(2);
-      document.getElementById('tender-wrap').style.display = split.cash > 0 ? '' : 'none';
+      var tenderWrap = node('tender-wrap');
+      if (tenderWrap) {
+        tenderWrap.style.display = split.cash > 0 ? '' : 'none';
+      }
       if (split.cash > 0) {
-        var givenM = M.toMinor(document.getElementById('pay-tendered').value);
+        var givenM = M.toMinor(valOf('pay-tendered'));
         if (givenM < split.cash) {
-          document.getElementById('pay-tendered').value = cash.toFixed(2);
+          setVal('pay-tendered', cash.toFixed(2));
           givenM = split.cash;
         }
         var leftoverM = M.subMinor(givenM, split.cash);
@@ -648,45 +698,39 @@
     ctx.applyPaySimpleMode = applyPaySimpleMode;
     ctx.goNextTable = goNextTable;
 
-    document.getElementById('pay-cash-amt').addEventListener('input', function () { syncPayFields('cash'); });
-    document.getElementById('pay-card-amt').addEventListener('input', function () { syncPayFields('card'); });
-    document.getElementById('pay-tendered').addEventListener('input', function () { syncPayFields('tender'); });
-    var loyPhone = document.getElementById('pay-loy-phone');
-    if (loyPhone) {
-      loyPhone.addEventListener('blur', lookupLoyalty);
-    }
-    var loyAmt = document.getElementById('pay-loyalty-amt');
-    if (loyAmt) {
-      loyAmt.addEventListener('input', function () { setPayMethod(ctx.payMethod); });
-    }
-    document.getElementById('pay-prepay-amt').addEventListener('input', function () {
+    on('pay-cash-amt', 'input', function () { syncPayFields('cash'); });
+    on('pay-card-amt', 'input', function () { syncPayFields('card'); });
+    on('pay-tendered', 'input', function () { syncPayFields('tender'); });
+    on('pay-loy-phone', 'blur', lookupLoyalty);
+    on('pay-loyalty-amt', 'input', function () { setPayMethod(ctx.payMethod); });
+    on('pay-prepay-amt', 'input', function () {
       if (ctx.payMode !== 'reserve') {
         return;
       }
-      var amt = M.toMinor(document.getElementById('pay-prepay-amt').value);
+      var amt = M.toMinor(valOf('pay-prepay-amt'));
       ctx.payDue = amt > 0 ? M.fromMinor(amt) : 0;
       setPayDueView();
       setPayMethod(ctx.payMethod);
     });
-    document.getElementById('pay-split').addEventListener('input', function () {
+    on('pay-split', 'input', function () {
       if (ctx.payMode === 'order' && !splitFrozen(ctx.openOrder())) {
         openPay();
       }
     });
-    document.getElementById('pay-split-minus').addEventListener('click', function () { bumpSplit(-1); });
-    document.getElementById('pay-split-plus').addEventListener('click', function () { bumpSplit(1); });
-    document.getElementById('pay-method-cash').addEventListener('click', function () { setPayMethod('cash'); });
-    document.getElementById('pay-method-card').addEventListener('click', function () { setPayMethod('card'); });
-    document.getElementById('pay-method-mix').addEventListener('click', function () { setPayMethod('mix'); });
-    document.getElementById('pay-quick').addEventListener('click', function (event) {
+    on('pay-split-minus', 'click', function () { bumpSplit(-1); });
+    on('pay-split-plus', 'click', function () { bumpSplit(1); });
+    on('pay-method-cash', 'click', function () { setPayMethod('cash'); });
+    on('pay-method-card', 'click', function () { setPayMethod('card'); });
+    on('pay-method-mix', 'click', function () { setPayMethod('mix'); });
+    on('pay-quick', 'click', function (event) {
       var btn = event.target.closest('[data-tender]');
       if (!btn) {
         return;
       }
-      document.getElementById('pay-tendered').value = btn.getAttribute('data-tender');
+      setVal('pay-tendered', btn.getAttribute('data-tender'));
       syncPayFields('tender');
     });
-    document.getElementById('pay-open').addEventListener('click', function () {
+    on('pay-open', 'click', function () {
       if (ctx.busy) {
         return;
       }
@@ -726,19 +770,20 @@
       }
       openPay();
     });
-    document.getElementById('prepay-open').addEventListener('click', openPrepay);
+    on('prepay-open', 'click', openPrepay);
 
-    var tipBox = document.getElementById('pay-tip');
-    if (tipBox) {
-      tipBox.addEventListener('input', function () {
-        if (ctx.payMode === 'order' && !document.getElementById('pay-modal').classList.contains('hidden')) {
-          openPay();
-        }
-      });
-    }
+    on('pay-tip', 'input', function () {
+      var modal = node('pay-modal');
+      if (ctx.payMode === 'order' && modal && !modal.classList.contains('hidden')) {
+        openPay();
+      }
+    });
 
-    document.getElementById('cancel-pay').addEventListener('click', function () {
-      document.getElementById('pay-modal').classList.add('hidden');
+    on('cancel-pay', 'click', function () {
+      var modal = node('pay-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+      }
     });
     var receiptCloseBtn = el('receipt-close');
     if (receiptCloseBtn) {
@@ -775,16 +820,16 @@
       postPayNextBtn.addEventListener('click', goNextTable);
     }
 
-    document.getElementById('pay-form').addEventListener('submit', function (event) {
+    on('pay-form', 'submit', function (event) {
       event.preventDefault();
       if (!ctx.waiter) {
         payFail('PIN ilə daxil olun.');
         ctx.busy = false;
         return;
       }
-      var cashAmount = M.fromMinor(M.toMinor(document.getElementById('pay-cash-amt').value));
-      var cardAmount = M.fromMinor(M.toMinor(document.getElementById('pay-card-amt').value));
-      var tendered = M.fromMinor(M.toMinor(document.getElementById('pay-tendered').value));
+      var cashAmount = M.fromMinor(M.toMinor(valOf('pay-cash-amt')));
+      var cardAmount = M.fromMinor(M.toMinor(valOf('pay-card-amt')));
+      var tendered = M.fromMinor(M.toMinor(valOf('pay-tendered')));
       if (ctx.payMode === 'reserve') {
         var booked = ctx.bookingFor(ctx.tableId);
         if (!booked) {
@@ -808,7 +853,10 @@
             tendered: tendered
           })
         }).then(function () {
-          document.getElementById('pay-modal').classList.add('hidden');
+          var prepayModal = node('pay-modal');
+          if (prepayModal) {
+            prepayModal.classList.add('hidden');
+          }
           say('İlkin ödəniş qəbul edildi.');
           return ctx.load();
         }).catch(function (error) {
@@ -828,7 +876,7 @@
         ctx.busy = false;
         return;
       }
-      var splitN = Number(document.getElementById('pay-split').value) || 1;
+      var splitN = Number(valOf('pay-split')) || 1;
       var hasShares = (order.payments || []).length > 0;
       var payText = M.toMinor(ctx.payDue) < 1 && !hasShares
         ? 'Hesab 0 AZN-dir. Masa bağlansın?'
@@ -842,13 +890,13 @@
         }
         ctx.busy = true;
         var dueM = M.toMinor(ctx.payDue);
-        var giftCode = document.getElementById('pay-gift').value.trim();
+        var giftCode = String(valOf('pay-gift')).trim();
         var giftAmount = 0;
         var loyM = loyaltyMinor();
         var restM = Math.max(0, M.subMinor(dueM, loyM));
-        var cashM = M.toMinor(document.getElementById('pay-cash-amt').value);
-        var cardM = M.toMinor(document.getElementById('pay-card-amt').value);
-        var tendM = M.toMinor(document.getElementById('pay-tendered').value);
+        var cashM = M.toMinor(valOf('pay-cash-amt'));
+        var cardM = M.toMinor(valOf('pay-card-amt'));
+        var tendM = M.toMinor(valOf('pay-tendered'));
         if (giftCode) {
           giftAmount = M.fromMinor(restM);
           cashAmount = 0;
@@ -871,13 +919,13 @@
           orderId: order.id,
           waiterId: ctx.waiter.user.id,
           terminalId: ctx.terminal ? ctx.terminal.id : 0,
-          splitCount: Number(document.getElementById('pay-split').value) || 1,
-          tipAmount: M.fromMinor(M.toMinor(document.getElementById('pay-tip').value)),
-          buyerVoen: document.getElementById('pay-voen').value,
-          buyerName: document.getElementById('pay-buyer').value,
+          splitCount: Number(valOf('pay-split')) || 1,
+          tipAmount: M.fromMinor(M.toMinor(valOf('pay-tip'))),
+          buyerVoen: valOf('pay-voen'),
+          buyerName: valOf('pay-buyer'),
           giftCode: giftCode,
           giftAmount: giftAmount,
-          loyaltyPhone: loyaltyOn() ? document.getElementById('pay-loy-phone').value : '',
+          loyaltyPhone: loyaltyOn() ? valOf('pay-loy-phone') : '',
           loyaltyAmount: loyaltyOn() ? M.fromMinor(loyM) : 0,
           itemIds: ctx.payPickIds,
           seatTableId: ctx.paySeatId,

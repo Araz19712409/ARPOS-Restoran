@@ -336,6 +336,112 @@ function publicPay(cfg) {
   return cleanPay(row.pay || emptyPay());
 }
 
+function officeSms(row) {
+  const src = row && row.sms && typeof row.sms === 'object' ? row.sms : emptySms();
+  return {
+    enabled: src.enabled === true,
+    url: String(src.url || ''),
+    login: String(src.login || ''),
+    hasPassword: !!String(src.password || ''),
+    sender: src.sender || '',
+    reserveText: src.reserveText || '',
+    waitText: src.waitText || ''
+  };
+}
+
+function officeUpdate(row) {
+  const src = row && row.update && typeof row.update === 'object' ? row.update : emptyUpdate();
+  return {
+    repo: String(src.repo || ''),
+    hasToken: !!String(src.token || '')
+  };
+}
+
+function officeBackupGithub(row) {
+  const src = row && row.backupGithub && typeof row.backupGithub === 'object' ? row.backupGithub : emptyBackupGithub();
+  return {
+    repo: String(src.repo || ''),
+    hasToken: !!String(src.token || '')
+  };
+}
+
+function officeEkassa(row) {
+  const ek = cleanEkassa({ ekassa: row && row.ekassa });
+  return {
+    provider: ek.provider,
+    emulator: ek.emulator,
+    voen: ek.voen,
+    objectName: ek.objectName,
+    objectCode: ek.objectCode,
+    operator: ek.operator,
+    note: ek.note,
+    wizarpos: {
+      host: ek.wizarpos.host,
+      port: ek.wizarpos.port,
+      cashier: ek.wizarpos.cashier,
+      hasApiKey: !!ek.wizarpos.apiKey
+    },
+    omnitech: {
+      host: ek.omnitech.host,
+      port: ek.omnitech.port,
+      user: ek.omnitech.user,
+      hasPassword: !!ek.omnitech.password
+    },
+    azsmart: {
+      host: ek.azsmart.host,
+      port: ek.azsmart.port,
+      merchantId: ek.azsmart.merchantId
+    }
+  };
+}
+
+function officeDelivery(row) {
+  const src = row && row.delivery && typeof row.delivery === 'object' ? row.delivery : emptyDelivery();
+  return {
+    provider: src.provider || 'manual',
+    autoPrintKitchen: src.autoPrintKitchen !== false,
+    hasWebhookSecret: !!String(src.webhookSecret || '')
+  };
+}
+
+function forOffice(cfg) {
+  const row = cfg || readSettings();
+  const shift = row.shift && typeof row.shift === 'object' ? row.shift : emptyShift();
+  const stock = row.stock && typeof row.stock === 'object' ? row.stock : emptyStock();
+  const cash = Number(shift.defaultStartingCash);
+  return {
+    serviceChargePercent: Number(row.serviceChargePercent) || 0,
+    waiterBonuses: Object.assign({}, row.waiterBonuses || {}),
+    backupFolder: String(row.backupFolder || ''),
+    ekassa: officeEkassa(row),
+    delivery: officeDelivery(row),
+    stock: {
+      salesWarehouseId: Number(stock.salesWarehouseId) >= 1 ? Number(stock.salesWarehouseId) : 1,
+      blockSaleIfShort: stock.blockSaleIfShort !== false
+    },
+    autoSendAllOnAccept: row.autoSendAllOnAccept !== false,
+    shift: {
+      autoOpenOnSale: shift.autoOpenOnSale !== false,
+      autoPrintZ: shift.autoPrintZ !== false,
+      defaultStartingCash: Number.isFinite(cash) && cash >= 0 ? Number(cash.toFixed(2)) : 0
+    },
+    loyalty: publicLoyalty(row.loyalty),
+    opsMode: row.opsMode === 'sales' ? 'sales' : 'full',
+    listenLan: row.listenLan !== false,
+    httpsPort: Number(row.httpsPort) || 3443,
+    branchName: String(row.branchName || '').slice(0, 80),
+    branchCode: String(row.branchCode || '').slice(0, 12),
+    sms: officeSms(row),
+    update: officeUpdate(row),
+    backupGithub: officeBackupGithub(row),
+    orderCardScale: clampScale(row.orderCardScale),
+    vatPercent: Number(row.vatPercent) || 0,
+    tillLocked: row.tillLocked === true,
+    receipt: publicReceipt(row),
+    pay: publicPay(row)
+  };
+}
+
 function forPos(cfg) {
   const row = cfg || readSettings();
   const shift = row.shift && typeof row.shift === 'object' ? row.shift : emptyShift();
@@ -921,6 +1027,7 @@ module.exports = {
   collectBranches: collectBranches,
   cleanBranchCode: cleanBranchCode,
   forPos: forPos,
+  forOffice: forOffice,
   publicEkassa: publicEkassa,
   publicDelivery: publicDelivery,
   emptyDelivery: emptyDelivery,

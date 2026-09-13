@@ -38,6 +38,7 @@
     setText('z-sum-cash', money(tot.cash) + ' AZN');
     setText('z-sum-card', money(tot.card) + ' AZN');
     setText('z-sum-gift', money(tot.gift) + ' AZN');
+    setText('z-sum-loyalty', money(tot.loyalty) + ' AZN');
     setText('z-sum-expected', money(packed && packed.expectedCash) + ' AZN');
     setText('z-sum-counted', money(row.countedCash) + ' AZN');
     setText('z-sum-diff', money(packed && packed.difference) + ' AZN');

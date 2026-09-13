@@ -2007,13 +2007,13 @@ app.get('/api/orders', function (req, res) {
 // Xidmət haqqı və ofisiant bonuslarını qaytarırıq
 app.get('/api/settings', function (req, res) {
   try {
-    if (!needAnyPerm(req, res, ['settings.view', 'users.view'])) {
+    if (!needPerm(req, res, 'settings.view')) {
       return;
     }
     res.json({
       success: true,
       data: {
-        settings: settings.readSettings(),
+        settings: settings.forOffice(),
         warehouses: stock.listWarehouses(),
         version: updater.version(),
         lan: {
@@ -5290,7 +5290,8 @@ app.post('/api/shifts/close', function (req, res) {
     row.snapshot = {
       totals: packed.totals,
       expectedCash: packed.expectedCash,
-      difference: packed.difference
+      difference: packed.difference,
+      drops: (packed.drops || row.drops || []).slice()
     };
     shifts.writeStore(store);
     return { terminalName: terminal.name, packed: packed };
@@ -5357,7 +5358,7 @@ app.post('/api/shifts/print-z', function (req, res) {
     res.status(404).json({ success: false, message: 'Bağlanmış növbə yoxdur.' });
     return;
   }
-  const packed = shifts.withExpected(row, orders.readOrders().orders, reservations.readReservations());
+  const packed = shifts.packedForPrint(row, orders.readOrders().orders, reservations.readReservations());
   const cfg = settings.readSettings();
   packed.terminalName = terminal.name;
   packed.branchName = cfg.branchName || '';

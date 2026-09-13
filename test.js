@@ -1768,6 +1768,159 @@ test('forPos secret sızdırmır; POS sahələri qalır', function () {
   });
 });
 
+test('GET settings: forOffice sirrsiz; settings.view tələb', function () {
+  withTempDb(function () {
+    settings.writeSettings({
+      sms: {
+        enabled: true,
+        login: 'sms-user',
+        password: 'sms-secret',
+        sender: 'ARPOS',
+        url: 'https://sms.example/send'
+      },
+      update: { repo: 'Araz19712409/ARPOS-Restoran', token: 'ghp_update_secret' },
+      backupGithub: { repo: 'org/priv', token: 'ghp_backup_secret' },
+      ekassa: {
+        provider: 'wizarpos',
+        emulator: true,
+        wizarpos: { apiKey: 'ek-api-key' },
+        omnitech: { password: 'om-pass' }
+      },
+      delivery: { provider: 'manual', webhookSecret: 'del-secret' }
+    });
+    const office = settings.forOffice();
+    const dump = JSON.stringify(office);
+    ['sms-secret', 'ghp_update_secret', 'ghp_backup_secret', 'ek-api-key', 'om-pass', 'del-secret'].forEach(function (secret) {
+      assert.strictEqual(dump.indexOf(secret), -1, secret);
+    });
+    function assertNoSecretKeys(obj) {
+      if (!obj || typeof obj !== 'object') {
+        return;
+      }
+      Object.keys(obj).forEach(function (key) {
+        assert.ok(['password', 'token', 'apiKey', 'webhookSecret', 'secret'].indexOf(key) < 0, key);
+        assertNoSecretKeys(obj[key]);
+      });
+    }
+    assertNoSecretKeys(office);
+    assert.strictEqual(office.sms.login, 'sms-user');
+    assert.strictEqual(office.sms.hasPassword, true);
+    assert.strictEqual(office.update.hasToken, true);
+    assert.strictEqual(office.delivery.hasWebhookSecret, true);
+    const store = users.readStore();
+    const waiter = store.roles.find(function (row) { return row.id === 3; });
+    const admin = store.roles.find(function (row) { return row.id === 1; });
+    const onlyUsers = { permissions: ['users.view'] };
+    assert.ok(waiter);
+    assert.ok(!users.hasPermission(waiter, 'settings.view'));
+    assert.ok(users.hasPermission(onlyUsers, 'users.view'));
+    assert.ok(!users.hasPermission(onlyUsers, 'settings.view'));
+    assert.ok(users.hasPermission(admin, 'settings.view'));
+  });
+  const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  const getSet = src.slice(src.indexOf("app.get('/api/settings'"), src.indexOf("app.put('/api/settings'"));
+  assert.ok(getSet.indexOf("needPerm(req, res, 'settings.view')") >= 0);
+  assert.ok(getSet.indexOf('users.view') < 0);
+  assert.ok(getSet.indexOf('forOffice()') >= 0);
+  assert.ok(getSet.indexOf('readSettings()') < 0);
+});
+
+test('Z loyalty sətiri + snapshot reprint', function () {
+  const at = '2026-09-13T12:00:00';
+  const list = [{
+    status: 'paid',
+    terminalId: 1,
+    payment: { at: at, cashAmount: 10, cardAmount: 0, prepaid: 0, total: 40, loyaltyAmount: 30 }
+  }];
+  const tot = shifts.totals(list, '2026-09-13T00:00:00', '2026-09-13T23:59:59', 1);
+  assert.strictEqual(tot.loyalty, 30);
+  assert.strictEqual(tot.cash, 10);
+  assert.strictEqual(tot.total, 40);
+  const ticket = printers.buildZTicket({ paperWidth: 80, charsPerLine: 48, font: 'A' }, {
+    shift: { openedAt: at, closedAt: at, closedByName: 'Ali', startingCash: 0, countedCash: 10, drops: [] },
+    totals: tot,
+    drops: [],
+    expectedCash: 10,
+    difference: 0,
+    terminalName: 'K1'
+  });
+  const text = ticket.toString('ascii');
+  assert.ok(text.indexOf('Ball') >= 0);
+  assert.ok(text.indexOf('30.00') >= 0);
+  const zero = printers.buildZTicket({ paperWidth: 80, charsPerLine: 48, font: 'A' }, {
+    shift: { openedAt: at, closedAt: at, startingCash: 0, countedCash: 10, drops: [] },
+    totals: { count: 1, total: 10, cash: 10, card: 0, gift: 0, loyalty: 0, prepaid: 0, refundCash: 0, refundCard: 0 },
+    drops: [],
+    expectedCash: 10,
+    difference: 0
+  }).toString('ascii');
+  assert.ok(zero.indexOf('Ball') < 0);
+
+  const closed = {
+    status: 'closed',
+    terminalId: 1,
+    openedAt: '2026-09-13T09:00:00',
+    closedAt: '2026-09-13T22:00:00',
+    startingCash: 0,
+    countedCash: 10,
+    drops: [{ amount: 2, note: 'old' }],
+    snapshot: {
+      totals: { count: 1, total: 40, cash: 10, card: 0, gift: 0, loyalty: 30, prepaid: 0, refundCash: 0, refundCard: 0 },
+      expectedCash: 8,
+      difference: 2,
+      drops: [{ amount: 2, note: 'snap' }]
+    }
+  };
+  const later = [{
+    status: 'paid',
+    terminalId: 1,
+    payment: { at: at, cashAmount: 99, cardAmount: 0, prepaid: 0, total: 99, loyaltyAmount: 0 }
+  }];
+  const fromSnap = shifts.packedForPrint(closed, later, { reservations: [] });
+  assert.strictEqual(fromSnap.totals.loyalty, 30);
+  assert.strictEqual(fromSnap.totals.cash, 10);
+  assert.strictEqual(fromSnap.expectedCash, 8);
+  assert.strictEqual(fromSnap.drops[0].note, 'snap');
+  const legacy = {
+    status: 'closed',
+    terminalId: 1,
+    openedAt: '2026-09-13T09:00:00',
+    closedAt: '2026-09-13T22:00:00',
+    startingCash: 0,
+    drops: []
+  };
+  const fb = shifts.packedForPrint(legacy, list, { reservations: [] });
+  assert.strictEqual(fb.totals.loyalty, 30);
+  assert.strictEqual(fb.totals.cash, 10);
+  const serverSrc = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  const close = serverSrc.slice(
+    serverSrc.indexOf("app.post('/api/shifts/close'"),
+    serverSrc.indexOf("app.post('/api/shifts/print-z'")
+  );
+  assert.ok(close.indexOf('snapshot') >= 0);
+  assert.ok(close.indexOf('drops') >= 0);
+  const printZ = serverSrc.slice(
+    serverSrc.indexOf("app.post('/api/shifts/print-z'"),
+    serverSrc.indexOf("app.post('/api/terminals/claim'")
+  );
+  assert.ok(printZ.indexOf('packedForPrint') >= 0);
+  const zView = fs.readFileSync(path.join(__dirname, 'public', 'shift-z-view.js'), 'utf8');
+  assert.ok(zView.indexOf('z-sum-loyalty') >= 0);
+  assert.ok(fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8').indexOf('id="z-sum-loyalty"') >= 0);
+});
+
+test('orders-pay.js null-safe split/due/cash', function () {
+  const pay = fs.readFileSync(path.join(__dirname, 'public', 'orders-pay.js'), 'utf8');
+  assert.ok(pay.indexOf('function node(') >= 0);
+  assert.ok(pay.indexOf('function valOf(') >= 0);
+  assert.ok(pay.indexOf("node('pay-split')") >= 0 || pay.indexOf("valOf('pay-split')") >= 0);
+  assert.ok(pay.indexOf("setDisabled('pay-split-minus'") >= 0);
+  assert.ok(pay.indexOf("setText('pay-due-amt'") >= 0);
+  assert.ok(pay.indexOf("document.getElementById('pay-split').value") < 0);
+  assert.ok(pay.indexOf("document.getElementById('pay-cash-amt').value") < 0);
+  assert.ok(pay.indexOf("document.getElementById('pay-due-amt').textContent") < 0);
+});
+
 test('pulsuz: Endirim yox → accept 403; kataloq 0 OK; pending gizlə; comp', function () {
   withTempDb(function () {
     const store = users.readStore();
@@ -1901,7 +2054,7 @@ test('kassir UX: simpleMode default; pay-open accept axını; dock CSS', functio
   assert.ok(ui.indexOf('function nextTableAfterCloseOn') >= 0);
   assert.ok(ui.indexOf("setOrderZone('floor')") >= 0);
   assert.ok(ui.indexOf('wantNext') >= 0);
-  const payOpen = ui.slice(ui.indexOf("getElementById('pay-open')"), ui.indexOf("getElementById('prepay-open')"));
+  const payOpen = ui.slice(ui.indexOf("on('pay-open'"), ui.indexOf("on('prepay-open'"));
   assert.ok(payOpen.indexOf('pending.length') >= 0);
   assert.ok(payOpen.indexOf('postAccept') >= 0);
   assert.ok(payOpen.indexOf('openPay()') >= 0);

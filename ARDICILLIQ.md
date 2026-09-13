@@ -205,6 +205,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 189. [x] 1.2.45 — Z Çap et: modal status + banner z-index
 190. [x] 1.2.46 — Z: ekran çap pəncərəsi + «Z hesabat çap edildi»
 191. [x] 1.2.47 — Ofis details: kənar klik + Esc bağlanır
+192. [x] 1.2.48 — GET settings sirrsiz; Z ball+snapshot; pay null-safe
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı

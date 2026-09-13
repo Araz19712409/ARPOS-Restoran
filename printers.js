@@ -980,6 +980,9 @@ function buildZTicket(printer, packed) {
   lines.push(line(width, 'Nagd', Number(tot.cash || 0).toFixed(2)));
   lines.push(line(width, 'Kart', Number(tot.card || 0).toFixed(2)));
   lines.push(line(width, 'Hediye', Number(tot.gift || 0).toFixed(2)));
+  if (Number(tot.loyalty) > 0) {
+    lines.push(line(width, 'Ball', Number(tot.loyalty).toFixed(2)));
+  }
   lines.push(line(width, 'Ilkin', Number(tot.prepaid || 0).toFixed(2)));
   if (tot.refundCash || tot.refundCard) {
     lines.push(line(width, 'Geri nagd', Number(tot.refundCash || 0).toFixed(2)));

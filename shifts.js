@@ -29,6 +29,7 @@ function totals(orderList, fromIso, toIso, terminalId) {
     cash: 0,
     card: 0,
     gift: 0,
+    loyalty: 0,
     prepaid: 0,
     refundCash: 0,
     refundCard: 0,
@@ -51,6 +52,13 @@ function totals(orderList, fromIso, toIso, terminalId) {
       out.cash += Number(pay.cashAmount) || 0;
       out.card += Number(pay.cardAmount) || 0;
       out.gift += gift;
+      var loy = Number(pay.loyaltyAmount);
+      if (!(loy > 0)) {
+        loy = (order.payments || []).reduce(function (sum, row) {
+          return sum + (Number(row.loyaltyAmount) || 0);
+        }, 0);
+      }
+      out.loyalty += loy || 0;
       out.prepaid += Number(pay.prepaid) || 0;
       out.total += Number(pay.total) || 0;
     }
@@ -65,6 +73,7 @@ function totals(orderList, fromIso, toIso, terminalId) {
     cash: money(out.cash),
     card: money(out.card),
     gift: money(out.gift),
+    loyalty: money(out.loyalty),
     prepaid: money(out.prepaid),
     refundCash: money(out.refundCash),
     refundCard: money(out.refundCard),
@@ -90,6 +99,24 @@ function currentFor(store, terminalId) {
   return store.shifts.find(function (row) {
     return row.terminalId === Number(terminalId) && row.status === 'open';
   }) || null;
+}
+
+function packedFromSnapshot(row) {
+  const snap = row && row.snapshot ? row.snapshot : {};
+  return {
+    shift: row,
+    totals: snap.totals,
+    drops: snap.drops || (row && row.drops) || [],
+    expectedCash: snap.expectedCash,
+    difference: snap.difference
+  };
+}
+
+function packedForPrint(row, orderList, book) {
+  if (row && row.status === 'closed' && row.snapshot && row.snapshot.totals) {
+    return packedFromSnapshot(row);
+  }
+  return withExpected(row, orderList, book);
 }
 
 function withExpected(row, orderList, book) {
@@ -212,6 +239,8 @@ module.exports = {
   openTableNames: openTableNames,
   currentFor: currentFor,
   withExpected: withExpected,
+  packedFromSnapshot: packedFromSnapshot,
+  packedForPrint: packedForPrint,
   openShiftForTill: openShiftForTill,
   closeBlockMessage: closeBlockMessage,
   maybeAutoOpen: maybeAutoOpen,
