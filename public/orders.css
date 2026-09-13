@@ -207,6 +207,9 @@
 .dot.empty { background: #6a573c; }
 .dot.reserved { background: #3d7ea6; }
 .dot.busy { background: #c9842a; }
+.dot.age-ok { background: #3d9a68; }
+.dot.age-warn { background: #e2c45a; }
+.dot.age-alert { background: #d45a5a; }
 
 .table-filters {
   display: flex;
@@ -285,6 +288,24 @@
   background: #8a4b12;
   border-color: #e2b65a;
   color: #fff6e8;
+}
+
+.table-tile.busy.age-ok {
+  background: #1a5c3a;
+  border-color: #3d9a68;
+  color: #e8fff2;
+}
+
+.table-tile.busy.age-warn {
+  background: #8a6a12;
+  border-color: #e2c45a;
+  color: #fff8e8;
+}
+
+.table-tile.busy.age-alert {
+  background: #7a1f1f;
+  border-color: #d45a5a;
+  color: #ffe8e8;
 }
 
 .table-tile.locked {

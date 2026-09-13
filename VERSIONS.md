@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` gələcəkdə: `pay.js` (ödəniş modal), `shift-badge.js` (növbə/Z), `zones.js` (zal/menyu/çek). Risk yüksək — ayrıca sprint.
 
+- **1.2.39** — 2026-09-13 — Zal: açıq vaxt + age-ok/warn/alert (30/60 dəq)
 - **1.2.38** — 2026-09-13 — Kassir UX: ödənişdən sonra «Növbəti masa» CTA
 - **1.2.37** — 2026-09-13 — Z: autoPrintZ, ekran xülasə, queue kind z, receipt brend
 - **1.2.36** — 2026-09-13 — Kassir UX: Qəbul+Ödəniş bir toxunuş, sadə ödəniş, planşet dock

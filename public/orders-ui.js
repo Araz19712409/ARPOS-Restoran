@@ -146,6 +146,95 @@
     return (order.linkedTableIds || []).indexOf(Number(id)) !== -1;
   }
 
+  var AGE_WARN_MIN = 30;
+  var AGE_ALERT_MIN = 60;
+
+  function orderOpenMs(order) {
+    if (!order) {
+      return 0;
+    }
+    var t = NaN;
+    var raw = order.openedAt || order.createdAt;
+    if (raw) {
+      t = Date.parse(raw);
+    }
+    if (!Number.isFinite(t)) {
+      (order.items || []).forEach(function (item) {
+        var cand = item && (item.createdAt || item.acceptedAt || item.sentAt);
+        if (!cand) {
+          return;
+        }
+        var tt = Date.parse(cand);
+        if (Number.isFinite(tt) && (!Number.isFinite(t) || tt < t)) {
+          t = tt;
+        }
+      });
+    }
+    if (!Number.isFinite(t) && order.updatedAt) {
+      t = Date.parse(order.updatedAt);
+    }
+    return Number.isFinite(t) ? t : 0;
+  }
+
+  function ageMinutesFromMs(openMs, nowMs) {
+    if (!openMs) {
+      return -1;
+    }
+    var now = Number.isFinite(nowMs) ? nowMs : Date.now();
+    return Math.max(0, Math.floor((now - openMs) / 60000));
+  }
+
+  function ageClass(mins) {
+    if (!(mins >= 0)) {
+      return '';
+    }
+    if (mins >= AGE_ALERT_MIN) {
+      return 'age-alert';
+    }
+    if (mins >= AGE_WARN_MIN) {
+      return 'age-warn';
+    }
+    return 'age-ok';
+  }
+
+  function formatOpenAge(mins) {
+    if (!(mins >= 0)) {
+      return '';
+    }
+    if (mins < 60) {
+      return mins + ' dəq';
+    }
+    var h = Math.floor(mins / 60);
+    var m = mins % 60;
+    return h + 's ' + (m < 10 ? '0' : '') + m + 'd';
+  }
+
+  function openOrderForTable(id) {
+    return orders.find(function (item) {
+      return coversTable(item, id);
+    }) || null;
+  }
+
+  function busyAgeParts(order, nowMs) {
+    var mins = ageMinutesFromMs(orderOpenMs(order), nowMs);
+    return {
+      mins: mins,
+      cls: ageClass(mins),
+      text: formatOpenAge(mins)
+    };
+  }
+
+  if (typeof window !== 'undefined') {
+    window.PosFloorAge = {
+      WARN_MIN: AGE_WARN_MIN,
+      ALERT_MIN: AGE_ALERT_MIN,
+      orderOpenMs: orderOpenMs,
+      ageMinutesFromMs: ageMinutesFromMs,
+      ageClass: ageClass,
+      formatOpenAge: formatOpenAge
+    };
+  }
+
   function openOrder() {
     if (tableId === -1 || tableId === -2) {
       return null;
@@ -596,16 +685,21 @@
       return;
     }
     box.innerHTML = '';
+    var nowMs = Date.now();
     orders.filter(function (item) {
       return item.status === 'open' && (item.channel === 'takeaway' || item.channel === 'delivery' || Number(item.tableId) < 0);
     }).forEach(function (item) {
+      var age = busyAgeParts(item, nowMs);
       var btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'table-tile busy' + (item.tableId === tableId ? ' selected' : '');
+      btn.className = 'table-tile busy'
+        + (age.cls ? ' ' + age.cls : '')
+        + (item.tableId === tableId ? ' selected' : '');
       var label = document.createElement('span');
       label.textContent = item.tableName || (item.channel === 'delivery' ? 'Çatdırılma' : 'Takeaway');
       var small = document.createElement('small');
-      small.textContent = item.guestName || (item.channel === 'delivery' ? 'Çatdırılma' : 'Takeaway');
+      var base = item.guestName || (item.channel === 'delivery' ? 'Çatdırılma' : 'Takeaway');
+      small.textContent = age.text ? (base + ' · ' + age.text) : base;
       btn.appendChild(label);
       btn.appendChild(small);
       var badge = document.createElement('span');
@@ -631,6 +725,7 @@
     tabs.innerHTML = '';
     board.innerHTML = '';
     renderServiceBoard();
+    var nowMs = Date.now();
     floors.forEach(function (floor) {
       var btn = document.createElement('button');
       btn.type = 'button';
@@ -674,9 +769,15 @@
       grid.className = 'table-grid';
       roomTables.forEach(function (table) {
         var state = tableState(table);
+        var open = state === 'busy' ? openOrderForTable(table.id) : null;
+        var age = open ? busyAgeParts(open, nowMs) : { cls: '', text: '' };
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'table-tile ' + (table.shape === 'round' ? 'round' : '') + ' ' + state + (table.id === tableId ? ' selected' : '');
+        btn.className = 'table-tile '
+          + (table.shape === 'round' ? 'round ' : '')
+          + state
+          + (age.cls ? ' ' + age.cls : '')
+          + (table.id === tableId ? ' selected' : '');
         var label = document.createElement('span');
         label.textContent = table.name || ('Masa ' + table.number);
         var hold = tableLock(table.id);
@@ -688,9 +789,15 @@
           var linked = orders.some(function (item) {
             return item.status === 'open' && (item.linkedTableIds || []).indexOf(table.id) !== -1;
           });
-          small.textContent = linked
-            ? 'Birləşib'
-            : (state === 'busy' ? 'Hesab' : (state === 'reserved' ? 'Rezerv' : table.capacity + ' nəfər'));
+          if (state === 'busy') {
+            small.textContent = linked
+              ? (age.text ? ('Birləşib · ' + age.text) : 'Birləşib')
+              : (age.text || 'Hesab');
+          } else if (state === 'reserved') {
+            small.textContent = 'Rezerv';
+          } else {
+            small.textContent = table.capacity + ' nəfər';
+          }
         }
         btn.appendChild(label);
         btn.appendChild(small);
@@ -3498,6 +3605,9 @@
   window.setInterval(function () {
     if (waiter && products.length) {
       renderProducts();
+    }
+    if (waiter) {
+      renderFloor();
     }
   }, 30000);
 

@@ -1905,4 +1905,68 @@ test('Z: autoPrintZ; queue z; receipt brand; açıq masa blok', function () {
   assert.ok(fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8').indexOf('shift-auto-print-z') >= 0);
 });
 
+test('zal yaş: age-ok/warn/alert; vaxt format; boşda age yox', function () {
+  function ageClass(mins) {
+    if (!(mins >= 0)) {
+      return '';
+    }
+    if (mins >= 60) {
+      return 'age-alert';
+    }
+    if (mins >= 30) {
+      return 'age-warn';
+    }
+    return 'age-ok';
+  }
+  function formatOpenAge(mins) {
+    if (!(mins >= 0)) {
+      return '';
+    }
+    if (mins < 60) {
+      return mins + ' dəq';
+    }
+    var h = Math.floor(mins / 60);
+    var m = mins % 60;
+    return h + 's ' + (m < 10 ? '0' : '') + m + 'd';
+  }
+  function ageMinutesFromMs(openMs, nowMs) {
+    if (!openMs) {
+      return -1;
+    }
+    return Math.max(0, Math.floor((nowMs - openMs) / 60000));
+  }
+  const now = Date.parse('2026-09-13T12:00:00.000Z');
+  assert.strictEqual(ageClass(10), 'age-ok');
+  assert.strictEqual(ageClass(40), 'age-warn');
+  assert.strictEqual(ageClass(70), 'age-alert');
+  assert.strictEqual(formatOpenAge(12), '12 dəq');
+  assert.strictEqual(formatOpenAge(65), '1s 05d');
+  assert.strictEqual(ageClass(ageMinutesFromMs(now - 10 * 60000, now)), 'age-ok');
+  assert.strictEqual(ageClass(ageMinutesFromMs(now - 40 * 60000, now)), 'age-warn');
+  assert.strictEqual(ageClass(ageMinutesFromMs(now - 70 * 60000, now)), 'age-alert');
+  assert.strictEqual(formatOpenAge(ageMinutesFromMs(now - 70 * 60000, now)), '1s 10d');
+  assert.strictEqual(ageClass(-1), '');
+  assert.strictEqual(formatOpenAge(-1), '');
+
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(ui.indexOf('function ageClass') >= 0);
+  assert.ok(ui.indexOf('function formatOpenAge') >= 0);
+  assert.ok(ui.indexOf('AGE_WARN_MIN = 30') >= 0);
+  assert.ok(ui.indexOf('AGE_ALERT_MIN = 60') >= 0);
+  assert.ok(ui.indexOf('busyAgeParts') >= 0);
+  assert.ok(ui.indexOf('renderServiceBoard') >= 0);
+  assert.ok(ui.indexOf("age.cls ? ' ' + age.cls : ''") >= 0 || ui.indexOf('age.cls') >= 0);
+  assert.ok(ui.indexOf("state === 'busy'") >= 0);
+  assert.ok(ui.indexOf('renderFloor()') >= 0);
+  const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
+  assert.ok(css.indexOf('.table-tile.busy.age-ok') >= 0);
+  assert.ok(css.indexOf('.table-tile.busy.age-warn') >= 0);
+  assert.ok(css.indexOf('.table-tile.busy.age-alert') >= 0);
+  assert.ok(css.indexOf('.table-tile.selected') >= 0);
+  const selIdx = css.indexOf('.table-tile.selected');
+  const alertIdx = css.indexOf('.table-tile.busy.age-alert');
+  assert.ok(selIdx > alertIdx);
+  assert.ok(css.indexOf('box-shadow: 0 0 0 2px #e2b65a') >= 0);
+});
+
 console.log('Bütün testlər keçdi.');

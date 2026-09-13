@@ -196,6 +196,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 180. [x] 1.2.36 — Kassir UX: Qəbul+Ödəniş, sadə ödəniş, dock
 181. [x] 1.2.37 — Z: autoPrintZ, ekran xülasə, queue z, brend
 182. [x] 1.2.38 — Kassir UX: ödənişdən sonra «Növbəti masa»
+183. [x] 1.2.39 — Zal: açıq vaxt + age rəng (30/60)
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı
