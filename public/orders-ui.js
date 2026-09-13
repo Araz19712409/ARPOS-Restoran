@@ -1688,49 +1688,59 @@
       if (!ok) {
         return;
       }
-      busy = true;
-      say('Göndərilir...', 'warn');
-      return api('/api/orders/accept', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tableId: tableId,
-          waiterId: waiter.user.id,
-          terminalId: terminal ? terminal.id : 0,
-          guests: pendingGuests,
-          guestName: pendingGuestName,
-          guestPhone: pendingGuestPhone,
-          guestAddress: pendingGuestAddress,
-          courierName: pendingCourier,
-          items: pending.map(function (item) {
-            return {
-              productId: item.productId,
-              qty: item.qty,
-              note: item.note,
-              portionId: item.portionId,
-              extraIds: item.extraIds,
-              course: item.course,
-              complimentary: item.complimentary,
-              salePrice: item.salePrice
-            };
-          })
-        })
-      }).then(function (body) {
-        pending = [];
-        if (body.data && body.data.order && body.data.order.tableId) {
-          tableId = body.data.order.tableId;
-        }
-        clearPendingGuests(tableId);
-        var warns = (body.data && body.data.warnings) || [];
-        say(warns.length ? warns.join(' ') : 'Sifariş qəbul olundu.');
-        return load();
-      });
+      return postAccept();
     }).catch(function (error) {
       say(error.message, 'err');
-    }).then(function () {
-      busy = false;
     });
   });
+
+  function postAccept() {
+    busy = true;
+    say('Göndərilir...', 'warn');
+    return api('/api/orders/accept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tableId: tableId,
+        waiterId: waiter.user.id,
+        terminalId: terminal ? terminal.id : 0,
+        guests: pendingGuests,
+        guestName: pendingGuestName,
+        guestPhone: pendingGuestPhone,
+        guestAddress: pendingGuestAddress,
+        courierName: pendingCourier,
+        items: pending.map(function (item) {
+          return {
+            productId: item.productId,
+            qty: item.qty,
+            note: item.note,
+            portionId: item.portionId,
+            extraIds: item.extraIds,
+            course: item.course,
+            complimentary: item.complimentary,
+            salePrice: item.salePrice
+          };
+        })
+      })
+    }).then(function (body) {
+      pending = [];
+      if (body.data && body.data.order && body.data.order.tableId) {
+        tableId = body.data.order.tableId;
+      }
+      clearPendingGuests(tableId);
+      var warns = (body.data && body.data.warnings) || [];
+      say(warns.length ? warns.join(' ') : 'Sifariş qəbul olundu.');
+      return load().then(function () {
+        return body;
+      });
+    }).then(function (body) {
+      busy = false;
+      return body;
+    }, function (error) {
+      busy = false;
+      throw error;
+    });
+  }
 
   function lineMinor(item) {
     return M.mulQty(M.toMinor(item && item.salePrice), item && item.qty);
@@ -2205,6 +2215,38 @@
     payLock = false;
   }
 
+  function applyPaySimpleMode() {
+    var simple = payMode === 'order' && !(settings.pay && settings.pay.simpleMode === false);
+    var modal = el('pay-modal');
+    if (modal) {
+      modal.classList.toggle('pay-simple', simple);
+    }
+    var hidePro = simple;
+    ['pay-pick-wrap', 'pay-tip-wrap', 'pay-breakdown', 'split-wrap'].forEach(function (id) {
+      var n = el(id);
+      if (n) {
+        n.classList.toggle('hidden', hidePro);
+      }
+    });
+    ['pay-voen', 'pay-buyer', 'pay-gift'].forEach(function (id) {
+      var n = el(id);
+      var lab = n && n.closest ? n.closest('label') : null;
+      if (lab) {
+        lab.classList.toggle('hidden', hidePro);
+      }
+    });
+    var more = el('pay-more');
+    var loyOn = !!(settings.loyalty && settings.loyalty.enabled);
+    if (more) {
+      if (simple) {
+        more.classList.toggle('hidden', !loyOn);
+        more.open = !!loyOn;
+      } else {
+        more.classList.remove('hidden');
+      }
+    }
+  }
+
   function openPay() {
     try {
       if (!M || !M.toMinor) {
@@ -2257,18 +2299,6 @@
       if (prepayWrap) {
         prepayWrap.classList.add('hidden');
       }
-      var tipWrap = el('pay-tip-wrap');
-      if (tipWrap) {
-        tipWrap.classList.remove('hidden');
-      }
-      var breakdown = el('pay-breakdown');
-      if (breakdown) {
-        breakdown.classList.remove('hidden');
-      }
-      var splitWrap = el('split-wrap');
-      if (splitWrap) {
-        splitWrap.classList.remove('hidden');
-      }
       var splitBox = el('pay-split');
       if (splitBox && !splitBox.value) {
         setVal('pay-split', '1');
@@ -2287,6 +2317,7 @@
         : (cut.n > 1 ? (cut.n + ' nəfər • hər pay ' + payDue.toFixed(2) + ' AZN') : ''));
       setPayDueView();
       setPayMethod(keepMethod);
+      applyPaySimpleMode();
       if (payModal) {
         payModal.classList.remove('hidden');
       }
@@ -2332,6 +2363,7 @@
     setPayMethod('cash');
     var payModal = el('pay-modal');
     if (payModal) {
+      payModal.classList.remove('pay-simple');
       payModal.classList.remove('hidden');
     }
   }
@@ -2375,7 +2407,43 @@
     syncPayFields('tender');
   });
   document.getElementById('pay-open').addEventListener('click', function () {
-    setOrderZone('check');
+    if (busy) {
+      return;
+    }
+    if (!can('payments.take')) {
+      payFail('Ödənişə icazəniz yoxdur.');
+      return;
+    }
+    if (!waiter) {
+      showLock();
+      return;
+    }
+    if (pending.length) {
+      if (!can('orders.create')) {
+        payFail('Sifariş yazmağa icazəniz yoxdur.');
+        return;
+      }
+      if (!tableId) {
+        payFail('Əvvəlcə masa seçin.');
+        return;
+      }
+      if (!terminal) {
+        payFail('Terminal seçin.');
+        ensureTerminal(true);
+        return;
+      }
+      window.askYes('Qəbul + ödəniş', 'Sətirlər qəbul edilib ödəniş açılsın?').then(function (ok) {
+        if (!ok) {
+          return;
+        }
+        return postAccept().then(function () {
+          openPay();
+        });
+      }).catch(function (error) {
+        payFail(error.message);
+      });
+      return;
+    }
     openPay();
   });
   document.getElementById('prepay-open').addEventListener('click', openPrepay);

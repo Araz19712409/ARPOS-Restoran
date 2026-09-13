@@ -2054,7 +2054,8 @@ app.put('/api/settings', function (req, res) {
       vatPercent: body.vatPercent,
       tillLocked: body.tillLocked,
       loyalty: body.loyalty,
-      receipt: body.receipt
+      receipt: body.receipt,
+      pay: body.pay
     });
     if (next.tillLocked && !prev.tillLocked) {
       sessions.dropOthers(users.adminIds());

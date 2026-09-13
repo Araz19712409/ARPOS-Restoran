@@ -410,6 +410,11 @@
     setVal('receipt-footer-3', footers[2] || '');
   }
 
+  function fillPay() {
+    var pay = current.pay || {};
+    setChecked('pay-simple-mode', pay.simpleMode !== false);
+  }
+
   function sendSmsTest() {
     if (!waiter) {
       say('PIN ilə daxil olun.', 'err');
@@ -528,7 +533,10 @@
           minRedeem: Number(document.getElementById('loyalty-min') &&
             document.getElementById('loyalty-min').value) || 1
         },
-        receipt: receiptPayload()
+        receipt: receiptPayload(),
+        pay: {
+          simpleMode: !(el('pay-simple-mode') && !el('pay-simple-mode').checked)
+        }
       })
     }).then(function (body) {
       current = body.data || current;
@@ -708,6 +716,7 @@
     fillUpdate(body.data.version);
     fillBackupGithub();
     fillReceipt();
+    fillPay();
     if (window.PosNav) {
       window.PosNav.rememberOps(mode, waiter);
     }

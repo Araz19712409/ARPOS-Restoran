@@ -1673,6 +1673,8 @@ test('forPos secret sızdırmır; POS sahələri qalır', function () {
     assert.strictEqual(pub.loyalty.enabled, false);
     assert.ok(pub.receipt);
     assert.strictEqual(typeof pub.receipt.title, 'string');
+    assert.ok(pub.pay);
+    assert.strictEqual(pub.pay.simpleMode, true);
     assert.strictEqual(pub.sms.enabled, true);
     assert.strictEqual(pub.sms.sender, 'ARPOS');
     const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
@@ -1782,6 +1784,35 @@ test('pulsuz: Endirim yox → accept 403; kataloq 0 OK; pending gizlə; comp', f
   assert.ok(pending.indexOf('data-act="comp">Pulsuz') < 0);
   assert.ok(ui.indexOf("can('orders.create')") >= 0);
   assert.ok(fs.existsSync(path.join(__dirname, 'PERMISSIONS.md')));
+});
+
+test('kassir UX: simpleMode default; pay-open accept axını; dock CSS', function () {
+  withTempDb(function () {
+    const cfg = settings.readSettings();
+    assert.ok(cfg.pay);
+    assert.strictEqual(cfg.pay.simpleMode, true);
+    const off = settings.writeSettings({ pay: { simpleMode: false } });
+    assert.strictEqual(off.pay.simpleMode, false);
+    const pub = settings.forPos(off);
+    assert.strictEqual(pub.pay.simpleMode, false);
+    const back = settings.writeSettings({ pay: { simpleMode: true } });
+    assert.strictEqual(back.pay.simpleMode, true);
+    assert.strictEqual(settings.forPos().pay.simpleMode, true);
+  });
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(ui.indexOf("askYes('Qəbul + ödəniş'") >= 0 || ui.indexOf('Qəbul + ödəniş') >= 0);
+  assert.ok(ui.indexOf('postAccept') >= 0);
+  assert.ok(ui.indexOf('applyPaySimpleMode') >= 0);
+  assert.ok(ui.indexOf('function postAccept') >= 0);
+  const payOpen = ui.slice(ui.indexOf("getElementById('pay-open')"), ui.indexOf("getElementById('prepay-open')"));
+  assert.ok(payOpen.indexOf('pending.length') >= 0);
+  assert.ok(payOpen.indexOf('postAccept') >= 0);
+  assert.ok(payOpen.indexOf('openPay()') >= 0);
+  const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
+  assert.ok(css.indexOf('z-index: 25') >= 0);
+  assert.ok(css.indexOf('position: fixed') >= 0);
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8');
+  assert.ok(html.indexOf('id="pay-simple-mode"') >= 0);
 });
 
 console.log('Bütün testlər keçdi.');

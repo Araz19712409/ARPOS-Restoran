@@ -1378,12 +1378,30 @@
   .order-page[data-zone="floor"] .check-foot,
   .order-page[data-zone="menu"] .check-foot {
     pointer-events: auto;
-    position: relative;
-    z-index: 20;
-    margin-top: auto;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+    z-index: 25;
+    margin: 0;
     background: #221d17;
     padding: 8px 10px;
     border-top: 1px solid #3d3428;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
+  }
+
+  .order-page[data-zone="floor"] .check-foot .main-actions,
+  .order-page[data-zone="menu"] .check-foot .main-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .order-page[data-zone="floor"] .check-foot .check-hint,
+  .order-page[data-zone="floor"] .check-foot #message,
+  .order-page[data-zone="menu"] .check-foot .check-hint,
+  .order-page[data-zone="menu"] .check-foot #message {
+    display: none;
   }
 
   .order-page[data-zone="floor"] #pay-open,
@@ -1392,14 +1410,30 @@
   .order-page[data-zone="menu"] #accept-order {
     min-height: 52px;
     font-size: 1.05rem;
+    pointer-events: auto;
+    position: relative;
+    z-index: 26;
   }
 
   .order-page[data-zone="floor"] #pay-open,
   .order-page[data-zone="menu"] #pay-open {
     pointer-events: auto;
-    position: relative;
-    z-index: 21;
   }
+
+  .order-zones {
+    z-index: 15;
+  }
+}
+
+#pay-modal.pay-simple #pay-pick-wrap,
+#pay-modal.pay-simple #pay-tip-wrap,
+#pay-modal.pay-simple #pay-breakdown,
+#pay-modal.pay-simple #split-wrap {
+  display: none !important;
+}
+
+#pay-modal.pay-simple .pay-step-label {
+  display: none;
 }
 
 .receipt-card {

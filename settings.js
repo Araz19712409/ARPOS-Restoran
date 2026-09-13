@@ -237,6 +237,23 @@ function publicReceipt(cfg) {
   return cleanReceipt(row.receipt || emptyReceipt());
 }
 
+function emptyPay() {
+  return { simpleMode: true };
+}
+
+function cleanPay(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  return {
+    simpleMode: !(src.simpleMode === false || src.simpleMode === 0 ||
+      src.simpleMode === '0' || src.simpleMode === 'false')
+  };
+}
+
+function publicPay(cfg) {
+  const row = cfg || readSettings();
+  return cleanPay(row.pay || emptyPay());
+}
+
 function forPos(cfg) {
   const row = cfg || readSettings();
   const shift = row.shift && typeof row.shift === 'object' ? row.shift : emptyShift();
@@ -264,7 +281,8 @@ function forPos(cfg) {
     delivery: publicDelivery(row.delivery),
     sms: publicSms(row.sms),
     loyalty: publicLoyalty(row.loyalty),
-    receipt: publicReceipt(row)
+    receipt: publicReceipt(row),
+    pay: publicPay(row)
   };
 }
 
@@ -290,7 +308,8 @@ function defaults() {
     orderCardScale: 2,
     vatPercent: 0,
     tillLocked: false,
-    receipt: emptyReceipt()
+    receipt: emptyReceipt(),
+    pay: emptyPay()
   };
 }
 
@@ -687,7 +706,8 @@ function normalize(raw, prev) {
     orderCardScale: clampScale(raw && raw.orderCardScale != null ? raw.orderCardScale : 2),
     vatPercent: clampPercent(raw && raw.vatPercent),
     tillLocked: raw && (raw.tillLocked === true || raw.tillLocked === 1 || raw.tillLocked === '1' || raw.tillLocked === 'true'),
-    receipt: cleanReceipt(raw && raw.receipt)
+    receipt: cleanReceipt(raw && raw.receipt),
+    pay: cleanPay(raw && raw.pay)
   };
 }
 
@@ -722,7 +742,8 @@ function writeSettings(data) {
     orderCardScale: data.orderCardScale !== undefined ? data.orderCardScale : prev.orderCardScale,
     vatPercent: data.vatPercent !== undefined ? data.vatPercent : prev.vatPercent,
     tillLocked: data.tillLocked !== undefined ? data.tillLocked : prev.tillLocked,
-    receipt: data.receipt !== undefined ? data.receipt : prev.receipt
+    receipt: data.receipt !== undefined ? data.receipt : prev.receipt,
+    pay: data.pay !== undefined ? data.pay : prev.pay
   }, prev);
   if (next.backupFolder !== prev.backupFolder) {
     try {
@@ -824,6 +845,9 @@ module.exports = {
   cleanReceipt: cleanReceipt,
   receiptTitle: receiptTitle,
   publicReceipt: publicReceipt,
+  emptyPay: emptyPay,
+  cleanPay: cleanPay,
+  publicPay: publicPay,
   autoSendAllOnAccept: autoSendAllOnAccept,
   unsentPayHint: unsentPayHint,
   blockSaleIfShort: blockSaleIfShort,
