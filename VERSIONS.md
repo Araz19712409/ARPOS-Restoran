@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` gələcəkdə: `pay.js` (ödəniş modal), `shift-badge.js` (növbə/Z), `zones.js` (zal/menyu/çek). Risk yüksək — ayrıca sprint.
 
+- **1.2.42** — 2026-09-13 — Printer: Windows/USB adı + TCP; Win32 RAW
 - **1.2.41** — 2026-09-13 — Çek logo Faza 1b (ekran/brauzer; termal raster TODO)
 - **1.2.40** — 2026-09-13 — Kassir: favoritlər (localStorage) + barkod fokus
 - **1.2.39** — 2026-09-13 — Zal: açıq vaxt + age-ok/warn/alert (30/60 dəq)

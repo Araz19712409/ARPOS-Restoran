@@ -1,5 +1,8 @@
 const net = require('net');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
+const { spawn } = require('child_process');
 const logger = require('./logger');
 const store = require('./store');
 const db = require('./db');
@@ -10,6 +13,17 @@ function printersFile() {
 
 function queueFile() {
   return db.dataFile('print-queue.json');
+}
+
+function isWin32() {
+  return process.platform === 'win32';
+}
+
+function printerPath(printer) {
+  if (printer && printer.connectionType === 'windows') {
+    return 'win:' + String(printer.windowsName || '');
+  }
+  return String((printer && printer.host) || '') + ':' + String((printer && printer.port) || '');
 }
 
 // Azərbaycan hərflərini termal printer üçün oxunaqlı edirik
@@ -36,12 +50,34 @@ function isHost(value) {
   return /^[a-zA-Z0-9][a-zA-Z0-9.-]{0,250}$/.test(host);
 }
 
+function cleanWindowsName(value) {
+  return String(value || '')
+    .replace(/[\r\n\0]/g, '')
+    .trim()
+    .slice(0, 120);
+}
+
+function migratePrinterRow(row) {
+  const item = row && typeof row === 'object' ? Object.assign({}, row) : {};
+  if (item.connectionType !== 'windows') {
+    item.connectionType = 'tcp';
+  }
+  item.windowsName = cleanWindowsName(item.windowsName);
+  if (item.connectionType === 'windows') {
+    item.host = '';
+    item.port = 0;
+  } else {
+    item.port = Number(item.port) || 9100;
+  }
+  return item;
+}
+
 // Printer anbarını oxuyuruq
 function readStore() {
   const raw = store.readJson(printersFile());
   return {
     nextPrinterId: Number(raw.nextPrinterId) || 1,
-    printers: Array.isArray(raw.printers) ? raw.printers : []
+    printers: (Array.isArray(raw.printers) ? raw.printers : []).map(migratePrinterRow)
   };
 }
 
@@ -54,8 +90,10 @@ function writeStore(data) {
 function normalizePrinter(body, current) {
   const src = current || {};
   const name = String(body.name || src.name || '').trim().slice(0, 40);
-  const host = String(body.host || src.host || '').trim();
-  const port = Number(body.port != null ? body.port : src.port || 9100);
+  const connectionType = (body.connectionType || src.connectionType) === 'windows' ? 'windows' : 'tcp';
+  let host = String(body.host != null ? body.host : (src.host || '')).trim();
+  let port = Number(body.port != null ? body.port : (src.port != null ? src.port : 9100));
+  let windowsName = cleanWindowsName(body.windowsName != null ? body.windowsName : src.windowsName);
   const paperWidth = Number(body.paperWidth != null ? body.paperWidth : src.paperWidth || 80);
   const copies = Number(body.copies != null ? body.copies : src.copies || 1);
   const defaultChars = paperWidth === 58 ? 32 : 48;
@@ -71,11 +109,20 @@ function normalizePrinter(body, current) {
   if (!name) {
     return { error: 'Printer adı vacibdir.' };
   }
-  if (!isHost(host)) {
-    return { error: 'IP ünvan və ya host düzgün deyil.' };
-  }
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    return { error: 'Port 1-65535 arasında olmalıdır.' };
+  if (connectionType === 'windows') {
+    if (!windowsName) {
+      return { error: 'Windows printer adı vacibdir.' };
+    }
+    host = '';
+    port = 0;
+  } else {
+    windowsName = '';
+    if (!isHost(host)) {
+      return { error: 'IP ünvan və ya host düzgün deyil.' };
+    }
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      return { error: 'Port 1-65535 arasında olmalıdır.' };
+    }
   }
   if (paperWidth !== 58 && paperWidth !== 80) {
     return { error: 'Kağız eni 58 və ya 80 mm olmalıdır.' };
@@ -100,8 +147,10 @@ function normalizePrinter(body, current) {
     printer: {
       id: src.id || 0,
       name: name,
+      connectionType: connectionType,
       host: host,
       port: port,
+      windowsName: windowsName,
       paperWidth: paperWidth,
       copies: copies,
       charsPerLine: charsPerLine,
@@ -163,6 +212,299 @@ function connectPrinter(host, port, timeoutMs) {
       done(false, error.message || 'Qoşulmadı');
     });
   });
+}
+
+function runPowerShell(script, timeoutMs) {
+  return new Promise(function (resolve) {
+    if (!isWin32()) {
+      resolve({ ok: false, code: 1, stdout: '', stderr: 'not-windows' });
+      return;
+    }
+    const child = spawn('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy', 'Bypass',
+      '-Command', script
+    ], { windowsHide: true });
+    let stdout = '';
+    let stderr = '';
+    let finished = false;
+    const timer = setTimeout(function () {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      try {
+        child.kill();
+      } catch (error) {
+        /* keç */
+      }
+      resolve({ ok: false, code: 1, stdout: stdout, stderr: 'timeout' });
+    }, timeoutMs || 15000);
+    child.stdout.on('data', function (chunk) {
+      stdout += String(chunk || '');
+    });
+    child.stderr.on('data', function (chunk) {
+      stderr += String(chunk || '');
+    });
+    child.on('error', function (error) {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      clearTimeout(timer);
+      resolve({ ok: false, code: 1, stdout: stdout, stderr: error.message || 'spawn' });
+    });
+    child.on('close', function (code) {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      clearTimeout(timer);
+      resolve({ ok: code === 0, code: code || 0, stdout: stdout, stderr: stderr });
+    });
+  });
+}
+
+function listWindowsPrinters() {
+  if (!isWin32()) {
+    return Promise.resolve({
+      ok: false,
+      platform: process.platform,
+      names: [],
+      message: 'Windows printer siyahısı yalnız Windows kassada.'
+    });
+  }
+  if (process.env.ARPOS_MOCK_WINDOWS_PRINT === '1') {
+    return Promise.resolve({
+      ok: true,
+      platform: 'win32',
+      names: ['Mock USB Printer', 'Mock Receipt'],
+      message: ''
+    });
+  }
+  const script = "$ErrorActionPreference='Stop'; " +
+    "Get-Printer | Select-Object -ExpandProperty Name | ForEach-Object { $_ }";
+  return runPowerShell(script, 12000).then(function (out) {
+    if (!out.ok) {
+      return {
+        ok: false,
+        platform: 'win32',
+        names: [],
+        message: (out.stderr || out.stdout || 'Siyahı alınmadı.').trim().slice(0, 200)
+      };
+    }
+    const names = String(out.stdout || '')
+      .split(/\r?\n/)
+      .map(function (row) { return cleanWindowsName(row); })
+      .filter(Boolean);
+    const uniq = [];
+    names.forEach(function (name) {
+      if (uniq.indexOf(name) < 0) {
+        uniq.push(name);
+      }
+    });
+    return { ok: true, platform: 'win32', names: uniq, message: '' };
+  });
+}
+
+function probeWindowsPrinter(windowsName) {
+  const name = cleanWindowsName(windowsName);
+  const started = Date.now();
+  function pack(ok, message) {
+    return {
+      ok: ok,
+      message: message,
+      ms: Date.now() - started,
+      at: new Date().toISOString()
+    };
+  }
+  if (!name) {
+    return Promise.resolve(pack(false, 'Windows printer adı boşdur.'));
+  }
+  if (!isWin32()) {
+    return Promise.resolve(pack(false, 'Windows printer yalnız Windows kassada işləyir.'));
+  }
+  if (process.env.ARPOS_MOCK_WINDOWS_PRINT === '1') {
+    return Promise.resolve(pack(true, 'Mock: printer tapıldı'));
+  }
+  const safe = name.replace(/'/g, "''");
+  const script = "$ErrorActionPreference='Stop'; " +
+    "$n='" + safe + "'; " +
+    "$p=Get-Printer -Name $n -ErrorAction SilentlyContinue; " +
+    "if(-not $p){ Write-Error 'Printer tapilmadi'; exit 1 }; " +
+    "Write-Output 'OK'";
+  return runPowerShell(script, 10000).then(function (out) {
+    if (!out.ok) {
+      return pack(false, (out.stderr || 'Printer tapılmadı.').trim().slice(0, 180));
+    }
+    return pack(true, 'Windows printer tapıldı');
+  });
+}
+
+function sendWindowsRaw(windowsName, payload, timeoutMs) {
+  const name = cleanWindowsName(windowsName);
+  const started = Date.now();
+  function pack(ok, message) {
+    return {
+      ok: ok,
+      message: message,
+      ms: Date.now() - started,
+      at: new Date().toISOString()
+    };
+  }
+  if (!name) {
+    return Promise.resolve(pack(false, 'Windows printer adı boşdur.'));
+  }
+  if (!isWin32()) {
+    return Promise.resolve(pack(false, 'Windows printer yalnız Windows kassada işləyir.'));
+  }
+  if (process.env.ARPOS_MOCK_WINDOWS_PRINT === '1') {
+    return Promise.resolve(pack(true, 'Mock Windows çap göndərildi'));
+  }
+  const buf = Buffer.isBuffer(payload) ? payload : Buffer.from(payload || []);
+  const stamp = Date.now() + '-' + Math.floor(Math.random() * 1e6);
+  const binPath = path.join(os.tmpdir(), 'arpos-raw-' + stamp + '.bin');
+  const psPath = path.join(os.tmpdir(), 'arpos-raw-' + stamp + '.ps1');
+  try {
+    fs.writeFileSync(binPath, buf);
+    const ps = [
+      "$ErrorActionPreference = 'Stop'",
+      "Add-Type -TypeDefinition @'",
+      'using System;',
+      'using System.Runtime.InteropServices;',
+      'public class ArposRawPrint {',
+      '  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Ansi)]',
+      '  public class DOCINFOA {',
+      '    [MarshalAs(UnmanagedType.LPStr)] public string pDocName;',
+      '    [MarshalAs(UnmanagedType.LPStr)] public string pOutputFile;',
+      '    [MarshalAs(UnmanagedType.LPStr)] public string pDataType;',
+      '  }',
+      '  [DllImport("winspool.Drv", EntryPoint="OpenPrinterA", SetLastError=true, CharSet=CharSet.Ansi, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]',
+      '  public static extern bool OpenPrinter([MarshalAs(UnmanagedType.LPStr)] string szPrinter, out IntPtr hPrinter, IntPtr pd);',
+      '  [DllImport("winspool.Drv", EntryPoint="ClosePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]',
+      '  public static extern bool ClosePrinter(IntPtr hPrinter);',
+      '  [DllImport("winspool.Drv", EntryPoint="StartDocPrinterA", SetLastError=true, CharSet=CharSet.Ansi, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]',
+      '  public static extern int StartDocPrinter(IntPtr hPrinter, int level, [In, MarshalAs(UnmanagedType.LPStruct)] DOCINFOA di);',
+      '  [DllImport("winspool.Drv", EntryPoint="EndDocPrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]',
+      '  public static extern bool EndDocPrinter(IntPtr hPrinter);',
+      '  [DllImport("winspool.Drv", EntryPoint="StartPagePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]',
+      '  public static extern bool StartPagePrinter(IntPtr hPrinter);',
+      '  [DllImport("winspool.Drv", EntryPoint="EndPagePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]',
+      '  public static extern bool EndPagePrinter(IntPtr hPrinter);',
+      '  [DllImport("winspool.Drv", EntryPoint="WritePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]',
+      '  public static extern bool WritePrinter(IntPtr hPrinter, IntPtr pBytes, int dwCount, out int dwWritten);',
+      '  public static void Send(string printer, string file) {',
+      '    IntPtr hPrinter;',
+      '    if (!OpenPrinter(printer, out hPrinter, IntPtr.Zero)) throw new Exception("OpenPrinter");',
+      '    try {',
+      '      DOCINFOA di = new DOCINFOA();',
+      '      di.pDocName = "Arpos ESC/POS";',
+      '      di.pDataType = "RAW";',
+      '      if (StartDocPrinter(hPrinter, 1, di) == 0) throw new Exception("StartDocPrinter");',
+      '      try {',
+      '        if (!StartPagePrinter(hPrinter)) throw new Exception("StartPagePrinter");',
+      '        try {',
+      '          byte[] bytes = System.IO.File.ReadAllBytes(file);',
+      '          IntPtr p = Marshal.AllocHGlobal(bytes.Length);',
+      '          try {',
+      '            Marshal.Copy(bytes, 0, p, bytes.Length);',
+      '            int written;',
+      '            if (!WritePrinter(hPrinter, p, bytes.Length, out written)) throw new Exception("WritePrinter");',
+      '          } finally { Marshal.FreeHGlobal(p); }',
+      '        } finally { EndPagePrinter(hPrinter); }',
+      '      } finally { EndDocPrinter(hPrinter); }',
+      '    } finally { ClosePrinter(hPrinter); }',
+      '  }',
+      '}',
+      "'@",
+      "$printer = '" + name.replace(/'/g, "''") + "'",
+      "$file = '" + binPath.replace(/'/g, "''") + "'",
+      '[ArposRawPrint]::Send($printer, $file)',
+      "Write-Output 'OK'"
+    ].join('\r\n');
+    fs.writeFileSync(psPath, ps, 'utf8');
+  } catch (error) {
+    return Promise.resolve(pack(false, 'Temp fayl yazılmadı.'));
+  }
+  return new Promise(function (resolve) {
+    if (!isWin32()) {
+      resolve(pack(false, 'Windows printer yalnız Windows kassada işləyir.'));
+      return;
+    }
+    const child = spawn('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy', 'Bypass',
+      '-File', psPath
+    ], { windowsHide: true });
+    let stderr = '';
+    let finished = false;
+    const timer = setTimeout(function () {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      try {
+        child.kill();
+      } catch (error) {
+        /* keç */
+      }
+      cleanup();
+      resolve(pack(false, 'Windows çap vaxtı bitdi.'));
+    }, timeoutMs || 20000);
+    function cleanup() {
+      try {
+        fs.unlinkSync(binPath);
+      } catch (error) {
+        /* keç */
+      }
+      try {
+        fs.unlinkSync(psPath);
+      } catch (error) {
+        /* keç */
+      }
+    }
+    child.stderr.on('data', function (chunk) {
+      stderr += String(chunk || '');
+    });
+    child.on('error', function (error) {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      clearTimeout(timer);
+      cleanup();
+      resolve(pack(false, error.message || 'PowerShell açılmadı'));
+    });
+    child.on('close', function (code) {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      clearTimeout(timer);
+      cleanup();
+      if (code !== 0) {
+        resolve(pack(false, (stderr || 'Windows çap getmədi.').trim().slice(0, 180)));
+        return;
+      }
+      resolve(pack(true, 'Windows çap göndərildi'));
+    });
+  });
+}
+
+function deliverBytes(printer, payload, timeoutMs) {
+  if (printer && printer.connectionType === 'windows') {
+    return sendWindowsRaw(printer.windowsName, payload, timeoutMs || 8000);
+  }
+  return sendBytes(printer.host, printer.port, payload, timeoutMs || 5000);
+}
+
+function probePrinter(printer) {
+  if (printer && printer.connectionType === 'windows') {
+    return probeWindowsPrinter(printer.windowsName);
+  }
+  return connectPrinter(printer.host, printer.port, 4000);
 }
 
 // Sətirdə mətni kəsirik və ya doldururuq
@@ -250,7 +592,8 @@ function buildTestTicket(printer, stationName) {
     toPrinterText('TEST CAPI'),
     eq(width),
     line(width, 'Printer', printer.name),
-    line(width, 'IP', printer.host + ':' + printer.port),
+    line(width, 'Yol', printerPath(printer)),
+    line(width, 'Tip', printer.connectionType === 'windows' ? 'Windows' : 'TCP'),
     line(width, 'Rol', roleText),
     line(width, 'Kagiz', printer.paperWidth + ' mm'),
     line(width, 'Setir', String(ticketWidth(printer))),
@@ -318,12 +661,12 @@ async function testConnection(id) {
   if (!printer) {
     return { error: 'Printer tapılmadı.' };
   }
-  const result = await connectPrinter(printer.host, printer.port, 4000);
+  const result = await probePrinter(printer);
   printer.lastCheck = result;
   writeStore(store);
   if (!result.ok) {
     logger.error({
-      path: printer.host + ':' + printer.port,
+      path: printerPath(printer),
       message: 'Printer qoşulmadı: ' + printer.name + ' — ' + result.message
     });
   }
@@ -343,12 +686,12 @@ async function testPrint(id, stationName) {
   const ticket = buildTestTicket(printer, stationName);
   let last = null;
   for (let i = 0; i < printer.copies; i += 1) {
-    last = await sendBytes(printer.host, printer.port, ticket, 6000);
+    last = await deliverBytes(printer, ticket, 8000);
     if (!last.ok) {
       printer.lastCheck = last;
       writeStore(store);
       logger.error({
-        path: printer.host + ':' + printer.port,
+        path: printerPath(printer),
         message: 'Printer çapı uğursuz: ' + printer.name + ' — ' + last.message
       });
       return { data: { printer: printer, result: last } };
@@ -477,7 +820,7 @@ async function sendToPrinter(printer, ticket, label) {
   let ok = true;
   const copies = Number(printer.copies) || 1;
   for (let copy = 0; copy < copies; copy += 1) {
-    const result = await sendBytes(printer.host, printer.port, ticket, 5000);
+    const result = await deliverBytes(printer, ticket, 8000);
     results.push({
       printerId: printer.id,
       name: printer.name,
@@ -487,7 +830,7 @@ async function sendToPrinter(printer, ticket, label) {
     if (!result.ok) {
       ok = false;
       logger.error({
-        path: printer.host + ':' + printer.port,
+        path: printerPath(printer),
         message: label + ' uğursuz: ' + printer.name + ' — ' + result.message
       });
       break;
@@ -897,6 +1240,7 @@ module.exports = {
   readStore: readStore,
   writeStore: writeStore,
   normalizePrinter: normalizePrinter,
+  listWindowsPrinters: listWindowsPrinters,
   testConnection: testConnection,
   testPrint: testPrint,
   sendStationTickets: sendStationTickets,
@@ -905,6 +1249,8 @@ module.exports = {
   buildZTicket: buildZTicket,
   buildReceiptTicket: buildReceiptTicket,
   toPrinterText: toPrinterText,
+  printerPath: printerPath,
+  deliverBytes: deliverBytes,
   listQueue: listQueue,
   processQueue: processQueue,
   retryJob: retryJob,

@@ -1560,6 +1560,17 @@ app.get('/api/printers', function (req, res) {
   }
 });
 
+app.get('/api/printers/windows-list', function (req, res) {
+  if (!needPerm(req, res, 'printers.view')) {
+    return;
+  }
+  printers.listWindowsPrinters().then(function (data) {
+    res.json({ success: true, data: data });
+  }).catch(function (error) {
+    res.status(500).json({ success: false, message: error.message || 'Siyahı alınmadı.' });
+  });
+});
+
 // Yeni printer əlavə edirik
 app.post('/api/printers', function (req, res) {
   if (!needPerm(req, res, 'printers.edit')) {

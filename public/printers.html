@@ -12,7 +12,7 @@
   <header class="top">
     <div>
       <h1>Printerlər</h1>
-      <p>IP üzərindən mətbəx, manqal, bar və kassa. Qoşulmanı yoxlayın, test çapı göndərin.</p>
+      <p>Şəbəkə (IP:9100) və ya Windows/USB (OS printer adı). Qoşulmanı yoxlayın, test çapı göndərin.</p>
     </div>
     <nav class="app-nav waiter-nav">
       <a href="/orders.html">Sifariş</a>
@@ -42,8 +42,8 @@
       <p class="hint">Hər stansiyanın öz printeri olur. Əsas düşsə ehtiyat işə düşür. Getməsə növbəyə yazılır, avtomatik təkrarlanır.</p>
     </section>
     <section>
-      <h2>Şəbəkə</h2>
-      <p class="hint">Termal printerlərin əksəriyyəti <b>9100</b> portunda işləyir. Kompüter və printer eyni şəbəkədə olmalıdır.</p>
+      <h2>Şəbəkə / USB</h2>
+      <p class="hint">TCP: adətən port <b>9100</b>. Windows/USB: printeri OS-ə quraşdırın, adını seçin.</p>
     </section>
     <p id="message" class="message"></p>
     <button id="check-all" type="button">Hamısını yoxla</button>
@@ -53,7 +53,7 @@
   <main class="catalog-main">
     <div class="catalog-toolbar">
       <div>
-        <p class="eyebrow">Şəbəkə printerləri</p>
+        <p class="eyebrow">Printerlər</p>
         <h2>Stansiya və kassa</h2>
       </div>
       <button id="add-printer" class="gold" type="button">Yeni printer</button>
@@ -84,11 +84,21 @@
         <label>Ad
           <input id="printer-name" type="text" maxlength="40" required placeholder="Mətbəx-1">
         </label>
-        <label>IP
-          <input id="printer-host" type="text" maxlength="80" required placeholder="192.168.1.50">
+        <label>Tip
+          <select id="printer-type">
+            <option value="tcp">Şəbəkə (IP)</option>
+            <option value="windows">Windows/USB (ad)</option>
+          </select>
         </label>
-        <label>Port
-          <input id="printer-port" type="number" min="1" max="65535" value="9100" required>
+        <label id="host-wrap">IP
+          <input id="printer-host" type="text" maxlength="80" placeholder="192.168.1.50">
+        </label>
+        <label id="port-wrap">Port
+          <input id="printer-port" type="number" min="1" max="65535" value="9100">
+        </label>
+        <label id="windows-wrap" class="span-2" style="display:none">Windows/USB adı
+          <input id="printer-windows" list="printer-windows-list" type="text" maxlength="120" placeholder="Məs. POS-80C">
+          <datalist id="printer-windows-list"></datalist>
         </label>
         <label>Rol
           <select id="printer-role">
@@ -153,6 +163,6 @@
   <script src="offline.js"></script>
   <script src="dom.js"></script>
   <script src="nav.js"></script>
-  <script src="printers-ui.js"></script>
+  <script src="printers-ui.js?v=2"></script>
 </body>
 </html>

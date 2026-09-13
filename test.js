@@ -2066,4 +2066,69 @@ test('favoritlər + barkod fokus', function () {
   assert.ok(css.indexOf('.order-card .fav-star') >= 0);
 });
 
+test('printer windows/tcp: normalize; list/UI; mock flags', function () {
+  const tcp = printers.normalizePrinter({
+    name: 'Net',
+    connectionType: 'tcp',
+    host: '192.168.1.50',
+    port: 9100,
+    role: 'receipt',
+    paperWidth: 80,
+    copies: 1
+  }, null);
+  assert.ok(!tcp.error, tcp.error);
+  assert.strictEqual(tcp.printer.connectionType, 'tcp');
+  assert.strictEqual(tcp.printer.host, '192.168.1.50');
+  assert.strictEqual(tcp.printer.port, 9100);
+  assert.strictEqual(tcp.printer.windowsName, '');
+
+  const badTcp = printers.normalizePrinter({ name: 'X', connectionType: 'tcp', host: '', role: 'receipt' }, null);
+  assert.ok(badTcp.error);
+
+  const win = printers.normalizePrinter({
+    name: 'USB',
+    connectionType: 'windows',
+    windowsName: 'POS-80C',
+    role: 'receipt',
+    paperWidth: 58,
+    copies: 1
+  }, null);
+  assert.ok(!win.error, win.error);
+  assert.strictEqual(win.printer.connectionType, 'windows');
+  assert.strictEqual(win.printer.windowsName, 'POS-80C');
+  assert.strictEqual(win.printer.host, '');
+  assert.strictEqual(win.printer.port, 0);
+
+  const badWin = printers.normalizePrinter({
+    name: 'USB',
+    connectionType: 'windows',
+    windowsName: '',
+    role: 'receipt'
+  }, null);
+  assert.ok(badWin.error);
+
+  const legacy = printers.normalizePrinter({
+    name: 'Old',
+    host: '10.0.0.8',
+    port: 9100,
+    role: 'receipt'
+  }, null);
+  assert.strictEqual(legacy.printer.connectionType, 'tcp');
+
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'printers.html'), 'utf8');
+  assert.ok(html.indexOf('id="printer-type"') >= 0);
+  assert.ok(html.indexOf('id="printer-windows"') >= 0);
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'printers-ui.js'), 'utf8');
+  assert.ok(ui.indexOf('syncType') >= 0);
+  assert.ok(ui.indexOf('/api/printers/windows-list') >= 0);
+  const src = fs.readFileSync(path.join(__dirname, 'printers.js'), 'utf8');
+  assert.ok(src.indexOf('sendWindowsRaw') >= 0);
+  assert.ok(src.indexOf('deliverBytes') >= 0);
+  assert.ok(src.indexOf('listWindowsPrinters') >= 0);
+  assert.ok(src.indexOf('ARPOS_MOCK_WINDOWS_PRINT') >= 0);
+  assert.ok(src.indexOf('Windows printer yalnız Windows kassada') >= 0);
+  const serverSrc = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  assert.ok(serverSrc.indexOf("/api/printers/windows-list") >= 0);
+});
+
 console.log('Bütün testlər keçdi.');

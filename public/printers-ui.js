@@ -129,12 +129,61 @@
     document.getElementById('station-wrap').style.display = receipt ? 'none' : '';
   }
 
+  function syncType() {
+    var win = document.getElementById('printer-type').value === 'windows';
+    var hostWrap = document.getElementById('host-wrap');
+    var portWrap = document.getElementById('port-wrap');
+    var winWrap = document.getElementById('windows-wrap');
+    if (hostWrap) {
+      hostWrap.style.display = win ? 'none' : '';
+    }
+    if (portWrap) {
+      portWrap.style.display = win ? 'none' : '';
+    }
+    if (winWrap) {
+      winWrap.style.display = win ? '' : 'none';
+    }
+    var host = document.getElementById('printer-host');
+    var port = document.getElementById('printer-port');
+    var winName = document.getElementById('printer-windows');
+    if (host) {
+      host.required = !win;
+    }
+    if (port) {
+      port.required = !win;
+    }
+    if (winName) {
+      winName.required = win;
+    }
+  }
+
+  function loadWindowsList() {
+    var list = document.getElementById('printer-windows-list');
+    if (!list) {
+      return Promise.resolve();
+    }
+    return api('/api/printers/windows-list').then(function (body) {
+      var data = body.data || {};
+      list.innerHTML = '';
+      (data.names || []).forEach(function (name) {
+        var opt = document.createElement('option');
+        opt.value = name;
+        list.appendChild(opt);
+      });
+      if (data.message && !(data.names || []).length) {
+        say(data.message, 'warn');
+      }
+    }).catch(function () {
+      return null;
+    });
+  }
+
   // Printer kartlarını çəkirik
   function render() {
     var grid = document.getElementById('printer-grid');
     grid.innerHTML = '';
     if (!printers.length) {
-      grid.innerHTML = '<div class="empty-card">Hələ printer yoxdur. IP ünvanı ilə əlavə edin.</div>';
+      grid.innerHTML = '<div class="empty-card">Hələ printer yoxdur. IP və ya Windows/USB adı ilə əlavə edin.</div>';
       return;
     }
 
@@ -171,7 +220,11 @@
       var ipLine = card.querySelector('.ip');
       ipLine.textContent = '';
       var host = document.createElement('b');
-      host.textContent = item.host + ':' + item.port;
+      if (item.connectionType === 'windows') {
+        host.textContent = 'Windows: ' + (item.windowsName || '—');
+      } else {
+        host.textContent = (item.host || '') + ':' + (item.port || '');
+      }
       ipLine.appendChild(host);
       ipLine.appendChild(document.createTextNode(
         ' • ' + item.paperWidth + ' mm • ' +
@@ -249,8 +302,10 @@
     editingId = item ? item.id : 0;
     document.getElementById('modal-title').textContent = item ? 'Printeri dəyiş' : 'Yeni printer';
     document.getElementById('printer-name').value = item ? item.name : '';
-    document.getElementById('printer-host').value = item ? item.host : '';
-    document.getElementById('printer-port').value = item ? item.port : 9100;
+    document.getElementById('printer-type').value = item && item.connectionType === 'windows' ? 'windows' : 'tcp';
+    document.getElementById('printer-host').value = item ? (item.host || '') : '';
+    document.getElementById('printer-port').value = item && item.port ? item.port : 9100;
+    document.getElementById('printer-windows').value = item ? (item.windowsName || '') : '';
     document.getElementById('printer-role').value = item ? item.role : 'station';
     document.getElementById('printer-paper').value = item ? String(item.paperWidth) : '80';
     document.getElementById('printer-copies').value = item ? String(item.copies) : '1';
@@ -264,6 +319,8 @@
     document.getElementById('printer-enabled').checked = item ? item.enabled !== false : true;
     fillStations(item ? item.stationId : (stations[0] && stations[0].id));
     syncRole();
+    syncType();
+    loadWindowsList();
     document.getElementById('modal').classList.remove('hidden');
     document.getElementById('printer-name').focus();
   }
@@ -274,6 +331,7 @@
   }
 
   document.getElementById('printer-role').addEventListener('change', syncRole);
+  document.getElementById('printer-type').addEventListener('change', syncType);
   document.getElementById('add-printer').addEventListener('click', function () {
     openModal(null);
   });
@@ -284,10 +342,13 @@
     if (busy) {
       return;
     }
+    var type = document.getElementById('printer-type').value === 'windows' ? 'windows' : 'tcp';
     var payload = {
       name: document.getElementById('printer-name').value,
-      host: document.getElementById('printer-host').value,
-      port: Number(document.getElementById('printer-port').value),
+      connectionType: type,
+      host: type === 'tcp' ? document.getElementById('printer-host').value : '',
+      port: type === 'tcp' ? Number(document.getElementById('printer-port').value) : 0,
+      windowsName: type === 'windows' ? document.getElementById('printer-windows').value : '',
       role: document.getElementById('printer-role').value,
       stationId: Number(document.getElementById('printer-station').value),
       paperWidth: Number(document.getElementById('printer-paper').value),
