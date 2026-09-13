@@ -462,14 +462,12 @@
         note: document.getElementById('shift-note').value
       })
     }).then(function (body) {
-      var diff = body.data && body.data.difference;
-      var msg = diff === 0 ? 'Növbə bağlandı. Çekmece tutdu.' : ('Növbə bağlandı. Fərq: ' + money(diff));
+      var msg = 'Növbə bağlandı';
       if (body.warning) {
-        msg += ' ' + body.warning;
+        say(msg + '. ' + body.warning, 'warn');
       } else {
-        msg += ' Z çapıldı.';
+        say(msg);
       }
-      say(msg, body.warning ? 'warn' : 'ok');
       document.getElementById('shift-counted').value = '';
       document.getElementById('shift-note').value = '';
       loadShift();

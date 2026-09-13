@@ -1,5 +1,6 @@
 # Arpos Restoran — versiyalar
 
+- **1.2.20** — 2026-09-13 — Anbar Qalıq sklad filtri; növbə bağlandı mesajı
 - **1.2.19** — 2026-09-13 — Qəbulda bütün kurslar + növbə avto-açılış və sifarişdə Z
 - **1.2.18** — 2026-09-12 — Anbar Faza 2+3: istehsal/yarımfabrikat + multi-sklad (stansiya xəritəsi yox)
 - **1.2.17** — 2026-09-12 — Anbar Faza 1: inventar sənədi + silinmə (istehsal/multi-sklad yox)

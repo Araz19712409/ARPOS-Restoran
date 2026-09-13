@@ -20,6 +20,7 @@
   var offId = 0;
   var warehouseFilter = '';
   var stockTab = 'qty';
+  var fillingWh = false;
 
   function dec(value) {
     return window.PosNav && window.PosNav.parseDec
@@ -298,12 +299,14 @@
   }
 
   function fillWhFields() {
+    fillingWh = true;
     fillWhSelect(document.getElementById('stock-wh-filter'), warehouseFilter, { all: true });
     ['buy-warehouse', 'inv-warehouse', 'prod-from', 'prod-to', 'xfer-from', 'xfer-to',
       'stock-move-warehouse', 'stock-off-warehouse'].forEach(function (id) {
       var el = document.getElementById(id);
       fillWhSelect(el, (el && el.value) || activeWhId(), { activeOnly: true });
     });
+    fillingWh = false;
   }
 
   function fillItemSelect(select, selectedId) {
@@ -1027,6 +1030,9 @@
     render();
   });
   document.getElementById('stock-wh-filter').addEventListener('change', function () {
+    if (fillingWh) {
+      return;
+    }
     warehouseFilter = document.getElementById('stock-wh-filter').value;
     load();
   });
