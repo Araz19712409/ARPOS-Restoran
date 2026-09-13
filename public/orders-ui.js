@@ -1296,7 +1296,7 @@
             (item.waiterName ? ' • ' + item.waiterName : '')));
       if (!item.voided && !item.settled) {
         var actions = row.querySelector('.qty');
-        if (item.sent) {
+        if (item.sent && can('orders.create')) {
           var reprintBtn = document.createElement('button');
           reprintBtn.type = 'button';
           reprintBtn.textContent = 'Çap';
@@ -1652,11 +1652,19 @@
       say('Açıq sifariş yoxdur.', 'err');
       return;
     }
+    if (!can('orders.create')) {
+      say('Çapa icazəniz yoxdur.', 'err');
+      return;
+    }
     runAction('/api/orders/reprint', { orderId: order.id }, 'Bütün göndərilmiş sətirlər təkrar çap olunsun?');
   });
 
   document.getElementById('accept-order').addEventListener('click', function () {
     if (busy) {
+      return;
+    }
+    if (!can('orders.create')) {
+      say('Sifariş yazmağa icazəniz yoxdur.', 'err');
       return;
     }
     if (!tableId) {

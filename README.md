@@ -38,6 +38,8 @@ node scripts/make-license.js --name "Kafe Adi" --machine ABCD-EF01-2345-6789
 
 Ayarlarda **Yoxla**, sonra **Quraşdır** (təsdiq pəncərəsi). Server `confirm` olmadan Setup işə salmır.
 
+POS kritik icazələr: [PERMISSIONS.md](PERMISSIONS.md).
+
 ### Reliz qaydası (məcburi)
 
 - Hər müştəriyə gedən hotfix / Setup = **yeni semver** (`patch + 1`). **Eyni versiya nömrəsi ilə yeniləmə göndərilməz** (kassa artıq həmin nömrədədirsə updater heç nə təklif etmir).

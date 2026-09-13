@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` gələcəkdə: `pay.js` (ödəniş modal), `shift-badge.js` (növbə/Z), `zones.js` (zal/menyu/çek). Risk yüksək — ayrıca sprint.
 
+- **1.2.34** — 2026-09-13 — İcazə audit + accept pulsuz (kataloq 0 OK); PERMISSIONS.md
 - **1.2.33** — 2026-09-13 — Pulsuz: pending + accept orders.discount (kombo child toxunulmur)
 - **1.2.32** — 2026-09-13 — Stabilizasiya: reliz qaydası + modal/DOM null-safe (orders/settings/stock); split yox
 - **1.2.31** — 2026-09-13 — Hotfix: növbə açıq/bağlı (1.2.30 köhnə mətn)
