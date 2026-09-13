@@ -567,6 +567,7 @@ function formatWhen(iso) {
 }
 
 function appendReceiptBrand(lines, packed) {
+  // TODO(Faza 1b+): receipt.logo ESC/POS 1-bit raster — indi yalnız mətn brendi.
   let cfg = {};
   try {
     cfg = require('./settings').readSettings();

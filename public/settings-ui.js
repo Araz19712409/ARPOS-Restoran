@@ -378,6 +378,10 @@
   }
 
   function receiptPayload() {
+    var logo = '';
+    if (current.receipt && current.receipt.logo) {
+      logo = current.receipt.logo;
+    }
     return {
       title: (el('receipt-title') && el('receipt-title').value) || '',
       address: (el('receipt-address') && el('receipt-address').value) || '',
@@ -391,8 +395,25 @@
         (el('receipt-footer-2') && el('receipt-footer-2').value) || '',
         (el('receipt-footer-3') && el('receipt-footer-3').value) || ''
       ],
-      showBranchCode: !!(el('receipt-show-branch') && el('receipt-show-branch').checked)
+      showBranchCode: !!(el('receipt-show-branch') && el('receipt-show-branch').checked),
+      logo: logo
     };
+  }
+
+  function showReceiptLogo(url) {
+    var box = el('receipt-logo-preview');
+    if (!box) {
+      return;
+    }
+    box.innerHTML = '';
+    if (!url) {
+      box.textContent = 'Logo yoxdur';
+      return;
+    }
+    var img = document.createElement('img');
+    img.alt = 'Çek logo';
+    img.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+    box.appendChild(img);
   }
 
   function fillReceipt() {
@@ -408,6 +429,7 @@
     setVal('receipt-footer-1', footers[0] || '');
     setVal('receipt-footer-2', footers[1] || '');
     setVal('receipt-footer-3', footers[2] || '');
+    showReceiptLogo(r.logo || r.logoUrl || '');
   }
 
   function fillPay() {
@@ -955,6 +977,69 @@
   }
   document.getElementById('save-bonuses').addEventListener('click', saveAll);
   document.getElementById('save-ekassa').addEventListener('click', saveAll);
+  var logoFile = el('receipt-logo-file');
+  if (logoFile) {
+    logoFile.addEventListener('change', function (event) {
+      var file = event.target.files && event.target.files[0];
+      event.target.value = '';
+      if (!file) {
+        return;
+      }
+      if (!waiter || !canEditSettings()) {
+        say('Ayarları dəyişməyə icazəniz yoxdur.', 'err');
+        return;
+      }
+      if (file.size > 200 * 1024) {
+        say('Logo 200 KB-dan böyük ola bilməz.', 'err');
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function () {
+        var imageData = String(reader.result || '');
+        api('/api/settings/receipt-logo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ waiterId: waiter.user.id, imageData: imageData })
+        }).then(function (body) {
+          var data = body.data || {};
+          current.receipt = Object.assign({}, current.receipt || {}, data.receipt || {
+            logo: data.logo || ''
+          });
+          if (data.logo) {
+            current.receipt.logo = data.logo;
+          }
+          showReceiptLogo(current.receipt.logo || '');
+          say('Logo yükləndi. Yadda saxla ilə digər çek sahələrini də yazın.');
+        }).catch(function (error) {
+          say(error.message, 'err');
+        });
+      };
+      reader.onerror = function () {
+        say('Logo oxunmadı.', 'err');
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  var logoClear = el('receipt-logo-clear');
+  if (logoClear) {
+    logoClear.addEventListener('click', function () {
+      if (!waiter || !canEditSettings()) {
+        say('Ayarları dəyişməyə icazəniz yoxdur.', 'err');
+        return;
+      }
+      api('/api/settings/receipt-logo', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ waiterId: waiter.user.id })
+      }).then(function () {
+        current.receipt = Object.assign({}, current.receipt || {}, { logo: '' });
+        showReceiptLogo('');
+        say('Logo silindi.');
+      }).catch(function (error) {
+        say(error.message, 'err');
+      });
+    });
+  }
   var sampleBtn = document.getElementById('delivery-sample');
   if (sampleBtn) {
     sampleBtn.addEventListener('click', function () {

@@ -2070,6 +2070,56 @@ app.put('/api/settings', function (req, res) {
   });
 });
 
+app.post('/api/settings/receipt-logo', function (req, res) {
+  const body = req.body || {};
+  let staff = users.canUser(Number(body.waiterId), 'settings.edit');
+  if (!staff || !staff.ok) {
+    staff = users.canUser(Number(body.waiterId), 'users.edit');
+  }
+  if (!staff || !staff.ok) {
+    res.status(403).json({ success: false, message: staff ? 'Ayarlara icazəniz yoxdur.' : 'PIN ilə daxil olun.' });
+    return;
+  }
+  lockedWrite(res, function () {
+    const saved = settings.saveReceiptLogo(body.imageData);
+    if (saved.error) {
+      throw Object.assign(new Error(saved.error), { status: 400 });
+    }
+    const next = settings.writeSettings({
+      receipt: Object.assign({}, settings.readSettings().receipt || settings.emptyReceipt(), {
+        logo: saved.path
+      })
+    });
+    return {
+      receipt: next.receipt,
+      logo: next.receipt.logo,
+      logoUrl: next.receipt.logo,
+      hasLogo: !!next.receipt.logo
+    };
+  });
+});
+
+app.delete('/api/settings/receipt-logo', function (req, res) {
+  const body = req.body || {};
+  let staff = users.canUser(Number(body.waiterId || req.query.waiterId), 'settings.edit');
+  if (!staff || !staff.ok) {
+    staff = users.canUser(Number(body.waiterId || req.query.waiterId), 'users.edit');
+  }
+  if (!staff || !staff.ok) {
+    res.status(403).json({ success: false, message: staff ? 'Ayarlara icazəniz yoxdur.' : 'PIN ilə daxil olun.' });
+    return;
+  }
+  lockedWrite(res, function () {
+    const receipt = settings.removeReceiptLogo();
+    return {
+      receipt: receipt,
+      logo: '',
+      logoUrl: '',
+      hasLogo: false
+    };
+  });
+});
+
 app.put('/api/prefs', function (req, res) {
   const body = req.body || {};
   if (body.orderCardScale == null) {

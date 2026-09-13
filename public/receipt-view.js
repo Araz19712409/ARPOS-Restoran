@@ -36,6 +36,18 @@
     return branch || 'Arpos Restoran';
   }
 
+  function receiptLogoUrl(order) {
+    var r = (order && order.receipt) || {};
+    var url = String(r.logoUrl || r.logo || '').trim();
+    if (!url || url.indexOf('/uploads/receipt-logo.') !== 0) {
+      return '';
+    }
+    if (r.hasLogo === false) {
+      return '';
+    }
+    return url;
+  }
+
   function fill(root, order) {
     if (!root || !order) {
       return;
@@ -62,6 +74,14 @@
     }
     var refunded = order.status === 'refunded' || !!order.refund;
     root.textContent = '';
+    var logo = receiptLogoUrl(order);
+    if (logo) {
+      var img = document.createElement('img');
+      img.className = 'rc-logo';
+      img.alt = '';
+      img.src = logo;
+      root.appendChild(img);
+    }
     addText(root, 'rc-brand', receiptTitle(order));
     addText(root, 'rc-sub', receipt.address);
     addText(root, 'rc-sub', receipt.phone);
@@ -178,6 +198,7 @@
       '@page{size:80mm auto;margin:3mm}' +
       'html,body{margin:0;padding:0;width:74mm;background:#fff;color:#000}' +
       'body{font-family:"Courier New",Consolas,monospace;font-size:14px;line-height:1.35}' +
+      '.rc-logo{display:block;max-width:48mm;max-height:28mm;width:auto;height:auto;margin:0 auto 6px;object-fit:contain}' +
       '.rc-brand,.rc-id,.rc-refund,.rc-sub,.rc-foot{text-align:center;margin:0 0 4px}' +
       '.rc-brand{font-size:20px;font-weight:800}' +
       '.rc-id{font-size:18px;font-weight:800}' +

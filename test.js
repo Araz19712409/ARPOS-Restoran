@@ -731,6 +731,8 @@ test('çek brendinqi: boş title → branchName; dolu → ticket/view', function
     const pub = settings.forPos(filled);
     assert.strictEqual(pub.receipt.title, 'My Cafe');
     assert.strictEqual(pub.receipt.showBranchCode, true);
+    assert.strictEqual(pub.receipt.hasLogo, false);
+    assert.strictEqual(pub.receipt.logoUrl, '');
 
     const ticket = printers.buildReceiptTicket({ paperWidth: 80, charsPerLine: 48, font: 'A' }, {
       id: 7,
@@ -759,10 +761,48 @@ test('çek brendinqi: boş title → branchName; dolu → ticket/view', function
     assert.ok(viewSrc.indexOf('receiptTitle') >= 0);
     assert.ok(viewSrc.indexOf('headerLines') >= 0);
     assert.ok(viewSrc.indexOf('footerLines') >= 0);
+    assert.ok(viewSrc.indexOf('rc-logo') >= 0);
+    assert.ok(viewSrc.indexOf('receiptLogoUrl') >= 0);
     const html = fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8');
     assert.ok(html.indexOf('data-tab="receipt"') >= 0);
     assert.ok(html.indexOf('id="receipt-title"') >= 0);
+    assert.ok(html.indexOf('id="receipt-logo-file"') >= 0);
   });
+});
+
+test('çek logo: yüklə/sil; forPos path; data URL yox', function () {
+  withTempDb(function () {
+    assert.strictEqual(settings.cleanReceiptLogo('data:image/png;base64,aaa'), '');
+    assert.strictEqual(settings.cleanReceiptLogo('/uploads/receipt-logo.png'), '/uploads/receipt-logo.png');
+    assert.strictEqual(settings.cleanReceiptLogo('/uploads/evil.png'), '');
+    const tinyPng = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64'
+    );
+    const dataUrl = 'data:image/png;base64,' + tinyPng.toString('base64');
+    const saved = settings.saveReceiptLogo(dataUrl);
+    assert.ok(!saved.error, saved.error);
+    assert.strictEqual(saved.path, '/uploads/receipt-logo.png');
+    const written = settings.writeSettings({
+      receipt: Object.assign({}, settings.emptyReceipt(), { title: 'Logo Cafe', logo: saved.path })
+    });
+    assert.strictEqual(written.receipt.logo, '/uploads/receipt-logo.png');
+    const pub = settings.forPos(written);
+    assert.strictEqual(pub.receipt.hasLogo, true);
+    assert.strictEqual(pub.receipt.logoUrl, '/uploads/receipt-logo.png');
+    assert.ok(String(pub.receipt.logoUrl).indexOf('data:') < 0);
+    const abs = path.join(__dirname, 'public', 'uploads', 'receipt-logo.png');
+    assert.ok(fs.existsSync(abs));
+    settings.removeReceiptLogo();
+    assert.strictEqual(settings.readSettings().receipt.logo, '');
+    assert.strictEqual(settings.forPos().receipt.hasLogo, false);
+    assert.ok(!fs.existsSync(abs));
+    const tooBig = 'data:image/png;base64,' + Buffer.alloc(201 * 1024).toString('base64');
+    const big = settings.saveReceiptLogo(tooBig);
+    assert.ok(big.error);
+  });
+  const pr = fs.readFileSync(path.join(__dirname, 'printers.js'), 'utf8');
+  assert.ok(pr.indexOf('TODO(Faza 1b+): receipt.logo ESC/POS') >= 0);
 });
 
 test('qəbulda autoSendAllOnAccept isti kursu göndərir', function () {

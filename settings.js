@@ -193,7 +193,8 @@ function emptyReceipt() {
     phone: '',
     headerLines: [],
     footerLines: [],
-    showBranchCode: false
+    showBranchCode: false,
+    logo: ''
   };
 }
 
@@ -211,6 +212,22 @@ function cleanLineList(list, maxCount, maxLen) {
   return out;
 }
 
+function cleanReceiptLogo(raw) {
+  const s = String(raw || '').trim();
+  if (!s || /^data:/i.test(s)) {
+    return '';
+  }
+  const m = s.match(/^\/uploads\/receipt-logo\.(png|jpe?g|webp)(?:\?.*)?$/i);
+  if (!m) {
+    return '';
+  }
+  let ext = m[1].toLowerCase();
+  if (ext === 'jpeg') {
+    ext = 'jpg';
+  }
+  return '/uploads/receipt-logo.' + ext;
+}
+
 function cleanReceipt(raw) {
   const src = raw && typeof raw === 'object' ? raw : {};
   return {
@@ -220,7 +237,8 @@ function cleanReceipt(raw) {
     headerLines: cleanLineList(src.headerLines, 2, 60),
     footerLines: cleanLineList(src.footerLines, 3, 60),
     showBranchCode: src.showBranchCode === true || src.showBranchCode === 1 ||
-      src.showBranchCode === '1' || src.showBranchCode === 'true'
+      src.showBranchCode === '1' || src.showBranchCode === 'true',
+    logo: cleanReceiptLogo(src.logo)
   };
 }
 
@@ -237,7 +255,66 @@ function receiptTitle(cfg) {
 
 function publicReceipt(cfg) {
   const row = cfg || readSettings();
-  return cleanReceipt(row.receipt || emptyReceipt());
+  const cleaned = cleanReceipt(row.receipt || emptyReceipt());
+  const logo = cleaned.logo || '';
+  return Object.assign({}, cleaned, {
+    logoUrl: logo,
+    hasLogo: !!logo
+  });
+}
+
+const RECEIPT_LOGO_DIR = path.join(__dirname, 'public', 'uploads');
+const RECEIPT_LOGO_MAX = 200 * 1024;
+
+function ensureReceiptUploadDir() {
+  fs.mkdirSync(RECEIPT_LOGO_DIR, { recursive: true });
+}
+
+function clearReceiptLogoFiles() {
+  ensureReceiptUploadDir();
+  ['png', 'jpg', 'webp'].forEach(function (ext) {
+    try {
+      fs.unlinkSync(path.join(RECEIPT_LOGO_DIR, 'receipt-logo.' + ext));
+    } catch (error) {
+      /* yoxdur */
+    }
+  });
+}
+
+function saveReceiptLogo(imageData) {
+  const match = String(imageData || '').match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/i);
+  if (!match) {
+    return { error: 'Logo PNG, JPG və ya WEBP olmalıdır.' };
+  }
+  let ext = match[1].toLowerCase();
+  if (ext === 'jpeg') {
+    ext = 'jpg';
+  }
+  let buffer;
+  try {
+    buffer = Buffer.from(match[2], 'base64');
+  } catch (error) {
+    return { error: 'Logo oxunmadı.' };
+  }
+  if (!buffer.length) {
+    return { error: 'Logo boşdur.' };
+  }
+  if (buffer.length > RECEIPT_LOGO_MAX) {
+    return { error: 'Logo 200 KB-dan böyük ola bilməz.' };
+  }
+  ensureReceiptUploadDir();
+  clearReceiptLogoFiles();
+  const fileName = 'receipt-logo.' + ext;
+  fs.writeFileSync(path.join(RECEIPT_LOGO_DIR, fileName), buffer);
+  return { path: '/uploads/' + fileName };
+}
+
+function removeReceiptLogo() {
+  clearReceiptLogoFiles();
+  const next = writeSettings({
+    receipt: Object.assign({}, readSettings().receipt || emptyReceipt(), { logo: '' })
+  });
+  return next.receipt;
 }
 
 function emptyPay() {
@@ -849,8 +926,11 @@ module.exports = {
   emptyDelivery: emptyDelivery,
   emptyReceipt: emptyReceipt,
   cleanReceipt: cleanReceipt,
+  cleanReceiptLogo: cleanReceiptLogo,
   receiptTitle: receiptTitle,
   publicReceipt: publicReceipt,
+  saveReceiptLogo: saveReceiptLogo,
+  removeReceiptLogo: removeReceiptLogo,
   emptyPay: emptyPay,
   cleanPay: cleanPay,
   publicPay: publicPay,

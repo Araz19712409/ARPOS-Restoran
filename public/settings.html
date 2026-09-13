@@ -188,7 +188,19 @@
 
       <article class="settings-panel hidden" data-tab="receipt">
         <h2>Çek</h2>
-        <p class="hint">Qonaq çeki başlığı və alt yazı. Logo tezliklə (Faza 1b). USB/Bank POS yox.</p>
+        <p class="hint">Qonaq çeki başlığı, logo (ekran/brauzer çap) və alt yazı. Termal raster sonra. USB/Bank POS yox.</p>
+        <section>
+          <h3>Logo</h3>
+          <p class="hint">PNG/JPG/WEBP, max 200 KB, en ~384 px.</p>
+          <div id="receipt-logo-preview" class="receipt-logo-preview"></div>
+          <div class="side-actions">
+            <label class="file-btn">
+              Yüklə
+              <input id="receipt-logo-file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+            </label>
+            <button id="receipt-logo-clear" type="button">Sil</button>
+          </div>
+        </section>
         <section>
           <h3>Başlıq</h3>
           <label>Ad (boşdursa filial / Arpos Restoran)
@@ -522,6 +534,6 @@
   <script src="offline.js"></script>
   <script src="dom.js"></script>
   <script src="nav.js"></script>
-  <script src="settings-ui.js?v=13"></script>
+  <script src="settings-ui.js?v=14"></script>
 </body>
 </html>
