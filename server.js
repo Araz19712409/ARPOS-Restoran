@@ -2083,10 +2083,7 @@ app.put('/api/settings', function (req, res) {
 
 app.post('/api/settings/receipt-logo', function (req, res) {
   const body = req.body || {};
-  let staff = users.canUser(Number(body.waiterId), 'settings.edit');
-  if (!staff || !staff.ok) {
-    staff = users.canUser(Number(body.waiterId), 'users.edit');
-  }
+  const staff = users.canUser(Number(body.waiterId), 'settings.edit');
   if (!staff || !staff.ok) {
     res.status(403).json({ success: false, message: staff ? 'Ayarlara icazəniz yoxdur.' : 'PIN ilə daxil olun.' });
     return;
@@ -2112,10 +2109,7 @@ app.post('/api/settings/receipt-logo', function (req, res) {
 
 app.delete('/api/settings/receipt-logo', function (req, res) {
   const body = req.body || {};
-  let staff = users.canUser(Number(body.waiterId || req.query.waiterId), 'settings.edit');
-  if (!staff || !staff.ok) {
-    staff = users.canUser(Number(body.waiterId || req.query.waiterId), 'users.edit');
-  }
+  const staff = users.canUser(Number(body.waiterId || req.query.waiterId), 'settings.edit');
   if (!staff || !staff.ok) {
     res.status(403).json({ success: false, message: staff ? 'Ayarlara icazəniz yoxdur.' : 'PIN ilə daxil olun.' });
     return;

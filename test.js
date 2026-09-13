@@ -1909,6 +1909,89 @@ test('Z loyalty sətiri + snapshot reprint', function () {
   assert.ok(fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8').indexOf('id="z-sum-loyalty"') >= 0);
 });
 
+test('Z 1.2.49: çekmece yox; tarixdə il; tip; logo settings.edit', function () {
+  const at = '2026-09-13T12:00:00';
+  const list = [{
+    status: 'paid',
+    terminalId: 1,
+    payment: { at: at, cashAmount: 10, cardAmount: 0, prepaid: 0, total: 15, tipAmount: 5 }
+  }];
+  const tot = shifts.totals(list, '2026-09-13T00:00:00', '2026-09-13T23:59:59', 1);
+  assert.strictEqual(tot.tip, 5);
+  assert.strictEqual(tot.cash, 10);
+  assert.strictEqual(tot.total, 15);
+  const ticket = printers.buildZTicket({ paperWidth: 80, charsPerLine: 48, font: 'A' }, {
+    shift: { openedAt: at, closedAt: at, closedByName: 'Ali', startingCash: 0, countedCash: 10, drops: [] },
+    totals: tot,
+    drops: [],
+    expectedCash: 10,
+    difference: 0,
+    terminalName: 'K1'
+  });
+  const text = ticket.toString('ascii');
+  assert.ok(text.indexOf('Tip') >= 0);
+  assert.ok(text.indexOf('5.00') >= 0);
+  assert.ok(text.indexOf('2026') >= 0);
+  assert.ok(ticket.indexOf(Buffer.from([0x1b, 0x70, 0x00, 0x19, 0xfa])) < 0);
+  const cashRcpt = printers.buildReceiptTicket({ paperWidth: 80, charsPerLine: 48, font: 'A', openDrawer: true }, {
+    id: 1,
+    tableName: 'M1',
+    items: [{ name: 'Cay', qty: 1, salePrice: 10 }],
+    payment: { itemsTotal: 10, serviceCharge: 0, total: 10, cashAmount: 10, cardAmount: 0, at: at }
+  });
+  assert.ok(cashRcpt.indexOf(Buffer.from([0x1b, 0x70, 0x00, 0x19, 0xfa])) >= 0);
+  const zeroTip = printers.buildZTicket({ paperWidth: 80, charsPerLine: 48, font: 'A' }, {
+    shift: { openedAt: at, closedAt: at, startingCash: 0, countedCash: 10, drops: [] },
+    totals: { count: 1, total: 10, cash: 10, card: 0, gift: 0, loyalty: 0, tip: 0, prepaid: 0, refundCash: 0, refundCard: 0 },
+    drops: [],
+    expectedCash: 10,
+    difference: 0
+  }).toString('ascii');
+  assert.ok(zeroTip.indexOf('Tip') < 0);
+  const zView = fs.readFileSync(path.join(__dirname, 'public', 'shift-z-view.js'), 'utf8');
+  assert.ok(zView.indexOf('z-sum-tip') >= 0);
+  assert.ok(fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8').indexOf('id="z-sum-tip"') >= 0);
+  assert.ok(fs.readFileSync(path.join(__dirname, 'public', 'shift.html'), 'utf8').indexOf('id="z-sum-tip"') >= 0);
+
+  withTempDb(function () {
+    const store = users.readStore();
+    store.nextRoleId = Math.max(Number(store.nextRoleId) || 1, 80);
+    store.nextUserId = Math.max(Number(store.nextUserId) || 1, 80);
+    store.roles.push({ id: 80, name: 'UsersOnly', permissions: ['users.edit'] });
+    store.users.push({
+      id: 80,
+      name: 'UsersEdit',
+      roleId: 80,
+      active: true,
+      pinSalt: 'x',
+      pinHash: 'y'
+    });
+    users.writeStore(store);
+    const staff = users.canUser(80, 'settings.edit');
+    assert.ok(staff && !staff.ok);
+    assert.ok(users.hasPermission({ permissions: ['users.edit'] }, 'users.edit'));
+    assert.ok(!users.hasPermission({ permissions: ['users.edit'] }, 'settings.edit'));
+  });
+  const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  const postLogo = src.slice(
+    src.indexOf("app.post('/api/settings/receipt-logo'"),
+    src.indexOf("app.delete('/api/settings/receipt-logo'")
+  );
+  const delLogo = src.slice(
+    src.indexOf("app.delete('/api/settings/receipt-logo'"),
+    src.indexOf("app.put('/api/prefs'")
+  );
+  assert.ok(postLogo.indexOf("settings.edit") >= 0);
+  assert.ok(postLogo.indexOf('users.edit') < 0);
+  assert.ok(delLogo.indexOf("settings.edit") >= 0);
+  assert.ok(delLogo.indexOf('users.edit') < 0);
+  const pr = fs.readFileSync(path.join(__dirname, 'printers.js'), 'utf8');
+  const zFn = pr.slice(pr.indexOf('function buildZTicket'), pr.indexOf('async function deliverZ'));
+  assert.ok(zFn.indexOf('openDrawer: false') >= 0);
+  assert.ok(zFn.indexOf('openDrawer: true') < 0);
+  assert.ok(pr.indexOf('getFullYear()') >= 0);
+});
+
 test('orders-pay.js null-safe split/due/cash', function () {
   const pay = fs.readFileSync(path.join(__dirname, 'public', 'orders-pay.js'), 'utf8');
   assert.ok(pay.indexOf('function node(') >= 0);

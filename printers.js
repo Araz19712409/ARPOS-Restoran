@@ -906,7 +906,8 @@ function formatWhen(iso) {
   function two(n) {
     return (n < 10 ? '0' : '') + n;
   }
-  return two(d.getDate()) + '.' + two(d.getMonth() + 1) + ' ' + two(d.getHours()) + ':' + two(d.getMinutes());
+  return two(d.getDate()) + '.' + two(d.getMonth() + 1) + '.' + d.getFullYear() +
+    ' ' + two(d.getHours()) + ':' + two(d.getMinutes());
 }
 
 function appendReceiptBrand(lines, packed) {
@@ -983,6 +984,9 @@ function buildZTicket(printer, packed) {
   if (Number(tot.loyalty) > 0) {
     lines.push(line(width, 'Ball', Number(tot.loyalty).toFixed(2)));
   }
+  if (Number(tot.tip) > 0) {
+    lines.push(line(width, 'Tip', Number(tot.tip).toFixed(2)));
+  }
   lines.push(line(width, 'Ilkin', Number(tot.prepaid || 0).toFixed(2)));
   if (tot.refundCash || tot.refundCard) {
     lines.push(line(width, 'Geri nagd', Number(tot.refundCash || 0).toFixed(2)));
@@ -998,7 +1002,7 @@ function buildZTicket(printer, packed) {
   lines.push(line(width, 'Ferq', Number(packed.difference || 0).toFixed(2)));
   lines.push(eq(width));
   appendReceiptFooter(lines, packed);
-  return ticketBytes(Object.assign({}, printer, { openDrawer: true }), 'Z', lines);
+  return ticketBytes(Object.assign({}, printer, { openDrawer: false }), 'Z', lines);
 }
 
 async function deliverZ(packed) {

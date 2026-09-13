@@ -30,6 +30,7 @@ function totals(orderList, fromIso, toIso, terminalId) {
     card: 0,
     gift: 0,
     loyalty: 0,
+    tip: 0,
     prepaid: 0,
     refundCash: 0,
     refundCard: 0,
@@ -59,6 +60,13 @@ function totals(orderList, fromIso, toIso, terminalId) {
         }, 0);
       }
       out.loyalty += loy || 0;
+      var tip = Number(pay.tipAmount);
+      if (!(tip > 0)) {
+        tip = (order.payments || []).reduce(function (sum, row) {
+          return sum + (Number(row.tipAmount) || 0);
+        }, 0);
+      }
+      out.tip += tip || 0;
       out.prepaid += Number(pay.prepaid) || 0;
       out.total += Number(pay.total) || 0;
     }
@@ -74,6 +82,7 @@ function totals(orderList, fromIso, toIso, terminalId) {
     card: money(out.card),
     gift: money(out.gift),
     loyalty: money(out.loyalty),
+    tip: money(out.tip),
     prepaid: money(out.prepaid),
     refundCash: money(out.refundCash),
     refundCard: money(out.refundCard),
