@@ -2008,6 +2008,16 @@ test('Z: autoPrintZ; queue z; receipt brand; açıq masa blok', function () {
   assert.ok(ui.indexOf('ShiftZView') >= 0);
   assert.ok(fs.existsSync(path.join(__dirname, 'public', 'shift-z-view.js')));
   assert.ok(fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8').indexOf('shift-auto-print-z') >= 0);
+  const zView = fs.readFileSync(path.join(__dirname, 'public', 'shift-z-view.js'), 'utf8');
+  assert.ok(zView.indexOf('Çap edilir') >= 0);
+  assert.ok(zView.indexOf('Z çapıldı.') >= 0);
+  assert.ok(zView.indexOf('Z çapı getmədi.') >= 0);
+  assert.ok(zView.indexOf('data-bound') >= 0);
+  assert.ok(zView.indexOf('z-sum-warn') >= 0);
+  const bannerCss = fs.readFileSync(path.join(__dirname, 'public', 'app.css'), 'utf8');
+  const bannerBlock = bannerCss.slice(bannerCss.indexOf('.pos-banner {'), bannerCss.indexOf('.pos-banner-ok'));
+  assert.ok(bannerBlock.indexOf('z-index: 90') >= 0);
+  assert.ok(bannerBlock.indexOf('z-index: 45') < 0);
 });
 
 test('zal yaş: age-ok/warn/alert; vaxt format; boşda age yox', function () {

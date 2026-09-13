@@ -70,14 +70,29 @@
   }
 
   function bind(apiFn, sayFn) {
+    function setWarn(text) {
+      var warn = el('z-sum-warn');
+      if (!warn) {
+        return;
+      }
+      warn.textContent = text == null ? '' : String(text);
+      warn.classList.remove('hidden');
+    }
+
     var closeBtn = el('z-sum-close');
-    if (closeBtn) {
+    if (closeBtn && !closeBtn.getAttribute('data-bound')) {
+      closeBtn.setAttribute('data-bound', '1');
       closeBtn.addEventListener('click', hide);
     }
     var printBtn = el('z-sum-print');
-    if (printBtn) {
+    if (printBtn && !printBtn.getAttribute('data-bound')) {
+      printBtn.setAttribute('data-bound', '1');
       printBtn.addEventListener('click', function () {
+        printBtn.disabled = true;
+        setWarn('Çap edilir…');
         if (!lastPacked || !lastTerminalId) {
+          setWarn('Növbə məlumatı yoxdur.');
+          printBtn.disabled = false;
           if (sayFn) {
             sayFn('Növbə məlumatı yoxdur.', 'err');
           }
@@ -92,18 +107,19 @@
             shiftId: shiftId
           })
         }).then(function (body) {
+          var msg = (body && body.warning) || 'Z çapıldı.';
+          setWarn(msg);
           if (sayFn) {
-            sayFn(body.warning || 'Z çapıldı.', body.warning ? 'warn' : 'ok');
-          }
-          var warn = el('z-sum-warn');
-          if (warn && body.warning) {
-            warn.textContent = body.warning;
-            warn.classList.remove('hidden');
+            sayFn(msg, (body && body.warning) ? 'warn' : 'ok');
           }
         }).catch(function (error) {
+          var msg = (error && error.message) || 'Z çapı getmədi.';
+          setWarn(msg);
           if (sayFn) {
-            sayFn(error.message, 'err');
+            sayFn(msg, 'err');
           }
+        }).then(function () {
+          printBtn.disabled = false;
         });
       });
     }
