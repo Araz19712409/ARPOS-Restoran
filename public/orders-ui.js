@@ -1994,6 +1994,8 @@
       bal.textContent = '';
     });
   }
+
+  function splitDueMinor(source, cashM, cardM, dueM) {
     dueM = Math.max(0, Math.round(Number(dueM) || 0));
     cashM = Math.round(Number(cashM) || 0);
     cardM = Math.round(Number(cardM) || 0);
