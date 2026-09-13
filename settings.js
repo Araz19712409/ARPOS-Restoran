@@ -140,12 +140,42 @@ function publicEkassa(ek) {
   };
 }
 
+function publicSms(row) {
+  const src = row && typeof row === 'object' ? row : emptySms();
+  return {
+    enabled: src.enabled === true,
+    sender: src.sender || '',
+    reserveText: src.reserveText || '',
+    waitText: src.waitText || ''
+  };
+}
+
 function forPos(cfg) {
   const row = cfg || readSettings();
-  const copy = Object.assign({}, row);
-  copy.ekassa = publicEkassa(row.ekassa);
-  copy.delivery = publicDelivery(row.delivery);
-  return copy;
+  const shift = row.shift && typeof row.shift === 'object' ? row.shift : emptyShift();
+  const stock = row.stock && typeof row.stock === 'object' ? row.stock : emptyStock();
+  const cash = Number(shift.defaultStartingCash);
+  return {
+    serviceChargePercent: Number(row.serviceChargePercent) || 0,
+    waiterBonuses: Object.assign({}, row.waiterBonuses || {}),
+    autoSendAllOnAccept: row.autoSendAllOnAccept !== false,
+    shift: {
+      autoOpenOnSale: shift.autoOpenOnSale !== false,
+      defaultStartingCash: Number.isFinite(cash) && cash >= 0 ? Number(cash.toFixed(2)) : 0
+    },
+    stock: {
+      salesWarehouseId: Number(stock.salesWarehouseId) >= 1 ? Number(stock.salesWarehouseId) : 1
+    },
+    opsMode: row.opsMode === 'sales' ? 'sales' : 'full',
+    branchName: String(row.branchName || '').slice(0, 80),
+    branchCode: String(row.branchCode || '').slice(0, 12),
+    orderCardScale: clampScale(row.orderCardScale),
+    vatPercent: Number(row.vatPercent) || 0,
+    tillLocked: row.tillLocked === true,
+    ekassa: publicEkassa(row.ekassa),
+    delivery: publicDelivery(row.delivery),
+    sms: publicSms(row.sms)
+  };
 }
 
 function defaults() {

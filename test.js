@@ -1456,4 +1456,56 @@ test('çatdırılma stub webhook və secret', function () {
   });
 });
 
+test('forPos secret sızdırmır; POS sahələri qalır', function () {
+  withTempDb(function () {
+    settings.writeSettings({
+      autoSendAllOnAccept: true,
+      shift: { autoOpenOnSale: true, defaultStartingCash: 0 },
+      stock: { salesWarehouseId: 1 },
+      sms: {
+        enabled: true,
+        login: 'sms-user',
+        password: 'sms-secret',
+        sender: 'ARPOS',
+        url: 'https://sms.example/send'
+      },
+      update: { repo: 'Araz19712409/ARPOS-Restoran', token: 'ghp_update_secret' },
+      backupGithub: { repo: 'org/priv', token: 'ghp_backup_secret' },
+      ekassa: {
+        provider: 'wizarpos',
+        emulator: true,
+        wizarpos: { apiKey: 'ek-api-key' }
+      },
+      delivery: { provider: 'manual', webhookSecret: 'del-secret' }
+    });
+    const pub = settings.forPos();
+    const dump = JSON.stringify(pub);
+    ['sms-secret', 'sms-user', 'ghp_update_secret', 'ghp_backup_secret', 'ek-api-key', 'del-secret'].forEach(function (secret) {
+      assert.strictEqual(dump.indexOf(secret), -1, secret);
+    });
+    function assertNoSecretKeys(obj) {
+      if (!obj || typeof obj !== 'object') {
+        return;
+      }
+      Object.keys(obj).forEach(function (key) {
+        assert.ok(key !== 'password' && key !== 'token' && key !== 'apiKey', key);
+        assertNoSecretKeys(obj[key]);
+      });
+    }
+    assertNoSecretKeys(pub);
+    assert.ok(!pub.update);
+    assert.ok(!pub.backupGithub);
+    assert.ok(!pub.backupFolder);
+    assert.ok(pub.listenLan === undefined);
+    assert.strictEqual(pub.autoSendAllOnAccept, true);
+    assert.strictEqual(pub.shift.autoOpenOnSale, true);
+    assert.strictEqual(pub.stock.salesWarehouseId, 1);
+    assert.strictEqual(pub.sms.enabled, true);
+    assert.strictEqual(pub.sms.sender, 'ARPOS');
+    const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+    const ordersGet = src.slice(src.indexOf("app.get('/api/orders'"), src.indexOf("app.get('/api/settings'"));
+    assert.ok(ordersGet.indexOf('settings.forPos()') >= 0);
+  });
+});
+
 console.log('Bütün testlər keçdi.');
