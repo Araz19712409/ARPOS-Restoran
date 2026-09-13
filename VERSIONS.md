@@ -6,8 +6,9 @@
 - Checklist: bump → `npm test` → setup → SHA → GitHub release.
 
 ## TODO (parçalama — böyük split yox)
-- `orders-ui.js` gələcəkdə: `pay.js` (ödəniş modal), `shift-badge.js` (növbə/Z), `zones.js` (zal/menyu/çek). Risk yüksək — ayrıca sprint.
+- `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 
+- **1.2.44** — 2026-09-13 — orders-ui Faza 1: zones/shift/pay bind (davranış eyni)
 - **1.2.43** — 2026-09-13 — Loyalty Faza 2: tam refund-da ball bərpa/revoke
 - **1.2.42** — 2026-09-13 — Printer: Windows/USB adı + TCP; Win32 RAW
 - **1.2.41** — 2026-09-13 — Çek logo Faza 1b (ekran/brauzer; termal raster TODO)

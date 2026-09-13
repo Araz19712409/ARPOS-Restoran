@@ -35,6 +35,12 @@ function test(name, fn) {
   console.log('ok  ' + name);
 }
 
+function ordersUiBundle() {
+  return ['orders-zones.js', 'orders-shift.js', 'orders-pay.js', 'orders-ui.js'].map(function (name) {
+    return fs.readFileSync(path.join(__dirname, 'public', name), 'utf8');
+  }).join('\n');
+}
+
 function withTempDb(fn) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arpos-t-'));
   const prev = process.env.ARPOS_DATA_DIR;
@@ -1886,7 +1892,7 @@ test('kassir UX: simpleMode default; pay-open accept axını; dock CSS', functio
     assert.strictEqual(settings.forPos().pay.simpleMode, true);
     assert.strictEqual(settings.forPos().pay.nextTableAfterClose, true);
   });
-  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  const ui = ordersUiBundle();
   assert.ok(ui.indexOf("askYes('Qəbul + ödəniş'") >= 0 || ui.indexOf('Qəbul + ödəniş') >= 0);
   assert.ok(ui.indexOf('postAccept') >= 0);
   assert.ok(ui.indexOf('applyPaySimpleMode') >= 0);
@@ -1909,6 +1915,28 @@ test('kassir UX: simpleMode default; pay-open accept axını; dock CSS', functio
   const ordersHtml = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
   assert.ok(ordersHtml.indexOf('id="receipt-next"') >= 0);
   assert.ok(ordersHtml.indexOf('id="post-pay-strip"') >= 0);
+});
+
+test('orders-ui Faza 1: zones/shift/pay bind + script sırası', function () {
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
+  const moneyAt = html.indexOf('money.js');
+  const zonesAt = html.indexOf('orders-zones.js');
+  const shiftAt = html.indexOf('orders-shift.js');
+  const payAt = html.indexOf('orders-pay.js');
+  const uiAt = html.indexOf('orders-ui.js');
+  assert.ok(moneyAt >= 0 && zonesAt > moneyAt && shiftAt > zonesAt && payAt > shiftAt && uiAt > payAt);
+  const zones = fs.readFileSync(path.join(__dirname, 'public', 'orders-zones.js'), 'utf8');
+  const shift = fs.readFileSync(path.join(__dirname, 'public', 'orders-shift.js'), 'utf8');
+  const pay = fs.readFileSync(path.join(__dirname, 'public', 'orders-pay.js'), 'utf8');
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(zones.indexOf('OrdersZones') >= 0 && zones.indexOf('function bind') >= 0);
+  assert.ok(shift.indexOf('OrdersShift') >= 0 && shift.indexOf('function bind') >= 0);
+  assert.ok(pay.indexOf('OrdersPay') >= 0 && pay.indexOf('function bind') >= 0);
+  assert.ok(ui.indexOf('window.OrdersUiCtx') >= 0);
+  assert.ok(ui.indexOf('OrdersZones.bind') >= 0);
+  assert.ok(ui.indexOf('OrdersShift.bind') >= 0);
+  assert.ok(ui.indexOf('OrdersPay.bind') >= 0);
+  assert.ok(ui.indexOf('function postAccept') >= 0);
 });
 
 test('Z: autoPrintZ; queue z; receipt brand; açıq masa blok', function () {
@@ -1976,7 +2004,7 @@ test('Z: autoPrintZ; queue z; receipt brand; açıq masa blok', function () {
   );
   assert.ok(close.indexOf('autoPrintZ') >= 0);
   assert.ok(close.indexOf("fiscal.probe('close')") >= 0);
-  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  const ui = ordersUiBundle();
   assert.ok(ui.indexOf('ShiftZView') >= 0);
   assert.ok(fs.existsSync(path.join(__dirname, 'public', 'shift-z-view.js')));
   assert.ok(fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8').indexOf('shift-auto-print-z') >= 0);

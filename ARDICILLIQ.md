@@ -201,6 +201,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 185. [x] 1.2.41 — Çek logo Faza 1b (ekran; termal TODO)
 186. [x] 1.2.42 — Printer: Windows/USB adı + TCP Win32 RAW
 187. [x] 1.2.43 — Loyalty Faza 2: refund ball bərpa (tam)
+188. [x] 1.2.44 — orders-ui Faza 1: zones/shift/pay (davranış eyni)
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı
