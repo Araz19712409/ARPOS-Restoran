@@ -177,6 +177,27 @@ function closeBlockMessage(orderList, terminalId) {
   return 'Açıq masa var: ' + names.join(', ') + '.';
 }
 
+function lastClosedFor(store, terminalId) {
+  return (store && store.shifts || []).filter(function (row) {
+    return Number(row.terminalId) === Number(terminalId) && row.status === 'closed';
+  }).sort(function (a, b) {
+    return String(b.closedAt || '').localeCompare(String(a.closedAt || ''));
+  })[0] || null;
+}
+
+function nextStartingCash(store, terminalId, shiftCfg) {
+  const fallback = money(shiftCfg && shiftCfg.defaultStartingCash);
+  if (shiftCfg && shiftCfg.carryCountedCash === false) {
+    return fallback;
+  }
+  const last = lastClosedFor(store, terminalId);
+  if (!last || last.countedCash == null || last.countedCash === '') {
+    return fallback;
+  }
+  const n = money(last.countedCash);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
 function maybeAutoOpen(store, terminal, user, shiftCfg) {
   const have = currentFor(store, terminal && terminal.id);
   if (have) {
@@ -185,7 +206,7 @@ function maybeAutoOpen(store, terminal, user, shiftCfg) {
   if (shiftCfg && shiftCfg.autoOpenOnSale === false) {
     return { error: 'Əvvəlcə növbə açın.' };
   }
-  return ensureOpen(store, terminal, user, shiftCfg && shiftCfg.defaultStartingCash);
+  return ensureOpen(store, terminal, user, nextStartingCash(store, terminal && terminal.id, shiftCfg));
 }
 
 function ensureOpen(store, terminal, user, startingCash) {
@@ -252,6 +273,8 @@ module.exports = {
   packedForPrint: packedForPrint,
   openShiftForTill: openShiftForTill,
   closeBlockMessage: closeBlockMessage,
+  lastClosedFor: lastClosedFor,
+  nextStartingCash: nextStartingCash,
   maybeAutoOpen: maybeAutoOpen,
   ensureOpen: ensureOpen,
   addCashDrop: addCashDrop

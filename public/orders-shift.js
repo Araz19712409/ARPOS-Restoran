@@ -10,9 +10,18 @@
     var say = ctx.say;
     var dec = ctx.dec;
 
+    function hideCashBadge() {
+      var cashEl = document.getElementById('shift-cash');
+      if (cashEl) {
+        cashEl.style.display = 'none';
+        cashEl.textContent = 'Kassa —';
+      }
+    }
+
     function refreshShiftBadge() {
       var btn = document.getElementById('shift-z-open');
       if (!btn) {
+        hideCashBadge();
         return Promise.resolve();
       }
       var waiter = ctx.waiter;
@@ -21,13 +30,27 @@
       btn.style.display = show ? '' : 'none';
       if (!show) {
         btn.textContent = 'Növbə / Z';
+        hideCashBadge();
         return Promise.resolve();
       }
       return api('/api/shifts?terminalId=' + encodeURIComponent(terminal.id)).then(function (body) {
         ctx.shiftPack = body.data || {};
-        btn.textContent = ctx.shiftPack.current ? 'Növbə açıq' : 'Növbə bağlı';
+        var cur = ctx.shiftPack.current;
+        btn.textContent = cur ? 'Növbə açıq' : 'Növbə bağlı';
+        var cashEl = document.getElementById('shift-cash');
+        var shiftCfg = (ctx.settings && ctx.settings.shift) || {};
+        var showCash = !!(cur && shiftCfg.showCashOnOrders !== false);
+        if (cashEl) {
+          if (showCash) {
+            cashEl.style.display = '';
+            cashEl.textContent = 'Kassa ' + ctx.money(cur.expectedCash) + ' ₼';
+          } else {
+            hideCashBadge();
+          }
+        }
       }).catch(function () {
         btn.textContent = 'Növbə / Z';
+        hideCashBadge();
       });
     }
 

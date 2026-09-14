@@ -104,6 +104,20 @@
   color: #f6efe4;
 }
 
+.order-page .shift-cash {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #2a241c;
+  border: 1px solid #3d3428;
+  color: #e2b65a;
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .order-page .gold {
   background: linear-gradient(180deg, #d4a24a, #b07d28);
   color: #1b140c;
@@ -1449,6 +1463,12 @@
 }
 
 @media (max-width: 980px) {
+  .order-page .shift-cash {
+    min-height: 32px;
+    padding: 4px 8px;
+    font-size: 0.76rem;
+  }
+
   .order-page {
     height: 100vh;
     max-height: 100vh;

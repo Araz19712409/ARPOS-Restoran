@@ -544,7 +544,12 @@
             !document.getElementById('shift-auto-open').checked),
           autoPrintZ: !(document.getElementById('shift-auto-print-z') &&
             !document.getElementById('shift-auto-print-z').checked),
-          defaultStartingCash: 0
+          showCashOnOrders: !(document.getElementById('shift-show-cash') &&
+            !document.getElementById('shift-show-cash').checked),
+          carryCountedCash: !(document.getElementById('shift-carry-counted') &&
+            !document.getElementById('shift-carry-counted').checked),
+          defaultStartingCash: dec(document.getElementById('shift-start-default')
+            ? document.getElementById('shift-start-default').value : 0) || 0
         },
         autoSendAllOnAccept: !(document.getElementById('auto-send-all') &&
           !document.getElementById('auto-send-all').checked),
@@ -670,6 +675,9 @@
     setChecked('till-locked', current.tillLocked === true);
     setChecked('shift-auto-open', !(current.shift && current.shift.autoOpenOnSale === false));
     setChecked('shift-auto-print-z', !(current.shift && current.shift.autoPrintZ === false));
+    setChecked('shift-show-cash', !(current.shift && current.shift.showCashOnOrders === false));
+    setChecked('shift-carry-counted', !(current.shift && current.shift.carryCountedCash === false));
+    setVal('shift-start-default', String((current.shift && current.shift.defaultStartingCash) || 0));
     setVal('backup-folder', current.backupFolder || '');
     var ek = current.ekassa || {};
     var del = current.delivery || {};

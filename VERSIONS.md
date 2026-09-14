@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 
+- **1.2.52** — 2026-09-14 — Sifarişdə kassa qalığı; Z counted növbəti startingCash
 - **1.2.51** — 2026-09-14 — Çek paneli premium; Çap/Endirim main-dən ayrı
 - **1.2.50** — 2026-09-14 — Kataloq maya strip; void/endirim payments blok
 - **1.2.49** — 2026-09-14 — Z: çekmece yox; tarixdə il; tip; logo settings.edit

@@ -2232,7 +2232,7 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(foot.indexOf('id="discount-open"') >= 0);
   assert.ok(foot.indexOf('id="pay-open"') >= 0);
   assert.ok(foot.indexOf('id="accept-order"') >= 0);
-  assert.ok(html.indexOf('orders.css?v=24') >= 0);
+  assert.ok(html.indexOf('orders.css?v=25') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
   assert.ok(css.indexOf('#check-total') >= 0);
   assert.ok(css.indexOf('.check-sum-box') >= 0 && css.indexOf('border-radius: 10px') >= 0);
@@ -2241,6 +2241,61 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(sec.indexOf('margin: 8px 0 10px') >= 0);
   assert.ok(css.indexOf('.check-foot-notes') >= 0);
   assert.ok(css.indexOf('[data-zone="floor"] .sec-actions') >= 0 || css.indexOf('.sec-actions') >= 0);
+});
+
+test('kassa qalığı ayar; Z counted növbəti startingCash', function () {
+  withTempDb(function () {
+    const def = settings.readSettings().shift;
+    assert.strictEqual(def.showCashOnOrders, true);
+    assert.strictEqual(def.carryCountedCash, true);
+    settings.writeSettings({
+      shift: { showCashOnOrders: false, carryCountedCash: false, defaultStartingCash: 20 }
+    });
+    const pub = settings.forPos();
+    assert.strictEqual(pub.shift.showCashOnOrders, false);
+    assert.strictEqual(pub.shift.carryCountedCash, false);
+    assert.strictEqual(pub.shift.defaultStartingCash, 20);
+    assert.strictEqual(settings.forOffice().shift.showCashOnOrders, false);
+    assert.strictEqual(settings.forOffice().shift.carryCountedCash, false);
+  });
+  const term = { id: 1, name: 'K1' };
+  const user = { id: 1, name: 'Ali' };
+  const store = { nextId: 1, shifts: [] };
+  const first = shifts.maybeAutoOpen(store, term, user, {
+    autoOpenOnSale: true, defaultStartingCash: 40, carryCountedCash: true
+  });
+  assert.ok(first.created);
+  assert.strictEqual(first.shift.startingCash, 40);
+  first.shift.status = 'closed';
+  first.shift.closedAt = '2026-09-14T22:00:00';
+  first.shift.countedCash = 150;
+  const second = shifts.maybeAutoOpen(store, term, user, {
+    autoOpenOnSale: true, defaultStartingCash: 40, carryCountedCash: true
+  });
+  assert.ok(second.created);
+  assert.strictEqual(second.shift.startingCash, 150);
+  const store2 = {
+    nextId: 2,
+    shifts: [{
+      id: 1, terminalId: 1, status: 'closed', closedAt: '2026-09-14T22:00:00', countedCash: 150
+    }]
+  };
+  const noCarry = shifts.maybeAutoOpen(store2, term, user, {
+    autoOpenOnSale: true, defaultStartingCash: 40, carryCountedCash: false
+  });
+  assert.strictEqual(noCarry.shift.startingCash, 40);
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
+  assert.ok(html.indexOf('id="shift-cash"') >= 0);
+  assert.ok(html.indexOf('orders-shift.js?v=2') >= 0);
+  const shiftJs = fs.readFileSync(path.join(__dirname, 'public', 'orders-shift.js'), 'utf8');
+  assert.ok(shiftJs.indexOf('showCashOnOrders') >= 0);
+  assert.ok(shiftJs.indexOf('expectedCash') >= 0);
+  const setHtml = fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8');
+  assert.ok(setHtml.indexOf('id="shift-show-cash"') >= 0);
+  assert.ok(setHtml.indexOf('id="shift-carry-counted"') >= 0);
+  const setUi = fs.readFileSync(path.join(__dirname, 'public', 'settings-ui.js'), 'utf8');
+  assert.ok(setUi.indexOf('showCashOnOrders') >= 0);
+  assert.ok(setUi.indexOf('carryCountedCash') >= 0);
 });
 
 test('orders-ui Faza 1: zones/shift/pay bind + script sırası', function () {

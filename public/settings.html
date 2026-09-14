@@ -160,7 +160,18 @@
             <input id="shift-auto-print-z" type="checkbox" checked>
             Növbə bağlananda Z çap et
           </label>
-          <p class="hint">ON: yalnız ödənişdə növbə yoxdursa açır (başlanğıc nağd 0). Qəbul/fire açmır. Z OFF olsa bağlanışda çap yox, ekran xülasə qalır.</p>
+          <label class="ops-choice">
+            <input id="shift-show-cash" type="checkbox" checked>
+            Sifarişdə kassa qalığı
+          </label>
+          <label class="ops-choice">
+            <input id="shift-carry-counted" type="checkbox" checked>
+            Z-dən sonra sayılan nağdı növbəti növbəyə keçir
+          </label>
+          <label>Başlanğıc nağd (AZN)
+            <input id="shift-start-default" type="text" inputmode="decimal" autocomplete="off" value="0">
+          </label>
+          <p class="hint">ON: yalnız ödənişdə növbə yoxdursa açır. Qəbul/fire açmır. Z OFF olsa bağlanışda çap yox, ekran xülasə qalır. Başlanğıc nağd daşıma sönük olanda və ya ilk növbədə işləyir.</p>
         </section>
         <section>
           <h3>Çatdırılma</h3>
@@ -534,6 +545,6 @@
   <script src="offline.js"></script>
   <script src="dom.js"></script>
   <script src="nav.js?v=1"></script>
-  <script src="settings-ui.js?v=14"></script>
+  <script src="settings-ui.js?v=15"></script>
 </body>
 </html>

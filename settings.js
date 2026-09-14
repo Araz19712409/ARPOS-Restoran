@@ -65,10 +65,17 @@ function publicLoyalty(row) {
   };
 }
 
+function shiftFlagOn(src, key) {
+  const v = src && src[key];
+  return !(v === false || v === 0 || v === '0' || v === 'false');
+}
+
 function emptyShift() {
   return {
     autoOpenOnSale: true,
     autoPrintZ: true,
+    showCashOnOrders: true,
+    carryCountedCash: true,
     defaultStartingCash: 0
   };
 }
@@ -78,8 +85,9 @@ function cleanShift(raw) {
   const cash = Number(src.defaultStartingCash);
   return {
     autoOpenOnSale: src.autoOpenOnSale !== false,
-    autoPrintZ: !(src.autoPrintZ === false || src.autoPrintZ === 0 ||
-      src.autoPrintZ === '0' || src.autoPrintZ === 'false'),
+    autoPrintZ: shiftFlagOn(src, 'autoPrintZ'),
+    showCashOnOrders: shiftFlagOn(src, 'showCashOnOrders'),
+    carryCountedCash: shiftFlagOn(src, 'carryCountedCash'),
     defaultStartingCash: Number.isFinite(cash) && cash >= 0 ? Number(cash.toFixed(2)) : 0
   };
 }
@@ -423,6 +431,8 @@ function forOffice(cfg) {
     shift: {
       autoOpenOnSale: shift.autoOpenOnSale !== false,
       autoPrintZ: shift.autoPrintZ !== false,
+      showCashOnOrders: shift.showCashOnOrders !== false,
+      carryCountedCash: shift.carryCountedCash !== false,
       defaultStartingCash: Number.isFinite(cash) && cash >= 0 ? Number(cash.toFixed(2)) : 0
     },
     loyalty: publicLoyalty(row.loyalty),
@@ -454,6 +464,8 @@ function forPos(cfg) {
     shift: {
       autoOpenOnSale: shift.autoOpenOnSale !== false,
       autoPrintZ: shift.autoPrintZ !== false,
+      showCashOnOrders: shift.showCashOnOrders !== false,
+      carryCountedCash: shift.carryCountedCash !== false,
       defaultStartingCash: Number.isFinite(cash) && cash >= 0 ? Number(cash.toFixed(2)) : 0
     },
     stock: {
