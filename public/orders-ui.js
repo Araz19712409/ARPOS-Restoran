@@ -81,6 +81,10 @@
   var ctx = {};
   var pinBuffer = '';
   var pingTimer = 0;
+  var ordersPollTimer = 0;
+  var ordersLightBusy = false;
+  var ordersPollWanted = false;
+  var ORDERS_POLL_MS = 4000;
   var switching = false;
   function storedScale() {
     try {
@@ -648,7 +652,9 @@
       hideLock();
       drawWaiterLine();
       ensureTerminal(false);
+      startOrdersPoll();
     } else {
+      stopOrdersPoll();
       (terminal ? api('/api/terminals/release', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -722,6 +728,138 @@
       refreshShiftBadge();
     }).catch(function (error) {
       say(error.message, 'err');
+    });
+  }
+
+  function stopOrdersPoll() {
+    if (ordersPollTimer) {
+      window.clearInterval(ordersPollTimer);
+      ordersPollTimer = 0;
+    }
+  }
+
+  function startOrdersPoll() {
+    stopOrdersPoll();
+    if (!waiter) {
+      return;
+    }
+    ordersPollTimer = window.setInterval(function () {
+      if (document.visibilityState === 'hidden') {
+        return;
+      }
+      refreshOrdersLight();
+    }, ORDERS_POLL_MS);
+  }
+
+  function onOrdersVisible() {
+    if (!waiter) {
+      return;
+    }
+    refreshOrdersLight();
+    startOrdersPoll();
+  }
+
+  function orderFootprint(order) {
+    if (!order) {
+      return '';
+    }
+    var items = order.items || [];
+    var pays = order.payments || [];
+    return [
+      order.id,
+      order.status,
+      order.tableId,
+      items.length,
+      pays.length,
+      order.discountType || '',
+      order.discountValue || 0,
+      items.map(function (it) {
+        return (it.id || '') + ':' + (it.qty || 0) + ':' + (it.voided ? 1 : 0) + ':' + (it.sent ? 1 : 0);
+      }).join(',')
+    ].join('/');
+  }
+
+  function floorBusyFootprint() {
+    return tables.map(function (t) {
+      return t.id + ':' + tableState(t);
+    }).join('|');
+  }
+
+  function patchLocalOrder(order) {
+    if (!order || !order.id) {
+      return;
+    }
+    var i = 0;
+    for (i = 0; i < orders.length; i += 1) {
+      if (orders[i].id === order.id) {
+        orders[i] = order;
+        return;
+      }
+    }
+    orders.push(order);
+  }
+
+  function applyOrdersPayload(data) {
+    orders = data.orders || [];
+    reservations = data.reservations || [];
+    if (data.settings) {
+      settings = data.settings;
+      if (window.PosNav && settings.opsMode) {
+        window.PosNav.rememberOps(settings.opsMode);
+      }
+    }
+    if (data.locks) {
+      locks = data.locks;
+    }
+  }
+
+  function refreshOrdersLight(opts) {
+    var force = !!(opts && opts.force);
+    if (!waiter) {
+      return Promise.resolve();
+    }
+    if (!force && busy) {
+      ordersPollWanted = true;
+      return Promise.resolve();
+    }
+    if (ordersLightBusy) {
+      return Promise.resolve();
+    }
+    ordersLightBusy = true;
+    return Promise.all([
+      api('/api/orders'),
+      api('/api/waitlist').catch(function () { return { data: { items: [] } }; })
+    ]).then(function (parts) {
+      var data = (parts[0] && parts[0].data) || {};
+      var prevFloor = floorBusyFootprint();
+      var prevCheck = orderFootprint(openOrder());
+      waitlist = (parts[1] && parts[1].data && parts[1].data.items) || [];
+      seatedWait = (parts[1] && parts[1].data && parts[1].data.seated) || [];
+      applyOrdersPayload(data);
+      var low = data.lowStock || [];
+      if (!lowTold && low.length) {
+        lowTold = true;
+        say(low.length + ' xammal az qalıb: ' +
+          low.slice(0, 6).map(function (row) { return row.name; }).join(', '), 'warn');
+      }
+      if (typeof uiBlockedForBarcode === 'function' && uiBlockedForBarcode()) {
+        return;
+      }
+      if (prevFloor !== floorBusyFootprint()) {
+        renderFloor();
+      }
+      if (tableId && prevCheck !== orderFootprint(openOrder())) {
+        renderCheck();
+      }
+      drawWaiterLine();
+    }).catch(function () {
+      return null;
+    }).then(function () {
+      ordersLightBusy = false;
+      if (ordersPollWanted && !busy) {
+        ordersPollWanted = false;
+        return refreshOrdersLight();
+      }
     });
   }
 
@@ -1010,15 +1148,21 @@
     var timer = 0;
     var moved = false;
     var didToggle = false;
+    var added = false;
+    var startX = 0;
+    var startY = 0;
     function clear() {
       if (timer) {
         window.clearTimeout(timer);
         timer = 0;
       }
     }
-    function start() {
+    function start(event) {
       moved = false;
       didToggle = false;
+      added = false;
+      startX = event.clientX;
+      startY = event.clientY;
       clear();
       timer = window.setTimeout(function () {
         timer = 0;
@@ -1033,23 +1177,37 @@
       if (event.button != null && event.button !== 0) {
         return;
       }
-      start();
+      start(event);
     });
-    card.addEventListener('pointermove', function () {
-      moved = true;
+    card.addEventListener('pointermove', function (event) {
+      var dx = (event.clientX || 0) - startX;
+      var dy = (event.clientY || 0) - startY;
+      if (Math.hypot(dx, dy) >= 14) {
+        moved = true;
+        clear();
+      }
+    });
+    card.addEventListener('pointerup', function (event) {
       clear();
+      if (event.button != null && event.button !== 0) {
+        return;
+      }
+      if (didToggle || moved || added) {
+        return;
+      }
+      if (event.target && event.target.closest && event.target.closest('.fav-star')) {
+        return;
+      }
+      added = true;
+      addProduct(product);
     });
-    card.addEventListener('pointerup', clear);
     card.addEventListener('pointercancel', clear);
     card.addEventListener('pointerleave', clear);
     card.addEventListener('click', function (event) {
-      if (didToggle) {
+      if (didToggle || added || moved) {
         event.preventDefault();
         event.stopPropagation();
         didToggle = false;
-        return;
-      }
-      if (moved) {
         return;
       }
       addProduct(product);
@@ -2033,12 +2191,22 @@
       clearPendingGuests(tableId);
       var warns = (body.data && body.data.warnings) || [];
       say(warns.length ? warns.join(' ') : 'Sifariş qəbul olundu.');
-      return load().then(function () {
+      function afterAcceptUi() {
         if (isWaiterMode()) {
           setOrderZone('check');
         }
         return body;
-      });
+      }
+      var accepted = body.data && body.data.order;
+      if (accepted) {
+        patchLocalOrder(accepted);
+        var needLayout = accepted.tableId && !isServiceId(accepted.tableId) && !tableById(accepted.tableId);
+        if (needLayout) {
+          return load().then(afterAcceptUi);
+        }
+        return refreshOrdersLight({ force: true }).then(afterAcceptUi);
+      }
+      return load().then(afterAcceptUi);
     }).then(function (body) {
       busy = false;
       return body;
@@ -2879,8 +3047,13 @@
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') {
       flushScale();
+      stopOrdersPoll();
+    } else {
+      onOrdersVisible();
     }
   });
+  window.addEventListener('focus', onOrdersVisible);
+  window.addEventListener('pageshow', onOrdersVisible);
 
   window.setInterval(function () {
     if (waiter && products.length) {
@@ -2930,6 +3103,7 @@
   ctx.tableTitle = tableTitle;
   ctx.maybeFocusBarcode = maybeFocusBarcode;
   ctx.load = function () { return load(); };
+  ctx.refreshOrdersLight = function (opts) { return refreshOrdersLight(opts); };
   ctx.postAccept = function () { return postAccept(); };
   window.OrdersUiCtx = ctx;
   if (window.OrdersZones) {

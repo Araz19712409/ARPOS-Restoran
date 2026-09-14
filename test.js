@@ -1591,6 +1591,10 @@ test('yeniləmə checksum və təsdiq', function () {
   assert.strictEqual(updater.hashMatches(hex, hex.replace(/a/g, 'b')), false);
   assert.strictEqual(updater.isConfirmed({}), false);
   assert.strictEqual(updater.isConfirmed({ confirm: true }), true);
+  assert.strictEqual(updater.shouldSendGithubAuth('https://api.github.com/repos/a/b/releases/assets/1'), true);
+  assert.strictEqual(updater.shouldSendGithubAuth('https://github.com/a/b/releases/download/v1/ArposRestoran-Setup.exe'), true);
+  assert.strictEqual(updater.shouldSendGithubAuth('https://objects.githubusercontent.com/github-production-release-asset-2e65be/file'), false);
+  assert.strictEqual(updater.shouldSendGithubAuth('https://release-assets.githubusercontent.com/file'), false);
 });
 
 test('fiskal provider siyahısı və wizarpos imza', function () {
@@ -2052,7 +2056,7 @@ test('katalog maya strip; void/endirim payments blok', function () {
   assert.ok(ui.indexOf("can('orders.void') && !(order.payments && order.payments.length)") >= 0);
   assert.ok(ui.indexOf("can('orders.discount') && !(order.payments && order.payments.length)") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=33') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=34') >= 0);
   const prodJs = fs.readFileSync(path.join(__dirname, 'public', 'products.js'), 'utf8');
   assert.ok(prodJs.indexOf('/api/catalog/manage') >= 0);
 });
@@ -2315,13 +2319,17 @@ test('PWA ofisiant: manifest mode=waiter; waiter-mode hook', function () {
   assert.ok(html.indexOf('arpos-mode') >= 0);
   assert.ok(html.indexOf('waiter-mode') >= 0);
   assert.ok(html.indexOf('apple-mobile-web-app-capable') >= 0);
-  assert.ok(html.indexOf('orders-ui.js?v=33') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=34') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
   assert.ok(css.indexOf('.waiter-mode') >= 0);
   assert.ok(css.indexOf('.waiter-mode .order-zones') >= 0);
   const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
   assert.ok(ui.indexOf('function isWaiterMode') >= 0);
   assert.ok(ui.indexOf("setOrderZone('check')") >= 0);
+  assert.ok(ui.indexOf('function refreshOrdersLight') >= 0);
+  assert.ok(ui.indexOf('ORDERS_POLL_MS = 4000') >= 0);
+  assert.ok(ui.indexOf('Math.hypot(dx, dy) >= 14') >= 0);
+  assert.ok(ui.indexOf('refreshOrdersLight({ force: true })') >= 0);
   assert.ok(!fs.existsSync(path.join(__dirname, 'public', 'sw.js')));
 });
 

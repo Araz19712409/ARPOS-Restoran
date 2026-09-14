@@ -213,6 +213,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 197. [x] 1.2.53 — Ofisiant telefon PWA Faza 1
 198. [x] 1.2.54 — Ofisiant Capacitor Android qabıq (mobile-waiter)
 199. [x] 1.2.55 — Ofisiant shell: yalnız İP + Yadda saxla / Aç
+200. [x] 1.2.56 — Orders poll/toxunuş; yeniləmə GitHub 504 retry
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı

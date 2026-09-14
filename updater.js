@@ -185,31 +185,53 @@ function httpsJson(url, token) {
   });
 }
 
-function download(url, dest, token) {
+function shouldSendGithubAuth(href) {
+  try {
+    const host = new URL(href).hostname.toLowerCase();
+    return host === 'api.github.com' || host === 'github.com' || host === 'www.github.com';
+  } catch (error) {
+    return false;
+  }
+}
+
+function downloadHeaders(href, token) {
+  const h = {
+    'User-Agent': 'ArposRestoran',
+    Accept: 'application/octet-stream'
+  };
+  if (token && shouldSendGithubAuth(href)) {
+    h.Authorization = 'Bearer ' + token;
+  }
+  return h;
+}
+
+function isRetryableDownload(err) {
+  const msg = String(err && err.message || '');
+  return /Yükləmə (502|503|504)/.test(msg) ||
+    /ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up|Yükləmə vaxtı/.test(msg);
+}
+
+function downloadOnce(url, dest, token) {
   return new Promise(function (resolve, reject) {
     fs.mkdirSync(path.dirname(dest), { recursive: true });
-    function headers() {
-      const h = {
-        'User-Agent': 'ArposRestoran',
-        Accept: 'application/octet-stream'
-      };
-      if (token) {
-        h.Authorization = 'Bearer ' + token;
-      }
-      return h;
+    function fail(err) {
+      safeUnlink(dest);
+      reject(err);
     }
     function go(href, hops) {
       if (hops > 5) {
-        reject(new Error('Çox yönləndirmə.'));
+        fail(new Error('Çox yönləndirmə.'));
         return;
       }
-      https.get(href, { headers: headers() }, function (res) {
+      const req = https.get(href, { headers: downloadHeaders(href, token) }, function (res) {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          res.resume();
           go(res.headers.location, hops + 1);
           return;
         }
         if (res.statusCode < 200 || res.statusCode >= 300) {
-          reject(new Error('Yükləmə ' + res.statusCode));
+          res.resume();
+          fail(new Error('Yükləmə ' + res.statusCode));
           return;
         }
         const file = fs.createWriteStream(dest);
@@ -217,11 +239,39 @@ function download(url, dest, token) {
         file.on('finish', function () {
           file.close(function () { resolve(dest); });
         });
-        file.on('error', reject);
-      }).on('error', reject);
+        file.on('error', function (err) {
+          fail(err);
+        });
+      });
+      req.setTimeout(180000, function () {
+        req.destroy();
+        fail(new Error('Yükləmə vaxtı bitdi.'));
+      });
+      req.on('error', fail);
     }
     go(url, 0);
   });
+}
+
+function download(url, dest, token) {
+  function attempt(n) {
+    return downloadOnce(url, dest, token).catch(function (err) {
+      if (isRetryableDownload(err) && n < 3) {
+        return new Promise(function (resolve) {
+          setTimeout(resolve, 700 * n);
+        }).then(function () {
+          return attempt(n + 1);
+        });
+      }
+      const msg = String(err && err.message || '');
+      const code = (msg.match(/Yükləmə (50[234])/) || [])[1];
+      if (code) {
+        throw new Error('GitHub müvəqqəti cavab vermədi (' + code + '). Bir az sonra yenidən Quraşdır basın.');
+      }
+      throw err;
+    });
+  }
+  return attempt(1);
 }
 
 function check() {
@@ -355,6 +405,7 @@ module.exports = {
   isConfirmed: isConfirmed,
   parseChecksums: parseChecksums,
   expectedHashFor: expectedHashFor,
-  hashMatches: hashMatches
+  hashMatches: hashMatches,
+  shouldSendGithubAuth: shouldSendGithubAuth
 };
 
