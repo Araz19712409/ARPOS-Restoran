@@ -2,7 +2,7 @@
   "name": "arpos-waiter",
   "version": "1.0.0",
   "private": true,
-  "description": "Arpos Ofisiant — Android Capacitor qabıq (LAN HTTPS WebView)",
+  "description": "Arpos Ofisiant — Android qabıq; istifadəçi yalnız kassa İP yazır, port 3443 HTTPS sabitdir",
   "scripts": {
     "sync": "npx cap sync android",
     "open": "npx cap open android",

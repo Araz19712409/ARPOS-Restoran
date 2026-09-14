@@ -11,5 +11,6 @@ android/app/*.iml
 *.aab
 *.keystore
 *.jks
+dist/
 .DS_Store
 Thumbs.db

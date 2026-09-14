@@ -1,6 +1,6 @@
 # Arpos Ofisiant — Android qabıq (Faza 2a)
 
-Nazik Capacitor 6 APK. Native sifariş UI yoxdur: WebView kassanın LAN HTTPS ünvanını açır (`/orders.html?mode=waiter`).
+Nazik Capacitor 6 APK. Native sifariş UI yoxdur: WebView kassanın LAN HTTPS ünvanını açır (`/orders.html?mode=waiter`). İstifadəçi **yalnız kassa İP** yazır; `https://`, port **3443** və path avtomatikdir.
 
 iOS bu fazada yoxdur. Oflayn sifariş növbəsi yoxdur.
 
@@ -29,8 +29,8 @@ Release imza (Play / sideload istehsal): Android Studio **Generate Signed App Bu
 ## Telefonda
 
 1. APK quraşdırın.
-2. İlk açılışda **Kassa ünvanı**: `https://192.168.x.x:3443` (IP Ayarlar → Şəbəkə).
-3. **Yadda saxla + Aç** → ofisiant (`mode=waiter`).
+2. İlk açılışda **Kassa İP**: `192.168.x.x` (Ayarlar → Şəbəkə). Port 3443 sabitdir — URL yazmayın.
+3. **Yadda saxla** (ekranda qalır) və ya **Aç** → ofisiant (`mode=waiter`).
 4. PIN → masa → məhsul → Qəbul et.
 
 Ünvanı dəyişmək: sistem Geri (bootstrap forma) və ya ünvanı yenidən yazmaq üçün tətbiq məlumatını silin. Formanı məcburi göstərmək: WebView `index.html?setup=1` (ünvan saxlanıbsa avtomatik açılır).
@@ -39,10 +39,10 @@ HTTP **qəbul olunmur**. Yalnız `https://`.
 
 ## Öz-imzalı LAN sertifikat
 
-Kassa sertifikatı öz-imzalıdır. Android 7+ tətbiqlər istifadəçi CA-ya default etibar etmir; bu qabıq `network_security_config` ilə **user** sertifikatlarına icazə verir (`cleartextTrafficPermitted=false`).
+Kassa sertifikatı öz-imzalıdır. Android 7+ tətbiqlər istifadəçi CA-ya default etibar etmir; bu qabıq `network_security_config` ilə **user** sertifikatlarına icazə verir (`cleartextTrafficPermitted=false`). Şəxsi LAN İP-də (10/8, 172.16–31, 192.168/16, localhost) WebView SSL xətasında davam edilir.
 
 1. Kassanın CA / sertifikatını telefona quraşdırın (Ayarlar → Şifrələmə və etimad → Quraşdır), **və ya**
-2. Brauzerdə `https://KASSA-IP:3443` açın, xəbərdarlığı oxuyun; WebView Chrome-un «bir dəfə davam et» seçimini paylaşmır — user CA daha etibarlıdır.
+2. LAN İP üçün qabıq self-signed sertifikatı qəbul edir; ictimai hostlarda SSL ləğv olunur.
 
 `usesCleartextTraffic` sönülüdür. Debug üçün HTTP açılmır.
 

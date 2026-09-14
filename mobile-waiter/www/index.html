@@ -32,73 +32,139 @@
       color: var(--fg);
       padding: 12px 14px;
     }
+    .port-hint {
+      margin: 10px 0 0;
+      font-size: 0.92rem;
+      color: #c4a574;
+    }
+    .actions { margin-top: 16px; }
     button {
       width: 100%;
       min-height: 52px;
-      margin-top: 14px;
+      margin-top: 12px;
       border: 0;
       border-radius: 12px;
       font-size: 1.05rem;
       font-weight: 650;
     }
     button:active { filter: brightness(1.08); }
+    #save { background: #3a342c; color: var(--fg); }
     #go { background: var(--gold); color: #221d17; }
-    #err { color: #e8a0a0; min-height: 1.4em; margin: 10px 0 0; }
+    #err { color: #e8a0a0; min-height: 1.4em; margin: 12px 0 0; }
+    #status { min-height: 1.4em; margin: 4px 0 0; }
+    #status.ok { color: #8fd19a; }
   </style>
 </head>
 <body>
   <h1>Arpos Ofisiant</h1>
-  <p>Kassanın LAN HTTPS ünvanını yazın. Telefon və kassa eyni Wi‑Fi-da olsun.</p>
-  <label for="url">Kassa ünvanı</label>
-  <input id="url" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://192.168.1.10:3443">
+  <p>Yalnız kassa İP yazın. Telefon və kassa eyni Wi‑Fi-da olsun.</p>
+  <label for="ip">Kassa İP</label>
+  <input id="ip" type="text" inputmode="decimal" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="192.168.1.10">
+  <p class="port-hint">Port: 3443 · HTTPS</p>
+  <div class="actions">
+    <button id="save" type="button">Yadda saxla</button>
+    <button id="go" type="button">Aç</button>
+  </div>
   <p id="err"></p>
-  <button id="go" type="button">Yadda saxla + Aç</button>
-  <p>Yalnız HTTPS. HTTP qəbul olunmur.</p>
+  <p id="status"></p>
+  <p>Port 3443 sabitdir. HTTP qəbul olunmur.</p>
   <script>
     (function () {
       var KEY = 'arpos-server-url';
-      var input = document.getElementById('url');
+      var input = document.getElementById('ip');
       var err = document.getElementById('err');
+      var status = document.getElementById('status');
       var setup = false;
+      var openTimer = null;
       try { setup = new URLSearchParams(location.search).get('setup') === '1'; } catch (e) {}
 
-      function originFrom(raw) {
+      function buildOrigin(raw) {
         var s = String(raw || '').trim();
-        if (!s) throw new Error('Ünvan yazın.');
-        if (/^http:\/\//i.test(s)) throw new Error('Yalnız HTTPS. HTTP yoxdur.');
-        if (!/^https:\/\//i.test(s)) s = 'https://' + s.replace(/^\/+/, '');
-        var u;
-        try { u = new URL(s); } catch (e) { throw new Error('Ünvan səhvdir.'); }
-        if (u.protocol !== 'https:') throw new Error('Yalnız HTTPS.');
-        if (!u.hostname) throw new Error('Ünvan səhvdir.');
-        return u.origin;
+        if (/^https:\/\//i.test(s)) {
+          var u = new URL(s);
+          if (u.protocol !== 'https:') throw new Error('Yalnız HTTPS.');
+          return u.origin;
+        }
+        if (/^http:\/\//i.test(s)) throw new Error('Yalnız HTTPS.');
+        s = s.replace(/^\/+/, '').replace(/\/.*$/, '');
+        var host = s, port = '3443';
+        var m = s.match(/^(\[[^\]]+\]|[^:]+):(\d+)$/);
+        if (m) { host = m[1]; port = m[2]; }
+        if (!host || /\s/.test(host)) throw new Error('İP yazın.');
+        return 'https://' + host + ':' + port;
       }
 
       function waiterUrl(origin) {
         return origin.replace(/\/$/, '') + '/orders.html?mode=waiter';
       }
 
+      function hostForInput(raw) {
+        try {
+          return new URL(buildOrigin(raw)).hostname;
+        } catch (e) {
+          return '';
+        }
+      }
+
+      function setErr(msg) {
+        err.textContent = msg || '';
+        status.textContent = '';
+        status.className = '';
+      }
+
+      function setStatus(msg, ok) {
+        err.textContent = '';
+        status.textContent = msg || '';
+        status.className = ok ? 'ok' : '';
+      }
+
+      function persist(origin) {
+        try { localStorage.setItem(KEY, origin); } catch (e) {}
+        input.value = hostForInput(origin);
+      }
+
       function openOrigin(origin) {
+        setStatus('Açılır…');
+        if (openTimer) clearTimeout(openTimer);
+        openTimer = setTimeout(function () {
+          setErr('Açılmadı. Wi‑Fi, İP və kassa 3443 yoxla.');
+        }, 2500);
         window.location.assign(waiterUrl(origin));
+      }
+
+      function readOrigin() {
+        setStatus('Yoxlanır…');
+        return buildOrigin(input.value);
       }
 
       try {
         var saved = localStorage.getItem(KEY) || '';
-        if (saved) input.value = saved;
+        if (saved) input.value = hostForInput(saved) || saved;
         if (saved && !setup) {
-          openOrigin(originFrom(saved));
+          openOrigin(buildOrigin(saved));
           return;
         }
-      } catch (e) {}
+      } catch (e) {
+        setErr((e && e.message) || 'İP yazın.');
+      }
+
+      document.getElementById('save').onclick = function () {
+        try {
+          var origin = readOrigin();
+          persist(origin);
+          setStatus('Saxlanıldı', true);
+        } catch (e) {
+          setErr((e && e.message) || 'İP yazın.');
+        }
+      };
 
       document.getElementById('go').onclick = function () {
-        err.textContent = '';
         try {
-          var origin = originFrom(input.value);
-          try { localStorage.setItem(KEY, origin); } catch (e) {}
+          var origin = readOrigin();
+          persist(origin);
           openOrigin(origin);
         } catch (e) {
-          err.textContent = (e && e.message) || 'Ünvan səhvdir.';
+          setErr((e && e.message) || 'İP yazın.');
         }
       };
     }());

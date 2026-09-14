@@ -26,11 +26,20 @@ const html = fs.readFileSync(path.join(root, 'www', 'index.html'), 'utf8');
 if (html.indexOf('arpos-server-url') < 0) {
   throw new Error('www/index.html localStorage açarı yoxdur');
 }
+if (html.indexOf('id="ip"') < 0 || html.indexOf('function buildOrigin') < 0) {
+  throw new Error('www/index.html İP formu yoxdur');
+}
+if (html.indexOf('Port: 3443') < 0) {
+  throw new Error('www/index.html port 3443 göstəricisi yoxdur');
+}
 if (html.indexOf('orders.html?mode=waiter') < 0) {
   throw new Error('www/index.html waiter URL yoxdur');
 }
 if (html.indexOf('^http:') < 0) {
   throw new Error('HTTP rəddi yoxdur');
+}
+if (html.indexOf('Yadda saxla') < 0 || html.indexOf('>Aç<') < 0) {
+  throw new Error('Yadda saxla / Aç düymələri yoxdur');
 }
 
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));

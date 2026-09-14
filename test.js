@@ -2333,6 +2333,10 @@ test('Capacitor ofisiant Android qabıq: config + HTTPS bootstrap', function () 
   assert.ok(!cap.server || !cap.server.url);
   const html = fs.readFileSync(path.join(dir, 'www', 'index.html'), 'utf8');
   assert.ok(html.indexOf("localStorage.setItem(KEY, origin)") >= 0 || html.indexOf('arpos-server-url') >= 0);
+  assert.ok(html.indexOf('id="ip"') >= 0);
+  assert.ok(html.indexOf('function buildOrigin') >= 0);
+  assert.ok(html.indexOf('Port: 3443') >= 0);
+  assert.ok(html.indexOf('Yadda saxla') >= 0);
   assert.ok(html.indexOf('orders.html?mode=waiter') >= 0);
   const setHtml = fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8');
   assert.ok(setHtml.indexOf('Android APK: mobile-waiter') >= 0);
@@ -2350,6 +2354,9 @@ test('Capacitor ofisiant Android qabıq: config + HTTPS bootstrap', function () 
     const act = fs.readFileSync(path.join(dir, 'android', 'app', 'src', 'main', 'java', 'az', 'arpos', 'waiter', 'MainActivity.java'), 'utf8');
     assert.ok(act.indexOf('canGoBack') >= 0);
     assert.ok(act.indexOf('goBack') >= 0);
+    assert.ok(act.indexOf('onReceivedSslError') >= 0);
+    assert.ok(act.indexOf('handler.proceed') >= 0);
+    assert.ok(act.indexOf('isPrivateLanHost') >= 0);
   }
 });
 

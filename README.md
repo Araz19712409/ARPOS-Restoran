@@ -26,7 +26,7 @@ Brauzerdə **Ana ekrana əlavə et / Install**. HTTP (`localhost:3004`) PWA qura
 
 ### Ofisiant Android (Capacitor Faza 2a)
 
-Nazik APK: `mobile-waiter/` — WebView LAN HTTPS ofisiant URL-ini açır. Quruluş: `mobile-waiter/README.md`. Play listing / iOS bu fazada yoxdur.
+Nazik APK: `mobile-waiter/` — telefonda yalnız kassa İP yazılır (port 3443 HTTPS avtomatik). Quruluş: `mobile-waiter/README.md`. Play listing / iOS bu fazada yoxdur.
 
 ## Quraşdırıcı
 
