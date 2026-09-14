@@ -24,6 +24,10 @@ Kassada LAN HTTPS açıq olsun. Telefonda:
 
 Brauzerdə **Ana ekrana əlavə et / Install**. HTTP (`localhost:3004`) PWA quraşdırılmaz. Desktop `orders.html` (mode yox) əvvəlki kassa ekranıdır.
 
+### Ofisiant Android (Capacitor Faza 2a)
+
+Nazik APK: `mobile-waiter/` — WebView LAN HTTPS ofisiant URL-ini açır. Quruluş: `mobile-waiter/README.md`. Play listing / iOS bu fazada yoxdur.
+
 ## Quraşdırıcı
 
 Pəncərəli Setup: qovluq seçimi, qısayol, daxilində Node.

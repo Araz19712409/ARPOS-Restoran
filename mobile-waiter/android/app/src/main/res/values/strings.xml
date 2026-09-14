@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Arpos Ofisiant</string>
+    <string name="title_activity_main">Arpos Ofisiant</string>
+    <string name="package_name">az.arpos.waiter</string>
+    <string name="custom_url_scheme">az.arpos.waiter</string>
+</resources>

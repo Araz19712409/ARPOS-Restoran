@@ -1,0 +1,19 @@
+{
+  "appId": "az.arpos.waiter",
+  "appName": "Arpos Ofisiant",
+  "webDir": "www",
+  "server": {
+    "allowNavigation": ["*"]
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#221d17"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0,
+      "backgroundColor": "#221d17",
+      "showSpinner": false
+    }
+  }
+}

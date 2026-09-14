@@ -2325,6 +2325,34 @@ test('PWA ofisiant: manifest mode=waiter; waiter-mode hook', function () {
   assert.ok(!fs.existsSync(path.join(__dirname, 'public', 'sw.js')));
 });
 
+test('Capacitor ofisiant Android qabıq: config + HTTPS bootstrap', function () {
+  const dir = path.join(__dirname, 'mobile-waiter');
+  require(path.join(dir, 'scripts', 'validate.js'));
+  const cap = JSON.parse(fs.readFileSync(path.join(dir, 'capacitor.config.json'), 'utf8'));
+  assert.strictEqual(cap.appId, 'az.arpos.waiter');
+  assert.ok(!cap.server || !cap.server.url);
+  const html = fs.readFileSync(path.join(dir, 'www', 'index.html'), 'utf8');
+  assert.ok(html.indexOf("localStorage.setItem(KEY, origin)") >= 0 || html.indexOf('arpos-server-url') >= 0);
+  assert.ok(html.indexOf('orders.html?mode=waiter') >= 0);
+  const setHtml = fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8');
+  assert.ok(setHtml.indexOf('Android APK: mobile-waiter') >= 0);
+  const setup = fs.readFileSync(path.join(__dirname, 'scripts', 'build-setup.ps1'), 'utf8');
+  assert.ok(setup.indexOf("'mobile-waiter'") >= 0);
+  const manPath = path.join(dir, 'android', 'app', 'src', 'main', 'AndroidManifest.xml');
+  if (fs.existsSync(manPath)) {
+    const man = fs.readFileSync(manPath, 'utf8');
+    assert.ok(man.indexOf('android.permission.INTERNET') >= 0);
+    assert.ok(man.indexOf('android:usesCleartextTraffic="false"') >= 0);
+    assert.ok(man.indexOf('network_security_config') >= 0);
+    const nsc = fs.readFileSync(path.join(dir, 'android', 'app', 'src', 'main', 'res', 'xml', 'network_security_config.xml'), 'utf8');
+    assert.ok(nsc.indexOf('cleartextTrafficPermitted="false"') >= 0);
+    assert.ok(nsc.indexOf('src="user"') >= 0);
+    const act = fs.readFileSync(path.join(dir, 'android', 'app', 'src', 'main', 'java', 'az', 'arpos', 'waiter', 'MainActivity.java'), 'utf8');
+    assert.ok(act.indexOf('canGoBack') >= 0);
+    assert.ok(act.indexOf('goBack') >= 0);
+  }
+});
+
 test('orders-ui Faza 1: zones/shift/pay bind + script sırası', function () {
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
   const moneyAt = html.indexOf('money.js');

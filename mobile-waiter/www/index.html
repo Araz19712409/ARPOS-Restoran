@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#221d17">
+  <title>Arpos Ofisiant</title>
+  <link rel="icon" href="icons/icon-192.png">
+  <style>
+    :root { --bg: #221d17; --gold: #c4a574; --fg: #f4eadc; }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, sans-serif;
+    }
+    body {
+      padding: max(28px, env(safe-area-inset-top)) 20px max(28px, env(safe-area-inset-bottom));
+    }
+    h1 { font-size: 1.35rem; font-weight: 650; margin: 0 0 8px; }
+    p { color: #cbbba8; font-size: 0.95rem; line-height: 1.45; }
+    label { display: block; margin: 22px 0 8px; font-size: 0.95rem; }
+    input {
+      width: 100%;
+      min-height: 52px;
+      font-size: 16px;
+      border-radius: 12px;
+      border: 1px solid #4a4036;
+      background: #2c261f;
+      color: var(--fg);
+      padding: 12px 14px;
+    }
+    button {
+      width: 100%;
+      min-height: 52px;
+      margin-top: 14px;
+      border: 0;
+      border-radius: 12px;
+      font-size: 1.05rem;
+      font-weight: 650;
+    }
+    button:active { filter: brightness(1.08); }
+    #go { background: var(--gold); color: #221d17; }
+    #err { color: #e8a0a0; min-height: 1.4em; margin: 10px 0 0; }
+  </style>
+</head>
+<body>
+  <h1>Arpos Ofisiant</h1>
+  <p>Kassanın LAN HTTPS ünvanını yazın. Telefon və kassa eyni Wi‑Fi-da olsun.</p>
+  <label for="url">Kassa ünvanı</label>
+  <input id="url" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://192.168.1.10:3443">
+  <p id="err"></p>
+  <button id="go" type="button">Yadda saxla + Aç</button>
+  <p>Yalnız HTTPS. HTTP qəbul olunmur.</p>
+  <script>
+    (function () {
+      var KEY = 'arpos-server-url';
+      var input = document.getElementById('url');
+      var err = document.getElementById('err');
+      var setup = false;
+      try { setup = new URLSearchParams(location.search).get('setup') === '1'; } catch (e) {}
+
+      function originFrom(raw) {
+        var s = String(raw || '').trim();
+        if (!s) throw new Error('Ünvan yazın.');
+        if (/^http:\/\//i.test(s)) throw new Error('Yalnız HTTPS. HTTP yoxdur.');
+        if (!/^https:\/\//i.test(s)) s = 'https://' + s.replace(/^\/+/, '');
+        var u;
+        try { u = new URL(s); } catch (e) { throw new Error('Ünvan səhvdir.'); }
+        if (u.protocol !== 'https:') throw new Error('Yalnız HTTPS.');
+        if (!u.hostname) throw new Error('Ünvan səhvdir.');
+        return u.origin;
+      }
+
+      function waiterUrl(origin) {
+        return origin.replace(/\/$/, '') + '/orders.html?mode=waiter';
+      }
+
+      function openOrigin(origin) {
+        window.location.assign(waiterUrl(origin));
+      }
+
+      try {
+        var saved = localStorage.getItem(KEY) || '';
+        if (saved) input.value = saved;
+        if (saved && !setup) {
+          openOrigin(originFrom(saved));
+          return;
+        }
+      } catch (e) {}
+
+      document.getElementById('go').onclick = function () {
+        err.textContent = '';
+        try {
+          var origin = originFrom(input.value);
+          try { localStorage.setItem(KEY, origin); } catch (e) {}
+          openOrigin(origin);
+        } catch (e) {
+          err.textContent = (e && e.message) || 'Ünvan səhvdir.';
+        }
+      };
+    }());
+  </script>
+</body>
+</html>

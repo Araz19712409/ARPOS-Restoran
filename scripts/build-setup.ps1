@@ -49,7 +49,7 @@ if (-not (Test-Path $launcher)) {
   throw 'ArposRestoran.exe yaranmadı.'
 }
 
-$skip = @('node_modules', 'data', 'keys', 'dist', '.git')
+$skip = @('node_modules', 'data', 'keys', 'dist', '.git', 'mobile-waiter')
 Get-ChildItem -Force $root | ForEach-Object {
   if ($skip -contains $_.Name) { return }
   Copy-Item -Recurse -Force $_.FullName (Join-Path $app $_.Name)

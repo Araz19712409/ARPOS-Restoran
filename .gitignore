@@ -2,6 +2,12 @@ node_modules/
 data/
 keys/
 dist/
+mobile-waiter/node_modules/
+mobile-waiter/android/.gradle/
+mobile-waiter/android/.idea/
+mobile-waiter/android/local.properties
+mobile-waiter/android/app/build/
+mobile-waiter/android/build/
 .env
 *.pem
 !license-public.pem

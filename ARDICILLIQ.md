@@ -211,6 +211,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 195. [x] 1.2.51 — Çek paneli premium; Çap/Endirim main-dən ayrı
 196. [x] 1.2.52 — Sifarişdə kassa qalığı; Z counted növbəti startingCash
 197. [x] 1.2.53 — Ofisiant telefon PWA Faza 1
+198. [x] 1.2.54 — Ofisiant Capacitor Android qabıq (mobile-waiter)
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı
