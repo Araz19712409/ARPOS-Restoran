@@ -2,19 +2,48 @@
 <html lang="az">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#221d17">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Arpos">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <title>Sifariş</title>
   <link rel="stylesheet" href="app.css?v=21">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css?v=25">
+  <link rel="stylesheet" href="orders.css?v=26">
   <link rel="stylesheet" href="dates.css">
 </head>
 <body class="order-page" data-zone="floor">
+  <script>
+    (function () {
+      var q = '';
+      try { q = new URLSearchParams(location.search).get('mode') || ''; } catch (e) {}
+      var stored = '';
+      try { stored = localStorage.getItem('arpos-mode') || ''; } catch (e) {}
+      if (q === 'waiter') {
+        try { localStorage.setItem('arpos-mode', 'waiter'); } catch (e) {}
+      } else if (q === 'kassa') {
+        try { localStorage.removeItem('arpos-mode'); } catch (e) {}
+      }
+      var standalone = false;
+      try {
+        standalone = window.matchMedia('(display-mode: standalone)').matches ||
+          !!window.navigator.standalone;
+      } catch (e) {}
+      if (q === 'waiter' || (!q && standalone && stored === 'waiter')) {
+        document.documentElement.classList.add('waiter-mode');
+        document.body.classList.add('waiter-mode');
+      }
+    }());
+  </script>
   <header class="top">
     <div class="top-left">
       <button id="switch-waiter" class="hidden" type="button">Ofisiantı dəyiş</button>
       <div>
-        <h1>Sifariş</h1>
+        <h1 id="order-title">Sifariş</h1>
         <p id="waiter-line">Masa seçin, məhsula basın, qəbul edin.</p>
       </div>
     </div>
@@ -500,8 +529,8 @@
   <script src="group-icons.js?v=3"></script>
   <script src="money.js?v=1"></script>
   <script src="orders-zones.js?v=1"></script>
-  <script src="orders-shift.js?v=2"></script>
+  <script src="orders-shift.js?v=3"></script>
   <script src="orders-pay.js?v=2"></script>
-  <script src="orders-ui.js?v=32"></script>
+  <script src="orders-ui.js?v=33"></script>
 </body>
 </html>

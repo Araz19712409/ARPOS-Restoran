@@ -16,6 +16,14 @@ Açılışda lisenziya kodu istənilir. Maşın kodunu bizə göndərin, kodu `s
 
 Ayarlarda «Şəbəkədə aç» olanda planşet `https://IP:3443` açır. Sertifikat öz-imzalıdır: brauzerdə xəbərdarlığı bir dəfə qəbul edin. Bu kompüter həmişə `http://127.0.0.1:3004`. Şəbəkəni yandırıb-söndürəndən sonra serveri yenidən başladın.
 
+### Ofisiant telefon (PWA Faza 1)
+
+Kassada LAN HTTPS açıq olsun. Telefonda:
+
+`https://KASSA-IP:3443/orders.html?mode=waiter`
+
+Brauzerdə **Ana ekrana əlavə et / Install**. HTTP (`localhost:3004`) PWA quraşdırılmaz. Desktop `orders.html` (mode yox) əvvəlki kassa ekranıdır.
+
 ## Quraşdırıcı
 
 Pəncərəli Setup: qovluq seçimi, qısayol, daxilində Node.

@@ -20,6 +20,13 @@
 
     function refreshShiftBadge() {
       var btn = document.getElementById('shift-z-open');
+      if (document.body && document.body.classList.contains('waiter-mode')) {
+        if (btn) {
+          btn.style.display = 'none';
+        }
+        hideCashBadge();
+        return Promise.resolve();
+      }
       if (!btn) {
         hideCashBadge();
         return Promise.resolve();

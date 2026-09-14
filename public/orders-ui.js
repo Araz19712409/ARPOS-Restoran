@@ -21,6 +21,10 @@
     return Dom.el ? Dom.el(id) : document.getElementById(id);
   }
 
+  function isWaiterMode() {
+    return !!(document.body && document.body.classList.contains('waiter-mode'));
+  }
+
   function setText(id, text) {
     if (Dom.setText) {
       Dom.setText(id, text);
@@ -473,12 +477,26 @@
   }
 
   function drawWaiterLine() {
+    if (isWaiterMode()) {
+      setText('order-title', 'Ofisiant');
+      var seat = tableId ? tableTitle(tableId) : '';
+      setText('waiter-line', seat || (waiter && waiter.user && waiter.user.name) || 'Masa seçin');
+      var zBtn = el('shift-z-open');
+      if (zBtn) {
+        zBtn.style.display = 'none';
+      }
+      var cashEl = el('shift-cash');
+      if (cashEl) {
+        cashEl.style.display = 'none';
+      }
+      return;
+    }
     if (waiter && terminal) {
-      document.getElementById('waiter-line').textContent = waiter.user.name + ' • ' + terminal.name;
+      setText('waiter-line', waiter.user.name + ' • ' + terminal.name);
     } else if (waiter) {
-      document.getElementById('waiter-line').textContent = waiter.user.name;
+      setText('waiter-line', waiter.user.name);
     } else {
-      document.getElementById('waiter-line').textContent = 'PIN ilə daxil olun.';
+      setText('waiter-line', 'PIN ilə daxil olun.');
     }
     refreshShiftBadge();
   }
@@ -567,9 +585,10 @@
     pendingGuestAddress = existing ? (existing.guestAddress || '') : '';
     pendingCourier = existing ? (existing.courierName || '') : '';
     say('');
-    if (id && window.matchMedia && window.matchMedia('(max-width: 980px)').matches) {
+    if (id && (isWaiterMode() || (window.matchMedia && window.matchMedia('(max-width: 980px)').matches))) {
       setOrderZone('menu');
     }
+    drawWaiterLine();
     render();
     maybeFocusBarcode();
   }
@@ -2015,6 +2034,9 @@
       var warns = (body.data && body.data.warnings) || [];
       say(warns.length ? warns.join(' ') : 'Sifariş qəbul olundu.');
       return load().then(function () {
+        if (isWaiterMode()) {
+          setOrderZone('check');
+        }
         return body;
       });
     }).then(function (body) {

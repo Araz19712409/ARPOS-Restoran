@@ -2052,7 +2052,7 @@ test('katalog maya strip; void/endirim payments blok', function () {
   assert.ok(ui.indexOf("can('orders.void') && !(order.payments && order.payments.length)") >= 0);
   assert.ok(ui.indexOf("can('orders.discount') && !(order.payments && order.payments.length)") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=32') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=33') >= 0);
   const prodJs = fs.readFileSync(path.join(__dirname, 'public', 'products.js'), 'utf8');
   assert.ok(prodJs.indexOf('/api/catalog/manage') >= 0);
 });
@@ -2232,7 +2232,7 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(foot.indexOf('id="discount-open"') >= 0);
   assert.ok(foot.indexOf('id="pay-open"') >= 0);
   assert.ok(foot.indexOf('id="accept-order"') >= 0);
-  assert.ok(html.indexOf('orders.css?v=25') >= 0);
+  assert.ok(html.indexOf('orders.css?v=26') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
   assert.ok(css.indexOf('#check-total') >= 0);
   assert.ok(css.indexOf('.check-sum-box') >= 0 && css.indexOf('border-radius: 10px') >= 0);
@@ -2286,7 +2286,7 @@ test('kassa qalığı ayar; Z counted növbəti startingCash', function () {
   assert.strictEqual(noCarry.shift.startingCash, 40);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
   assert.ok(html.indexOf('id="shift-cash"') >= 0);
-  assert.ok(html.indexOf('orders-shift.js?v=2') >= 0);
+  assert.ok(html.indexOf('orders-shift.js?v=3') >= 0);
   const shiftJs = fs.readFileSync(path.join(__dirname, 'public', 'orders-shift.js'), 'utf8');
   assert.ok(shiftJs.indexOf('showCashOnOrders') >= 0);
   assert.ok(shiftJs.indexOf('expectedCash') >= 0);
@@ -2296,6 +2296,33 @@ test('kassa qalığı ayar; Z counted növbəti startingCash', function () {
   const setUi = fs.readFileSync(path.join(__dirname, 'public', 'settings-ui.js'), 'utf8');
   assert.ok(setUi.indexOf('showCashOnOrders') >= 0);
   assert.ok(setUi.indexOf('carryCountedCash') >= 0);
+});
+
+test('PWA ofisiant: manifest mode=waiter; waiter-mode hook', function () {
+  const manPath = path.join(__dirname, 'public', 'manifest.webmanifest');
+  assert.ok(fs.existsSync(manPath));
+  const man = JSON.parse(fs.readFileSync(manPath, 'utf8'));
+  assert.strictEqual(man.start_url, '/orders.html?mode=waiter');
+  assert.strictEqual(man.display, 'standalone');
+  assert.strictEqual(man.short_name, 'Arpos');
+  assert.ok(fs.existsSync(path.join(__dirname, 'public', 'icons', 'icon-192.png')));
+  assert.ok(fs.existsSync(path.join(__dirname, 'public', 'icons', 'icon-512.png')));
+  const png = fs.readFileSync(path.join(__dirname, 'public', 'icons', 'icon-192.png'));
+  assert.strictEqual(png[0], 0x89);
+  assert.strictEqual(png[1], 0x50);
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
+  assert.ok(html.indexOf('rel="manifest"') >= 0);
+  assert.ok(html.indexOf('arpos-mode') >= 0);
+  assert.ok(html.indexOf('waiter-mode') >= 0);
+  assert.ok(html.indexOf('apple-mobile-web-app-capable') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=33') >= 0);
+  const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
+  assert.ok(css.indexOf('.waiter-mode') >= 0);
+  assert.ok(css.indexOf('.waiter-mode .order-zones') >= 0);
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(ui.indexOf('function isWaiterMode') >= 0);
+  assert.ok(ui.indexOf("setOrderZone('check')") >= 0);
+  assert.ok(!fs.existsSync(path.join(__dirname, 'public', 'sw.js')));
 });
 
 test('orders-ui Faza 1: zones/shift/pay bind + script sırası', function () {

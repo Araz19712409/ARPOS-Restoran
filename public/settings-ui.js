@@ -308,7 +308,8 @@
       box.textContent = 'Yalnız http://127.0.0.1:3004';
     } else if (urls.length) {
       box.textContent = 'Planşet (HTTPS): ' + urls.join('  ') +
-        ' Brauzer öz-imzalı sertifikatı bir dəfə qəbul etsin. HTTP şəbəkəyə açıq deyil.';
+        ' Brauzer öz-imzalı sertifikatı bir dəfə qəbul etsin. HTTP şəbəkəyə açıq deyil. Ofisiant telefon: ' +
+        urls.map(function (u) { return String(u).replace(/\/$/, '') + '/orders.html?mode=waiter'; }).join('  ');
     } else {
       box.textContent = 'IP tapılmadı. Wi‑Fi yoxla. Şəbəkə HTTPS-dir (HTTP LAN-a verilmir).';
     }
