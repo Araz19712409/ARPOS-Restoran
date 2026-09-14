@@ -124,6 +124,10 @@
   padding: 12px;
 }
 
+.check-col {
+  padding: 14px 12px 12px;
+}
+
 .menu-col {
   display: flex;
   flex-direction: column;
@@ -342,12 +346,18 @@
 
 .check-head {
   flex: 0 0 auto;
+  margin-bottom: 8px;
+  padding: 10px;
+  border: 1px solid #3d3428;
+  border-radius: 10px;
+  background: #1c1813;
 }
 
 .check-list {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  padding: 2px 2px 8px;
 }
 
 .check-foot {
@@ -776,7 +786,7 @@
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 6px;
-  padding: 10px 0;
+  padding: 11px 4px 12px;
   border-bottom: 1px solid #3d3428;
 }
 
@@ -847,6 +857,10 @@
 
 .check-sum-box {
   margin: 8px 0 6px;
+  padding: 10px;
+  border: 1px solid #3d3428;
+  border-radius: 10px;
+  background: #2a241c;
 }
 
 .check-sum {
@@ -854,6 +868,13 @@
   justify-content: space-between;
   align-items: center;
   font-size: 1.1rem;
+}
+
+.check-sum:not(.sub) {
+  font-size: 1.22rem;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #3d3428;
 }
 
 .check-sum.sub {
@@ -871,11 +892,23 @@
   color: #e2b65a;
 }
 
+#check-total {
+  color: #e2b65a;
+  font-size: 1.28rem;
+  font-weight: 800;
+}
+
+.check-foot-notes {
+  margin: 0 0 2px;
+}
+
 .sec-actions {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
-  margin-bottom: 6px;
+  margin: 8px 0 10px;
+  padding-top: 8px;
+  border-top: 1px solid #3d3428;
 }
 
 .sec-actions button,
@@ -885,8 +918,8 @@
   padding: 4px 6px;
   font-size: 0.82rem;
   background: #2a241c;
-  color: #f4ead8;
-  border: 1px solid #5a4c3a;
+  color: #d8c7aa;
+  border: 1px solid #3d3428;
 }
 
 .check-more {
@@ -918,6 +951,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+  margin-top: 6px;
 }
 
 .check-hint {
@@ -1482,16 +1516,19 @@
     background: transparent;
     pointer-events: none;
     z-index: 8;
+    padding: 0;
   }
 
   .order-page[data-zone="floor"] .check-head,
   .order-page[data-zone="floor"] .check-list,
   .order-page[data-zone="floor"] .check-sum-box,
+  .order-page[data-zone="floor"] .check-foot-notes,
   .order-page[data-zone="floor"] .sec-actions,
   .order-page[data-zone="floor"] .check-more,
   .order-page[data-zone="menu"] .check-head,
   .order-page[data-zone="menu"] .check-list,
   .order-page[data-zone="menu"] .check-sum-box,
+  .order-page[data-zone="menu"] .check-foot-notes,
   .order-page[data-zone="menu"] .sec-actions,
   .order-page[data-zone="menu"] .check-more {
     display: none;
@@ -1517,6 +1554,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
+    margin-top: 0;
   }
 
   .order-page[data-zone="floor"] .check-foot .check-hint,

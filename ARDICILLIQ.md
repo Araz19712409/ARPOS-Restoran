@@ -208,6 +208,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 192. [x] 1.2.48 — GET settings sirrsiz; Z ball+snapshot; pay null-safe
 193. [x] 1.2.49 — Z çekmece/il/tip; çek logo settings.edit
 194. [x] 1.2.50 — Kataloq maya strip; void/endirim payments blok
+195. [x] 1.2.51 — Çek paneli premium; Çap/Endirim main-dən ayrı
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı

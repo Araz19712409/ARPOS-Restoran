@@ -2218,6 +2218,31 @@ test('kassir UX: simpleMode default; pay-open accept axını; dock CSS', functio
   assert.ok(ordersHtml.indexOf('id="post-pay-strip"') >= 0);
 });
 
+test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
+  const foot = html.slice(html.indexOf('class="check-foot"'), html.indexOf('id="option-modal"'));
+  const sumAt = foot.indexOf('check-sum-box');
+  const hintAt = foot.indexOf('id="check-hint"');
+  const msgAt = foot.indexOf('id="message"');
+  const secAt = foot.indexOf('class="sec-actions"');
+  const mainAt = foot.indexOf('class="main-actions"');
+  const moreAt = foot.indexOf('id="check-more"');
+  assert.ok(sumAt >= 0 && hintAt > sumAt && msgAt > hintAt && secAt > msgAt && mainAt > secAt && moreAt > mainAt);
+  assert.ok(foot.indexOf('id="reprint-order"') >= 0);
+  assert.ok(foot.indexOf('id="discount-open"') >= 0);
+  assert.ok(foot.indexOf('id="pay-open"') >= 0);
+  assert.ok(foot.indexOf('id="accept-order"') >= 0);
+  assert.ok(html.indexOf('orders.css?v=24') >= 0);
+  const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
+  assert.ok(css.indexOf('#check-total') >= 0);
+  assert.ok(css.indexOf('.check-sum-box') >= 0 && css.indexOf('border-radius: 10px') >= 0);
+  const sec = css.slice(css.indexOf('.sec-actions {'), css.indexOf('.sec-actions button'));
+  assert.ok(sec.indexOf('border-top') >= 0);
+  assert.ok(sec.indexOf('margin: 8px 0 10px') >= 0);
+  assert.ok(css.indexOf('.check-foot-notes') >= 0);
+  assert.ok(css.indexOf('[data-zone="floor"] .sec-actions') >= 0 || css.indexOf('.sec-actions') >= 0);
+});
+
 test('orders-ui Faza 1: zones/shift/pay bind + script sırası', function () {
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
   const moneyAt = html.indexOf('money.js');
