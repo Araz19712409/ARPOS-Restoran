@@ -6,6 +6,11 @@
   padding: 12px 16px 20px;
   max-width: 100%;
   overflow: hidden;
+  color: #f4ead8;
+}
+
+.bootstrap-main > .hint {
+  color: #d8c7aa;
 }
 
 .boot-toolbar {
@@ -24,14 +29,16 @@
 .boot-preview {
   margin-bottom: 8px;
   white-space: pre-wrap;
+  color: #d8c7aa;
 }
 
 .boot-scroll {
   overflow: auto;
   max-height: calc(100vh - 210px);
-  border: 1px solid #c9bba8;
+  border: 1px solid #5a4c3a;
   border-radius: 8px;
-  background: #f7f1e6;
+  background: #f4eadc;
+  color: #1f1a14;
 }
 
 .boot-table {
@@ -39,38 +46,51 @@
   border-collapse: collapse;
   min-width: 980px;
   font-size: 14px;
+  color: #1f1a14;
 }
 
 .boot-table th,
 .boot-table td {
-  border-bottom: 1px solid #ddd2c0;
+  border-bottom: 1px solid #c9bba8;
   padding: 4px 6px;
   vertical-align: middle;
+  color: #1f1a14;
 }
 
 .boot-table th {
   position: sticky;
   top: 0;
-  background: #e8dfd0;
+  background: #e0d4c2;
   z-index: 1;
   text-align: left;
   font-weight: 650;
+  color: #1f1a14;
 }
 
 .boot-table td.num {
   width: 36px;
   text-align: center;
-  color: #6a5d4d;
+  color: #5a4c3a;
+  font-weight: 600;
 }
 
-.boot-table input {
+/* products.css .catalog-page input { color: #f6efe4 } — ağ fonda oxunmur */
+.bootstrap-page .boot-table input,
+.bootstrap-page .boot-table input:focus {
   width: 100%;
   min-height: 34px;
-  border: 1px solid #c9bba8;
+  border: 1px solid #9a8b76;
   border-radius: 6px;
   padding: 4px 8px;
-  background: #fff;
+  background: #ffffff;
+  color: #1f1a14 !important;
   font-size: 14px;
+  caret-color: #1f1a14;
+}
+
+.bootstrap-page .boot-table input::placeholder {
+  color: #8a7d68;
+  opacity: 1;
 }
 
 .boot-cell {
@@ -83,7 +103,7 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: 11px;
-  color: #8a5a12;
+  color: #5a3a08;
   background: #f3e0b8;
   border-radius: 4px;
   padding: 1px 5px;
