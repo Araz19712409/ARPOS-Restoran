@@ -7,6 +7,24 @@
   font-weight: 700;
 }
 
+.boot-settings-link {
+  margin: 10px 0 4px;
+}
+
+.boot-settings-link a {
+  display: inline-block;
+  color: #f0c14b !important;
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.boot-settings-link a:hover,
+.boot-settings-link a:focus {
+  color: #ffe08a !important;
+}
+
 .ops-choice input {
   width: auto;
 }
