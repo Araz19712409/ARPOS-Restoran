@@ -199,6 +199,13 @@ function cleanPrintCopies(raw) {
   return n === 2 ? 2 : 1;
 }
 
+function cleanAutoPrintOnPay(raw) {
+  if (raw === false || raw === 0 || raw === '0' || raw === 'false') {
+    return false;
+  }
+  return true;
+}
+
 function emptyReceipt() {
   return {
     title: '',
@@ -208,7 +215,8 @@ function emptyReceipt() {
     footerLines: [],
     showBranchCode: false,
     logo: '',
-    printCopies: 1
+    printCopies: 1,
+    autoPrintOnPay: true
   };
 }
 
@@ -253,13 +261,19 @@ function cleanReceipt(raw) {
     showBranchCode: src.showBranchCode === true || src.showBranchCode === 1 ||
       src.showBranchCode === '1' || src.showBranchCode === 'true',
     logo: cleanReceiptLogo(src.logo),
-    printCopies: cleanPrintCopies(src.printCopies)
+    printCopies: cleanPrintCopies(src.printCopies),
+    autoPrintOnPay: cleanAutoPrintOnPay(src.autoPrintOnPay)
   };
 }
 
 function receiptPrintCopies(cfg) {
   const row = cfg || readSettings();
   return cleanPrintCopies((row.receipt || emptyReceipt()).printCopies);
+}
+
+function receiptAutoPrintOnPay(cfg) {
+  const row = cfg || readSettings();
+  return cleanAutoPrintOnPay((row.receipt || emptyReceipt()).autoPrintOnPay);
 }
 
 function receiptTitle(cfg) {
@@ -1060,6 +1074,8 @@ module.exports = {
   cleanReceiptLogo: cleanReceiptLogo,
   cleanPrintCopies: cleanPrintCopies,
   receiptPrintCopies: receiptPrintCopies,
+  receiptAutoPrintOnPay: receiptAutoPrintOnPay,
+  cleanAutoPrintOnPay: cleanAutoPrintOnPay,
   receiptTitle: receiptTitle,
   publicReceipt: publicReceipt,
   saveReceiptLogo: saveReceiptLogo,

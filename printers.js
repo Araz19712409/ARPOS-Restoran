@@ -825,11 +825,17 @@ async function sendToPrinter(printer, ticket, label, copiesOverride) {
   if (copies < 1) {
     copies = 1;
   }
+  const via = printer && printer.connectionType === 'windows' ? 'windows' : 'tcp';
+  const host = via === 'windows'
+    ? String((printer && printer.windowsName) || '').trim()
+    : String((printer && printer.host) || '').trim();
   for (let copy = 0; copy < copies; copy += 1) {
     const result = await deliverBytes(printer, ticket, 8000);
     results.push({
       printerId: printer.id,
       name: printer.name,
+      host: host,
+      via: via,
       ok: result.ok,
       message: result.message
     });
@@ -842,23 +848,46 @@ async function sendToPrinter(printer, ticket, label, copiesOverride) {
       break;
     }
   }
-  return { ok: ok, results: results };
+  return { ok: ok, results: results, printerName: printer.name, host: host, via: via };
 }
 
-async function tryPrinters(list, buildTicket, label, copiesOverride) {
+async function tryPrinters(list, buildTicket, label, copiesOverride, stopOnFirstOk) {
   const results = [];
   let anyOk = false;
   let lastError = '';
+  let printerName = '';
+  let host = '';
+  let via = '';
   for (let i = 0; i < list.length; i += 1) {
     const sent = await sendToPrinter(list[i], buildTicket(list[i]), label, copiesOverride);
     results.push.apply(results, sent.results);
     if (sent.ok) {
       anyOk = true;
+      if (!printerName) {
+        printerName = sent.printerName || '';
+        host = sent.host || '';
+        via = sent.via || '';
+      }
+      if (stopOnFirstOk) {
+        break;
+      }
     } else if (sent.results[0]) {
       lastError = sent.results[0].message;
+      if (!printerName) {
+        printerName = sent.printerName || printerName;
+        host = sent.host || host;
+        via = sent.via || via;
+      }
     }
   }
-  return { anyOk: anyOk, results: results, lastError: lastError };
+  return {
+    anyOk: anyOk,
+    results: results,
+    lastError: lastError,
+    printerName: printerName,
+    host: host,
+    via: via
+  };
 }
 
 async function deliverStation(stationId, payload) {
@@ -896,7 +925,14 @@ async function deliverReceipt(order) {
     return item.enabled && item.role === 'receipt';
   });
   if (!list.length) {
-    return { anyOk: false, results: [], warning: 'Kassa printeri yoxdur. Brauzerdən çap edin.', copies: 1 };
+    return {
+      anyOk: false,
+      results: [],
+      warning: 'Kassa printeri yoxdur.',
+      copies: 1,
+      printed: false,
+      noPrinter: true
+    };
   }
   let copies = 1;
   try {
@@ -907,9 +943,54 @@ async function deliverReceipt(order) {
   const out = await tryPrinters(list, function (printer) {
     const cash = Number((order.payment && order.payment.cashAmount) || 0);
     return buildReceiptTicket(Object.assign({}, printer, { openDrawer: cash > 0 }), order);
-  }, 'Çek çapı', copies);
+  }, 'Çek çapı', copies, true);
   out.copies = copies;
   return out;
+}
+
+async function sendReceiptTickets(order) {
+  const out = await deliverReceipt(order);
+  const copies = out.copies || 1;
+  const pack = {
+    printed: false,
+    printerName: out.printerName || '',
+    host: out.host || '',
+    via: out.via || '',
+    copies: copies,
+    warnings: [],
+    results: out.results || [],
+    lastError: out.lastError || ''
+  };
+  if (out.noPrinter || (out.warning && !(out.results && out.results.length))) {
+    pack.warnings = [out.warning || 'Kassa printeri yoxdur.'];
+    pack.noPrinter = true;
+    return pack;
+  }
+  if (out.anyOk) {
+    pack.printed = true;
+    if (!pack.printerName && out.results && out.results[0]) {
+      pack.printerName = out.results[0].name || '';
+      pack.host = out.results[0].host || pack.host;
+      pack.via = out.results[0].via || pack.via;
+    }
+    return pack;
+  }
+  enqueue({
+    kind: 'receipt',
+    order: order,
+    lastError: out.lastError || 'Çap getmədi'
+  });
+  const name = pack.printerName || (out.results[0] && out.results[0].name) || 'Çek';
+  const err = out.lastError || (out.results[0] && out.results[0].message) || 'Çap getmədi';
+  pack.printerName = name;
+  if (!pack.host && out.results[0]) {
+    pack.host = out.results[0].host || '';
+    pack.via = out.results[0].via || '';
+  }
+  pack.lastError = err;
+  pack.warnings = ['Çap alınmadı → ' + name + '. ' + err + '. Növbəyə yazıldı.'];
+  pack.queued = true;
+  return pack;
 }
 
 function formatWhen(iso) {
@@ -1066,26 +1147,6 @@ async function sendStationTickets(stationId, payload) {
     };
   }
   return { results: out.results };
-}
-
-async function sendReceiptTickets(order) {
-  const out = await deliverReceipt(order);
-  if (out.warning && !out.results.length) {
-    return { results: out.results, warning: out.warning, copies: out.copies || 1 };
-  }
-  if (!out.anyOk) {
-    enqueue({
-      kind: 'receipt',
-      order: order,
-      lastError: out.lastError || 'Çap getmədi'
-    });
-    return {
-      results: out.results,
-      warning: 'Kassa çeki növbəyə düşdü.',
-      copies: out.copies || 1
-    };
-  }
-  return { results: out.results, copies: out.copies || 1 };
 }
 
 async function runJob(job) {

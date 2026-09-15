@@ -665,18 +665,94 @@
       return n === 2 ? 2 : 1;
     }
 
-    function syncReceiptCopiesHint() {
-      var hint = el('receipt-copies-hint');
-      if (!hint) {
+    function autoPrintOnPay() {
+      var r = ctx.settings && ctx.settings.receipt;
+      if (!r) {
+        return true;
+      }
+      return r.autoPrintOnPay !== false;
+    }
+
+    function formatReceiptPrintResult(data) {
+      data = data || {};
+      if (data.printed === true) {
+        var where = data.printerName || 'Çek';
+        if (data.host) {
+          where += ' (' + data.host + ')';
+        }
+        var msg = 'Çap olundu → ' + where;
+        if (Number(data.copies) > 1) {
+          msg += ' · ' + data.copies + ' nüsxə';
+        }
+        return { ok: true, text: msg, noPrinter: false };
+      }
+      if (data.noPrinter) {
+        return { ok: false, text: 'Kassa printeri yoxdur.', noPrinter: true };
+      }
+      var warns = data.warnings || [];
+      var text = warns[0] || '';
+      if (!text) {
+        var pname = data.printerName || 'Çek';
+        var err = data.lastError || 'Çap getmədi';
+        text = 'Çap alınmadı → ' + pname + '. ' + err + '. Növbəyə yazıldı.';
+      }
+      if (text.indexOf('Kassa printeri yoxdur') >= 0) {
+        return { ok: false, text: 'Kassa printeri yoxdur.', noPrinter: true };
+      }
+      if (text.indexOf('Printerlər') < 0 && text.indexOf('Növbə') >= 0) {
+        text += ' Ofis → Printerlər (növbə).';
+      } else if (text.indexOf('Növbə') >= 0 && text.indexOf('Ofis') < 0) {
+        text += ' Ofis → Printerlər (növbə).';
+      } else if (data.queued && text.indexOf('Ofis') < 0) {
+        text += ' Ofis → Printerlər (növbə).';
+      }
+      return { ok: false, text: text, noPrinter: false };
+    }
+
+    function applyReceiptPrintFeedback(data, opts) {
+      opts = opts || {};
+      var info = formatReceiptPrintResult(data);
+      setText('receipt-msg', info.text);
+      say(info.text, info.ok ? 'ok' : 'err');
+      if (!info.ok && info.noPrinter && opts.browserFallback !== false) {
+        printReceiptPaper();
+      }
+      return info;
+    }
+
+    function requestReceiptPrint(opts) {
+      opts = opts || {};
+      if (!ctx.lastReceipt || !ctx.waiter) {
+        if (opts.browserFallback !== false) {
+          printReceiptPaper();
+        }
+        return Promise.resolve(null);
+      }
+      return api('/api/orders/receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: ctx.lastReceipt.id,
+          waiterId: ctx.waiter.user.id,
+          terminalId: ctx.terminal ? ctx.terminal.id : 0
+        })
+      }).then(function (body) {
+        return applyReceiptPrintFeedback(body.data || {}, opts);
+      }).catch(function (error) {
+        var text = error.message || 'Çap alınmadı.';
+        setText('receipt-msg', text);
+        say(text, 'err');
+        return { ok: false, text: text };
+      });
+    }
+
+    function printLastReceiptQuick() {
+      if (!ctx.lastReceipt || !ctx.waiter) {
+        say('Son ödənilmiş çek yoxdur.', 'err');
+        syncLastReceiptBtn();
         return;
       }
-      if (receiptCopies() === 2) {
-        hint.textContent = '2 nüsxə';
-        hint.classList.remove('hidden');
-      } else {
-        hint.textContent = '';
-        hint.classList.add('hidden');
-      }
+      requestReceiptPrint({ browserFallback: false });
     }
 
     function syncLastReceiptBtn() {
@@ -821,44 +897,18 @@
       });
     }
 
-    function requestReceiptPrint() {
-      if (!ctx.lastReceipt || !ctx.waiter) {
-        printReceiptPaper();
+    function syncReceiptCopiesHint() {
+      var hint = el('receipt-copies-hint');
+      if (!hint) {
         return;
       }
-      api('/api/orders/receipt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: ctx.lastReceipt.id,
-          waiterId: ctx.waiter.user.id,
-          terminalId: ctx.terminal ? ctx.terminal.id : 0
-        })
-      }).then(function (body) {
-        var warns = (body.data && body.data.warnings) || [];
-        var copies = (body.data && body.data.copies) || receiptCopies();
-        var okText = copies > 1
-          ? ('Çek göndərildi (' + copies + ' nüsxə).')
-          : 'Çek göndərildi.';
-        setText('receipt-msg', warns.length ? warns.join(' ') : okText);
-        say(warns.length ? warns.join(' ') : okText, warns.length ? 'err' : 'ok');
-        if (warns.length) {
-          printReceiptPaper();
-        }
-      }).catch(function (error) {
-        setText('receipt-msg', error.message);
-        say(error.message, 'err');
-        printReceiptPaper();
-      });
-    }
-
-    function printLastReceiptQuick() {
-      if (!ctx.lastReceipt || !ctx.waiter) {
-        say('Son ödənilmiş çek yoxdur.', 'err');
-        syncLastReceiptBtn();
-        return;
+      if (receiptCopies() === 2) {
+        hint.textContent = '2 nüsxə';
+        hint.classList.remove('hidden');
+      } else {
+        hint.textContent = '';
+        hint.classList.add('hidden');
       }
-      requestReceiptPrint();
     }
 
     ctx.pickingPay = pickingPay;
@@ -1184,6 +1234,9 @@
           showedReceipt = true;
         } else {
           setReceiptNextMode(false);
+        }
+        if (result.closed && ctx.lastReceipt && autoPrintOnPay()) {
+          requestReceiptPrint({ browserFallback: false });
         }
         if (wantNext && !showedReceipt) {
           showPostPayStrip('Satış bitdi. Masa boşdur.');

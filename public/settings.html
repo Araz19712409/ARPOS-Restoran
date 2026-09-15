@@ -6,7 +6,7 @@
   <title>Admin — Ayarlar</title>
   <link rel="stylesheet" href="app.css?v=21">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="settings.css?v=3">
+  <link rel="stylesheet" href="settings.css?v=4">
 </head>
 <body class="catalog-page settings-page" data-need="settings.view" data-tab="general">
   <header class="top">
@@ -227,6 +227,11 @@
             </select>
           </label>
           <p class="hint">Ödəniş və Çap et neçə dəfə göndərilsin. Kassa printerinin ümumi nüsxəsindən ayrıdır.</p>
+          <label class="ops-choice">
+            <input id="receipt-auto-print" type="checkbox" checked>
+            Ödənişdə avtomatik çap
+          </label>
+          <p class="hint">ON: satış bağlananda kassa printerinə dərhal gedir (telefon və PC). OFF: yalnız modal / əl ilə çap.</p>
         </section>
         <section>
           <h3>Başlıq</h3>
@@ -563,6 +568,6 @@
   <script src="offline.js"></script>
   <script src="dom.js"></script>
   <script src="nav.js?v=1"></script>
-  <script src="settings-ui.js?v=17"></script>
+  <script src="settings-ui.js?v=18"></script>
 </body>
 </html>

@@ -398,7 +398,8 @@
       ],
       showBranchCode: !!(el('receipt-show-branch') && el('receipt-show-branch').checked),
       logo: logo,
-      printCopies: Number((el('receipt-print-copies') && el('receipt-print-copies').value) || 1) === 2 ? 2 : 1
+      printCopies: Number((el('receipt-print-copies') && el('receipt-print-copies').value) || 1) === 2 ? 2 : 1,
+      autoPrintOnPay: !!(el('receipt-auto-print') && el('receipt-auto-print').checked)
     };
   }
 
@@ -425,6 +426,7 @@
     setVal('receipt-phone', r.phone || '');
     setChecked('receipt-show-branch', r.showBranchCode === true);
     setVal('receipt-print-copies', Number(r.printCopies) === 2 ? '2' : '1');
+    setChecked('receipt-auto-print', r.autoPrintOnPay !== false);
     var headers = Array.isArray(r.headerLines) ? r.headerLines : [];
     setVal('receipt-header-1', headers[0] || '');
     setVal('receipt-header-2', headers[1] || '');

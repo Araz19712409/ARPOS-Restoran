@@ -3846,8 +3846,15 @@ app.post('/api/orders/receipt', async function (req, res) {
       success: true,
       data: {
         order: order,
+        printed: printed.printed === true,
+        printerName: printed.printerName || '',
+        host: printed.host || '',
+        via: printed.via || '',
         copies: printed.copies || 1,
-        warnings: printed.warning ? [printed.warning] : []
+        warnings: printed.warnings || [],
+        queued: !!printed.queued,
+        noPrinter: !!printed.noPrinter,
+        lastError: printed.lastError || ''
       }
     });
   } catch (error) {

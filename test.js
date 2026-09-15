@@ -2242,7 +2242,7 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(foot.indexOf('id="accept-order"') >= 0);
   assert.ok(html.indexOf('orders.css?v=27') >= 0);
   assert.ok(html.indexOf('id="paid-receipts-modal"') >= 0);
-  assert.ok(html.indexOf('orders-pay.js?v=3') >= 0);
+  assert.ok(html.indexOf('orders-pay.js?v=4') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
   assert.ok(css.indexOf('#check-total') >= 0);
   assert.ok(css.indexOf('.check-sum-box') >= 0 && css.indexOf('border-radius: 10px') >= 0);
@@ -2261,24 +2261,38 @@ test('satış çeki printCopies 1|2; deliverReceipt override', function () {
   assert.strictEqual(settings.cleanPrintCopies(1), 1);
   assert.strictEqual(settings.cleanPrintCopies(9), 1);
   assert.strictEqual(settings.cleanPrintCopies('2'), 2);
+  assert.strictEqual(settings.cleanAutoPrintOnPay(undefined), true);
+  assert.strictEqual(settings.cleanAutoPrintOnPay(true), true);
+  assert.strictEqual(settings.cleanAutoPrintOnPay(false), false);
   withTempDb(function () {
     settings.writeSettings({ receipt: Object.assign({}, settings.emptyReceipt(), { printCopies: 2 }) });
     assert.strictEqual(settings.receiptPrintCopies(), 2);
-    const cleaned = settings.cleanReceipt({ printCopies: 2, title: 'X' });
+    assert.strictEqual(settings.receiptAutoPrintOnPay(), true);
+    const cleaned = settings.cleanReceipt({ printCopies: 2, title: 'X', autoPrintOnPay: false });
     assert.strictEqual(cleaned.printCopies, 2);
-    settings.writeSettings({ receipt: Object.assign({}, settings.emptyReceipt(), { printCopies: 1 }) });
+    assert.strictEqual(cleaned.autoPrintOnPay, false);
+    settings.writeSettings({ receipt: Object.assign({}, settings.emptyReceipt(), { printCopies: 1, autoPrintOnPay: false }) });
     assert.strictEqual(settings.receiptPrintCopies(), 1);
+    assert.strictEqual(settings.receiptAutoPrintOnPay(), false);
   });
   const setHtml = fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8');
   assert.ok(setHtml.indexOf('id="receipt-print-copies"') >= 0);
+  assert.ok(setHtml.indexOf('id="receipt-auto-print"') >= 0);
+  assert.ok(setHtml.indexOf('Ödənişdə avtomatik çap') >= 0);
   assert.ok(setHtml.indexOf('Satış çeki nüsxə sayı') >= 0);
   const printersSrc = fs.readFileSync(path.join(__dirname, 'printers.js'), 'utf8');
   assert.ok(printersSrc.indexOf('receiptPrintCopies') >= 0);
   assert.ok(printersSrc.indexOf('copiesOverride') >= 0);
+  assert.ok(printersSrc.indexOf('printed: false') >= 0 || printersSrc.indexOf('printed:false') >= 0);
   const paySrc = fs.readFileSync(path.join(__dirname, 'public', 'orders-pay.js'), 'utf8');
   assert.ok(paySrc.indexOf('last-receipt-btn') >= 0);
   assert.ok(paySrc.indexOf('paid-receipts-modal') >= 0);
   assert.ok(paySrc.indexOf('2 nüsxə') >= 0);
+  assert.ok(paySrc.indexOf('Çap olundu') >= 0);
+  assert.ok(paySrc.indexOf('autoPrintOnPay') >= 0);
+  assert.ok(paySrc.indexOf('Çek göndərildi') < 0);
+  const serverSrc = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  assert.ok(serverSrc.indexOf('printerName:') >= 0 || serverSrc.indexOf('printerName') >= 0);
 });
 
 test('kassa qalığı ayar; Z counted növbəti startingCash', function () {

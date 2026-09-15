@@ -331,14 +331,31 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ orderId: lastReceipt.id, waiterId: waiter.user.id })
     }).then(function (body) {
-      var warns = (body.data && body.data.warnings) || [];
-      document.getElementById('receipt-msg').textContent = warns.length ? warns.join(' ') : 'Çek göndərildi.';
-      if (warns.length) {
+      var data = body.data || {};
+      var msg = '';
+      if (data.printed === true) {
+        msg = 'Çap olundu → ' + (data.printerName || 'Çek');
+        if (data.host) {
+          msg += ' (' + data.host + ')';
+        }
+        if (Number(data.copies) > 1) {
+          msg += ' · ' + data.copies + ' nüsxə';
+        }
+      } else if (data.noPrinter) {
+        msg = 'Kassa printeri yoxdur.';
         printPaper();
+      } else {
+        msg = (data.warnings && data.warnings[0]) ||
+          ('Çap alınmadı → ' + (data.printerName || 'Çek') + '. ' + (data.lastError || 'Çap getmədi') + '. Növbəyə yazıldı.');
+        if (msg.indexOf('Ofis') < 0 && msg.indexOf('Növbə') >= 0) {
+          msg += ' Ofis → Printerlər (növbə).';
+        }
       }
+      document.getElementById('receipt-msg').textContent = msg;
+      say(msg, data.printed === true ? 'ok' : 'err');
     }).catch(function (error) {
       document.getElementById('receipt-msg').textContent = error.message;
-      printPaper();
+      say(error.message, 'err');
     });
   });
   document.getElementById('logout').addEventListener('click', function () {
