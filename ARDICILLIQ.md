@@ -219,6 +219,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 203. [x] 1.2.59 — İlkin doldurma: batch/draft/local siyahı (ara təsdiq yox)
 204. [x] 1.2.60 — İlkin doldurma: 1C axtar+Yarat; Ayarlar menyusu
 205. [x] 1.2.61 — Ayarlar: İlkin doldurma linki oxunaqlı
+206. [x] 1.2.62 — Satış çeki 1|2 nüsxə; Son çek + Çeklər drawer
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı

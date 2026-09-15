@@ -13,7 +13,7 @@
   <title>Sifariş</title>
   <link rel="stylesheet" href="app.css?v=21">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css?v=26">
+  <link rel="stylesheet" href="orders.css?v=27">
   <link rel="stylesheet" href="dates.css">
 </head>
 <body class="order-page" data-zone="floor">
@@ -164,6 +164,10 @@
         <button id="reprint-order" type="button">Çap</button>
         <button id="discount-open" type="button">Endirim</button>
         <button id="fire-course" type="button" style="display:none">İstini göndər</button>
+      </div>
+      <div class="receipt-quick-actions" id="receipt-quick-actions">
+        <button id="last-receipt-btn" type="button" disabled title="Son ödənilmiş çek yoxdur">Son çek</button>
+        <button id="paid-receipts-btn" type="button" data-need="payments.take|reports.view">Çeklər</button>
       </div>
       <div class="main-actions">
         <button id="pay-open" type="button">Ödəniş</button>
@@ -427,6 +431,7 @@
   <div id="receipt-modal" class="modal hidden">
     <div class="modal-card receipt-card">
       <div id="receipt-paper" class="receipt-paper"></div>
+      <p id="receipt-copies-hint" class="hint receipt-copies-hint hidden"></p>
       <p id="receipt-msg" class="message"></p>
       <div id="receipt-std-actions" class="modal-actions">
         <button id="receipt-close" type="button">Bağla</button>
@@ -436,6 +441,30 @@
         <button id="receipt-print-next" type="button">Çap et</button>
         <button id="receipt-stay" type="button">Bu masada qal</button>
         <button id="receipt-next" class="gold" type="button">Növbəti masa</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="paid-receipts-modal" class="modal hidden">
+    <div class="modal-card paid-receipts-card">
+      <h3>Çeklər</h3>
+      <p class="hint">Bu günün ödənilmiş çekləri. Seçib təkrar çap edin.</p>
+      <div class="paid-receipts-scroll">
+        <table class="paid-receipts-table">
+          <thead>
+            <tr>
+              <th>№</th>
+              <th>Vaxt</th>
+              <th>Masa</th>
+              <th>Məbləğ</th>
+            </tr>
+          </thead>
+          <tbody id="paid-receipts-body"></tbody>
+        </table>
+      </div>
+      <p id="paid-receipts-msg" class="message"></p>
+      <div class="modal-actions">
+        <button id="paid-receipts-close" type="button">Bağla</button>
       </div>
     </div>
   </div>
@@ -530,7 +559,7 @@
   <script src="money.js?v=1"></script>
   <script src="orders-zones.js?v=1"></script>
   <script src="orders-shift.js?v=3"></script>
-  <script src="orders-pay.js?v=2"></script>
-  <script src="orders-ui.js?v=34"></script>
+  <script src="orders-pay.js?v=3"></script>
+  <script src="orders-ui.js?v=35"></script>
 </body>
 </html>

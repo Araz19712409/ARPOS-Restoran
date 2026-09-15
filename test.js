@@ -2056,7 +2056,7 @@ test('katalog maya strip; void/endirim payments blok', function () {
   assert.ok(ui.indexOf("can('orders.void') && !(order.payments && order.payments.length)") >= 0);
   assert.ok(ui.indexOf("can('orders.discount') && !(order.payments && order.payments.length)") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=34') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=35') >= 0);
   const prodJs = fs.readFileSync(path.join(__dirname, 'public', 'products.js'), 'utf8');
   assert.ok(prodJs.indexOf('/api/catalog/manage') >= 0);
 });
@@ -2229,14 +2229,20 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   const hintAt = foot.indexOf('id="check-hint"');
   const msgAt = foot.indexOf('id="message"');
   const secAt = foot.indexOf('class="sec-actions"');
+  const quickAt = foot.indexOf('id="receipt-quick-actions"');
   const mainAt = foot.indexOf('class="main-actions"');
   const moreAt = foot.indexOf('id="check-more"');
   assert.ok(sumAt >= 0 && hintAt > sumAt && msgAt > hintAt && secAt > msgAt && mainAt > secAt && moreAt > mainAt);
+  assert.ok(quickAt > secAt && quickAt < mainAt);
   assert.ok(foot.indexOf('id="reprint-order"') >= 0);
   assert.ok(foot.indexOf('id="discount-open"') >= 0);
+  assert.ok(foot.indexOf('id="last-receipt-btn"') >= 0);
+  assert.ok(foot.indexOf('id="paid-receipts-btn"') >= 0);
   assert.ok(foot.indexOf('id="pay-open"') >= 0);
   assert.ok(foot.indexOf('id="accept-order"') >= 0);
-  assert.ok(html.indexOf('orders.css?v=26') >= 0);
+  assert.ok(html.indexOf('orders.css?v=27') >= 0);
+  assert.ok(html.indexOf('id="paid-receipts-modal"') >= 0);
+  assert.ok(html.indexOf('orders-pay.js?v=3') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
   assert.ok(css.indexOf('#check-total') >= 0);
   assert.ok(css.indexOf('.check-sum-box') >= 0 && css.indexOf('border-radius: 10px') >= 0);
@@ -2244,7 +2250,35 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(sec.indexOf('border-top') >= 0);
   assert.ok(sec.indexOf('margin: 8px 0 10px') >= 0);
   assert.ok(css.indexOf('.check-foot-notes') >= 0);
+  assert.ok(css.indexOf('.receipt-quick-actions') >= 0);
+  assert.ok(css.indexOf('.paid-receipts-card') >= 0);
+  assert.ok(css.indexOf('.paid-receipts-card') >= 0 && css.indexOf('background: #2c261f') >= 0);
   assert.ok(css.indexOf('[data-zone="floor"] .sec-actions') >= 0 || css.indexOf('.sec-actions') >= 0);
+});
+
+test('satış çeki printCopies 1|2; deliverReceipt override', function () {
+  assert.strictEqual(settings.cleanPrintCopies(2), 2);
+  assert.strictEqual(settings.cleanPrintCopies(1), 1);
+  assert.strictEqual(settings.cleanPrintCopies(9), 1);
+  assert.strictEqual(settings.cleanPrintCopies('2'), 2);
+  withTempDb(function () {
+    settings.writeSettings({ receipt: Object.assign({}, settings.emptyReceipt(), { printCopies: 2 }) });
+    assert.strictEqual(settings.receiptPrintCopies(), 2);
+    const cleaned = settings.cleanReceipt({ printCopies: 2, title: 'X' });
+    assert.strictEqual(cleaned.printCopies, 2);
+    settings.writeSettings({ receipt: Object.assign({}, settings.emptyReceipt(), { printCopies: 1 }) });
+    assert.strictEqual(settings.receiptPrintCopies(), 1);
+  });
+  const setHtml = fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8');
+  assert.ok(setHtml.indexOf('id="receipt-print-copies"') >= 0);
+  assert.ok(setHtml.indexOf('Satış çeki nüsxə sayı') >= 0);
+  const printersSrc = fs.readFileSync(path.join(__dirname, 'printers.js'), 'utf8');
+  assert.ok(printersSrc.indexOf('receiptPrintCopies') >= 0);
+  assert.ok(printersSrc.indexOf('copiesOverride') >= 0);
+  const paySrc = fs.readFileSync(path.join(__dirname, 'public', 'orders-pay.js'), 'utf8');
+  assert.ok(paySrc.indexOf('last-receipt-btn') >= 0);
+  assert.ok(paySrc.indexOf('paid-receipts-modal') >= 0);
+  assert.ok(paySrc.indexOf('2 nüsxə') >= 0);
 });
 
 test('kassa qalığı ayar; Z counted növbəti startingCash', function () {
@@ -2319,7 +2353,7 @@ test('PWA ofisiant: manifest mode=waiter; waiter-mode hook', function () {
   assert.ok(html.indexOf('arpos-mode') >= 0);
   assert.ok(html.indexOf('waiter-mode') >= 0);
   assert.ok(html.indexOf('apple-mobile-web-app-capable') >= 0);
-  assert.ok(html.indexOf('orders-ui.js?v=34') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=35') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
   assert.ok(css.indexOf('.waiter-mode') >= 0);
   assert.ok(css.indexOf('.waiter-mode .order-zones') >= 0);

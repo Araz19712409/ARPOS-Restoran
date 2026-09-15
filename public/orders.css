@@ -925,6 +925,98 @@
   border-top: 1px solid #3d3428;
 }
 
+.receipt-quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.receipt-quick-actions button {
+  min-height: 44px;
+  margin: 0;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+  font-weight: 650;
+  background: #2c261f;
+  color: #f4eadc;
+  border: 1px solid #c4a574;
+}
+
+.receipt-quick-actions button:disabled {
+  opacity: 0.45;
+  border-color: #3d3428;
+  color: #cbbba8;
+  cursor: not-allowed;
+}
+
+.receipt-copies-hint {
+  margin: 0 0 8px;
+  color: #cbbba8;
+}
+
+.paid-receipts-card {
+  width: min(520px, 94vw);
+  max-height: min(78vh, 640px);
+  display: flex;
+  flex-direction: column;
+  background: #2c261f;
+  color: #f4eadc;
+}
+
+.paid-receipts-card h3 {
+  color: #f4eadc;
+}
+
+.paid-receipts-card .hint {
+  color: #cbbba8;
+}
+
+.paid-receipts-scroll {
+  overflow: auto;
+  max-height: min(48vh, 380px);
+  margin: 8px 0;
+  border: 1px solid #3d3428;
+  border-radius: 8px;
+  background: #221d17;
+}
+
+.paid-receipts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+  color: #f4eadc;
+}
+
+.paid-receipts-table th,
+.paid-receipts-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #3d3428;
+  color: #f4eadc;
+}
+
+.paid-receipts-table th {
+  background: #2c261f;
+  color: #cbbba8;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.paid-receipts-table tbody tr {
+  cursor: pointer;
+}
+
+.paid-receipts-table tbody tr:hover td {
+  background: #2c261f;
+}
+
+.paid-receipts-table .empty-row td {
+  color: #cbbba8;
+  cursor: default;
+}
+
 .sec-actions button,
 .check-more-list button {
   min-height: 36px;
@@ -1544,12 +1636,14 @@
   .order-page[data-zone="floor"] .check-sum-box,
   .order-page[data-zone="floor"] .check-foot-notes,
   .order-page[data-zone="floor"] .sec-actions,
+  .order-page[data-zone="floor"] .receipt-quick-actions,
   .order-page[data-zone="floor"] .check-more,
   .order-page[data-zone="menu"] .check-head,
   .order-page[data-zone="menu"] .check-list,
   .order-page[data-zone="menu"] .check-sum-box,
   .order-page[data-zone="menu"] .check-foot-notes,
   .order-page[data-zone="menu"] .sec-actions,
+  .order-page[data-zone="menu"] .receipt-quick-actions,
   .order-page[data-zone="menu"] .check-more {
     display: none;
   }
@@ -1796,12 +1890,14 @@ html.waiter-mode .more-nav,
 .waiter-mode[data-zone="floor"] .check-sum-box,
 .waiter-mode[data-zone="floor"] .check-foot-notes,
 .waiter-mode[data-zone="floor"] .sec-actions,
+.waiter-mode[data-zone="floor"] .receipt-quick-actions,
 .waiter-mode[data-zone="floor"] .check-more,
 .waiter-mode[data-zone="menu"] .check-head,
 .waiter-mode[data-zone="menu"] .check-list,
 .waiter-mode[data-zone="menu"] .check-sum-box,
 .waiter-mode[data-zone="menu"] .check-foot-notes,
 .waiter-mode[data-zone="menu"] .sec-actions,
+.waiter-mode[data-zone="menu"] .receipt-quick-actions,
 .waiter-mode[data-zone="menu"] .check-more {
   display: none;
 }

@@ -194,6 +194,11 @@ function publicSms(row) {
   };
 }
 
+function cleanPrintCopies(raw) {
+  const n = Number(raw);
+  return n === 2 ? 2 : 1;
+}
+
 function emptyReceipt() {
   return {
     title: '',
@@ -202,7 +207,8 @@ function emptyReceipt() {
     headerLines: [],
     footerLines: [],
     showBranchCode: false,
-    logo: ''
+    logo: '',
+    printCopies: 1
   };
 }
 
@@ -246,8 +252,14 @@ function cleanReceipt(raw) {
     footerLines: cleanLineList(src.footerLines, 3, 60),
     showBranchCode: src.showBranchCode === true || src.showBranchCode === 1 ||
       src.showBranchCode === '1' || src.showBranchCode === 'true',
-    logo: cleanReceiptLogo(src.logo)
+    logo: cleanReceiptLogo(src.logo),
+    printCopies: cleanPrintCopies(src.printCopies)
   };
+}
+
+function receiptPrintCopies(cfg) {
+  const row = cfg || readSettings();
+  return cleanPrintCopies((row.receipt || emptyReceipt()).printCopies);
 }
 
 function receiptTitle(cfg) {
@@ -1046,6 +1058,8 @@ module.exports = {
   emptyReceipt: emptyReceipt,
   cleanReceipt: cleanReceipt,
   cleanReceiptLogo: cleanReceiptLogo,
+  cleanPrintCopies: cleanPrintCopies,
+  receiptPrintCopies: receiptPrintCopies,
   receiptTitle: receiptTitle,
   publicReceipt: publicReceipt,
   saveReceiptLogo: saveReceiptLogo,

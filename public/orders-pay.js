@@ -660,6 +660,167 @@
       }
     }
 
+    function receiptCopies() {
+      var n = ctx.settings && ctx.settings.receipt && Number(ctx.settings.receipt.printCopies);
+      return n === 2 ? 2 : 1;
+    }
+
+    function syncReceiptCopiesHint() {
+      var hint = el('receipt-copies-hint');
+      if (!hint) {
+        return;
+      }
+      if (receiptCopies() === 2) {
+        hint.textContent = '2 nüsxə';
+        hint.classList.remove('hidden');
+      } else {
+        hint.textContent = '';
+        hint.classList.add('hidden');
+      }
+    }
+
+    function syncLastReceiptBtn() {
+      var btn = el('last-receipt-btn');
+      if (!btn) {
+        return;
+      }
+      var has = !!(ctx.lastReceipt && ctx.lastReceipt.id);
+      btn.disabled = !has;
+      btn.title = has ? 'Son çeki təkrar çap et' : 'Son ödənilmiş çek yoxdur';
+    }
+
+    function canReceiptList() {
+      if (!ctx.waiter || !ctx.waiter.permissions) {
+        return false;
+      }
+      var perms = ctx.waiter.permissions;
+      return perms.indexOf('payments.take') >= 0 || perms.indexOf('reports.view') >= 0;
+    }
+
+    function syncPaidReceiptsBtn() {
+      var btn = el('paid-receipts-btn');
+      if (!btn) {
+        return;
+      }
+      btn.style.display = canReceiptList() ? '' : 'none';
+    }
+
+    function twoDigits(n) {
+      return (n < 10 ? '0' : '') + n;
+    }
+
+    function formatPayWhen(iso) {
+      var d = new Date(iso);
+      if (Number.isNaN(d.getTime())) {
+        return '';
+      }
+      return twoDigits(d.getHours()) + ':' + twoDigits(d.getMinutes());
+    }
+
+    function isSameLocalDay(iso) {
+      var d = new Date(iso);
+      if (Number.isNaN(d.getTime())) {
+        return false;
+      }
+      var now = new Date();
+      return d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate();
+    }
+
+    function openPaidReceipt(order) {
+      if (!order) {
+        return;
+      }
+      var view = Object.assign({}, order);
+      if (ctx.settings) {
+        if (ctx.settings.branchName) {
+          view.branchName = ctx.settings.branchName;
+        }
+        if (ctx.settings.branchCode) {
+          view.branchCode = ctx.settings.branchCode;
+        }
+        if (ctx.settings.receipt) {
+          view.receipt = ctx.settings.receipt;
+        }
+      }
+      ctx.lastReceipt = view;
+      syncLastReceiptBtn();
+      if (window.ReceiptView) {
+        window.ReceiptView.fill(el('receipt-paper') || document.getElementById('receipt-paper'), view);
+      }
+      syncReceiptCopiesHint();
+      setText('receipt-msg', 'Çapdan qabaq görünüş.');
+      setReceiptNextMode(false);
+      var listModal = el('paid-receipts-modal');
+      if (listModal) {
+        listModal.classList.add('hidden');
+      }
+      var rm = el('receipt-modal');
+      if (rm) {
+        rm.classList.remove('hidden');
+      }
+    }
+
+    function loadPaidReceiptsList() {
+      var body = el('paid-receipts-body');
+      var msg = el('paid-receipts-msg');
+      if (!body) {
+        return;
+      }
+      body.innerHTML = '';
+      if (msg) {
+        msg.textContent = '';
+      }
+      if (!canReceiptList()) {
+        if (msg) {
+          msg.textContent = 'Çeklərə icazəniz yoxdur.';
+        }
+        return;
+      }
+      api('/api/orders').then(function (res) {
+        var orders = (res.data && res.data.orders) || [];
+        var paid = orders.filter(function (order) {
+          return order.status === 'paid' && order.payment &&
+            isSameLocalDay(order.payment.at || order.updatedAt);
+        });
+        paid.sort(function (a, b) {
+          return String(b.payment.at || '') < String(a.payment.at || '') ? -1 : 1;
+        });
+        if (!paid.length) {
+          var empty = document.createElement('tr');
+          empty.className = 'empty-row';
+          empty.innerHTML = '<td colspan="4">Bu gün ödənilmiş çek yoxdur.</td>';
+          body.appendChild(empty);
+          return;
+        }
+        paid.forEach(function (order) {
+          var pay = order.payment || {};
+          var tr = document.createElement('tr');
+          var tdId = document.createElement('td');
+          tdId.textContent = '#' + order.id;
+          var tdWhen = document.createElement('td');
+          tdWhen.textContent = formatPayWhen(pay.at || order.updatedAt);
+          var tdTable = document.createElement('td');
+          tdTable.textContent = order.tableName || '';
+          var tdAmt = document.createElement('td');
+          tdAmt.textContent = Number(pay.total || 0).toFixed(2) + ' AZN';
+          tr.appendChild(tdId);
+          tr.appendChild(tdWhen);
+          tr.appendChild(tdTable);
+          tr.appendChild(tdAmt);
+          tr.addEventListener('click', function () {
+            openPaidReceipt(order);
+          });
+          body.appendChild(tr);
+        });
+      }).catch(function (error) {
+        if (msg) {
+          msg.textContent = error.message;
+        }
+      });
+    }
+
     function requestReceiptPrint() {
       if (!ctx.lastReceipt || !ctx.waiter) {
         printReceiptPaper();
@@ -675,14 +836,29 @@
         })
       }).then(function (body) {
         var warns = (body.data && body.data.warnings) || [];
-        setText('receipt-msg', warns.length ? warns.join(' ') : 'Çek göndərildi.');
+        var copies = (body.data && body.data.copies) || receiptCopies();
+        var okText = copies > 1
+          ? ('Çek göndərildi (' + copies + ' nüsxə).')
+          : 'Çek göndərildi.';
+        setText('receipt-msg', warns.length ? warns.join(' ') : okText);
+        say(warns.length ? warns.join(' ') : okText, warns.length ? 'err' : 'ok');
         if (warns.length) {
           printReceiptPaper();
         }
       }).catch(function (error) {
         setText('receipt-msg', error.message);
+        say(error.message, 'err');
         printReceiptPaper();
       });
+    }
+
+    function printLastReceiptQuick() {
+      if (!ctx.lastReceipt || !ctx.waiter) {
+        say('Son ödənilmiş çek yoxdur.', 'err');
+        syncLastReceiptBtn();
+        return;
+      }
+      requestReceiptPrint();
     }
 
     ctx.pickingPay = pickingPay;
@@ -803,6 +979,41 @@
     if (receiptPrintNextBtn) {
       receiptPrintNextBtn.addEventListener('click', requestReceiptPrint);
     }
+    var lastReceiptBtn = el('last-receipt-btn');
+    if (lastReceiptBtn) {
+      lastReceiptBtn.addEventListener('click', printLastReceiptQuick);
+    }
+    var paidReceiptsBtn = el('paid-receipts-btn');
+    if (paidReceiptsBtn) {
+      paidReceiptsBtn.addEventListener('click', function () {
+        if (!canReceiptList()) {
+          say('Çeklərə icazəniz yoxdur.', 'err');
+          return;
+        }
+        var modal = el('paid-receipts-modal');
+        if (modal) {
+          modal.classList.remove('hidden');
+        }
+        loadPaidReceiptsList();
+      });
+    }
+    var paidReceiptsClose = el('paid-receipts-close');
+    if (paidReceiptsClose) {
+      paidReceiptsClose.addEventListener('click', function () {
+        var modal = el('paid-receipts-modal');
+        if (modal) {
+          modal.classList.add('hidden');
+        }
+      });
+    }
+    syncLastReceiptBtn();
+    syncPaidReceiptsBtn();
+    syncReceiptCopiesHint();
+
+    ctx.syncLastReceiptBtn = syncLastReceiptBtn;
+    ctx.syncPaidReceiptsBtn = syncPaidReceiptsBtn;
+    ctx.syncReceiptCopiesHint = syncReceiptCopiesHint;
+
     var receiptStayBtn = el('receipt-stay');
     if (receiptStayBtn) {
       receiptStayBtn.addEventListener('click', stayAfterPay);
@@ -956,6 +1167,8 @@
             ctx.lastReceipt.receipt = ctx.settings.receipt;
           }
         }
+        syncLastReceiptBtn();
+        syncReceiptCopiesHint();
         var wantNext = !!(result.closed && nextTableAfterCloseOn());
         var showedReceipt = false;
         if (result.closed && ctx.lastReceipt && window.ReceiptView) {

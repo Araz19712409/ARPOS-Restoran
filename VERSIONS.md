@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 
+- **1.2.62** — 2026-09-15 — Satış çeki 1|2 nüsxə; Son çek + Çeklər drawer
 - **1.2.61** — 2026-09-15 — Ayarlar: İlkin doldurma linki oxunaqlı (qızılı)
 - **1.2.60** — 2026-09-15 — İlkin doldurma: 1C axtar+Yarat; Ayarlar menyusu
 - **1.2.59** — 2026-09-15 — İlkin doldurma: batch commit, local dropdown, draft qalır

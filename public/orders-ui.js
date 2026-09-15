@@ -671,6 +671,15 @@
     if (window.PosNav) {
       window.PosNav.afterLogin(data);
     }
+    if (typeof ctx.syncPaidReceiptsBtn === 'function') {
+      ctx.syncPaidReceiptsBtn();
+    }
+    if (typeof ctx.syncLastReceiptBtn === 'function') {
+      ctx.syncLastReceiptBtn();
+    }
+    if (typeof ctx.syncReceiptCopiesHint === 'function') {
+      ctx.syncReceiptCopiesHint();
+    }
   }
 
   function load() {
@@ -695,6 +704,9 @@
       locks = parts[2].data.locks || [];
       waitlist = (parts[3] && parts[3].data && parts[3].data.items) || [];
       seatedWait = (parts[3] && parts[3].data && parts[3].data.seated) || [];
+      if (typeof ctx.syncReceiptCopiesHint === 'function') {
+        ctx.syncReceiptCopiesHint();
+      }
       if (window.PosNav && settings.opsMode) {
         window.PosNav.rememberOps(settings.opsMode);
       }

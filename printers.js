@@ -815,10 +815,16 @@ function listQueue() {
   return readQueue().jobs.map(publicJob);
 }
 
-async function sendToPrinter(printer, ticket, label) {
+async function sendToPrinter(printer, ticket, label, copiesOverride) {
   const results = [];
   let ok = true;
-  const copies = Number(printer.copies) || 1;
+  let copies = Number(printer.copies) || 1;
+  if (copiesOverride != null) {
+    copies = Number(copiesOverride) || 1;
+  }
+  if (copies < 1) {
+    copies = 1;
+  }
   for (let copy = 0; copy < copies; copy += 1) {
     const result = await deliverBytes(printer, ticket, 8000);
     results.push({
@@ -839,12 +845,12 @@ async function sendToPrinter(printer, ticket, label) {
   return { ok: ok, results: results };
 }
 
-async function tryPrinters(list, buildTicket, label) {
+async function tryPrinters(list, buildTicket, label, copiesOverride) {
   const results = [];
   let anyOk = false;
   let lastError = '';
   for (let i = 0; i < list.length; i += 1) {
-    const sent = await sendToPrinter(list[i], buildTicket(list[i]), label);
+    const sent = await sendToPrinter(list[i], buildTicket(list[i]), label, copiesOverride);
     results.push.apply(results, sent.results);
     if (sent.ok) {
       anyOk = true;
@@ -890,12 +896,20 @@ async function deliverReceipt(order) {
     return item.enabled && item.role === 'receipt';
   });
   if (!list.length) {
-    return { anyOk: false, results: [], warning: 'Kassa printeri yoxdur. Brauzerdən çap edin.' };
+    return { anyOk: false, results: [], warning: 'Kassa printeri yoxdur. Brauzerdən çap edin.', copies: 1 };
   }
-  return tryPrinters(list, function (printer) {
+  let copies = 1;
+  try {
+    copies = require('./settings').receiptPrintCopies();
+  } catch (error) {
+    copies = 1;
+  }
+  const out = await tryPrinters(list, function (printer) {
     const cash = Number((order.payment && order.payment.cashAmount) || 0);
     return buildReceiptTicket(Object.assign({}, printer, { openDrawer: cash > 0 }), order);
-  }, 'Çek çapı');
+  }, 'Çek çapı', copies);
+  out.copies = copies;
+  return out;
 }
 
 function formatWhen(iso) {
@@ -1057,7 +1071,7 @@ async function sendStationTickets(stationId, payload) {
 async function sendReceiptTickets(order) {
   const out = await deliverReceipt(order);
   if (out.warning && !out.results.length) {
-    return { results: out.results, warning: out.warning };
+    return { results: out.results, warning: out.warning, copies: out.copies || 1 };
   }
   if (!out.anyOk) {
     enqueue({
@@ -1067,10 +1081,11 @@ async function sendReceiptTickets(order) {
     });
     return {
       results: out.results,
-      warning: 'Kassa çeki növbəyə düşdü.'
+      warning: 'Kassa çeki növbəyə düşdü.',
+      copies: out.copies || 1
     };
   }
-  return { results: out.results };
+  return { results: out.results, copies: out.copies || 1 };
 }
 
 async function runJob(job) {

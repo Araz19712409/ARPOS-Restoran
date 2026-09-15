@@ -3842,7 +3842,14 @@ app.post('/api/orders/receipt', async function (req, res) {
       return;
     }
     const printed = await printers.sendReceiptTickets(order);
-    res.json({ success: true, data: { order: order, warnings: printed.warning ? [printed.warning] : [] } });
+    res.json({
+      success: true,
+      data: {
+        order: order,
+        copies: printed.copies || 1,
+        warnings: printed.warning ? [printed.warning] : []
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
   }
