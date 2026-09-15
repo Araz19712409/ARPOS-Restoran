@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 
+- **1.2.57** — 2026-09-15 — İlkin doldurma (Excel/1C cədvəl bootstrap)
 - **1.2.56** — 2026-09-14 — Orders canlı sync + toxunuş; yeniləmə 504 retry
 - **1.2.55** — 2026-09-14 — Ofisiant shell: yalnız İP, port 3443, Yadda saxla / Aç
 - **1.2.54** — 2026-09-14 — Ofisiant Capacitor Android qabıq (mobile-waiter)

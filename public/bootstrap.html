@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>İlkin doldurma</title>
+  <link rel="stylesheet" href="app.css?v=21">
+  <link rel="stylesheet" href="products.css">
+  <link rel="stylesheet" href="bootstrap.css?v=1">
+</head>
+<body class="catalog-page bootstrap-page" data-need="products.edit">
+  <header class="top">
+    <div>
+      <h1>İlkin doldurma</h1>
+      <p id="waiter-line">Excel/1C tipli cədvəl — qrup, mal, qiymət.</p>
+    </div>
+    <nav class="app-nav waiter-nav">
+      <a href="/orders.html">Sifariş</a>
+      <a href="/kitchen.html" data-need="kitchen.view">Mətbəx</a>
+      <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
+      <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
+      <details class="more-nav">
+        <summary>Ofis</summary>
+        <div class="more-nav-list">
+          <a href="/reports.html" data-need="reports.view">Hesabat</a>
+          <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
+          <a href="/" data-need="layout.edit">Çertyoj</a>
+          <a href="/products.html" data-need="products.edit">Məhsullar</a>
+          <a class="active" href="/bootstrap.html" data-need="products.edit">İlkin doldurma</a>
+          <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
+          <a href="/customers.html" data-need="payments.take">Müştərilər</a>
+          <a href="/printers.html" data-need="printers.view">Printerlər</a>
+          <a href="/users.html" data-need="users.view">İstifadəçilər</a>
+          <a href="/settings.html" data-need="settings.view">Ayarlar</a>
+        </div>
+      </details>
+      <button id="logout" type="button">Çıxış</button>
+    </nav>
+  </header>
+
+  <main class="catalog-main bootstrap-main">
+    <p id="message" class="message"></p>
+    <p class="hint">Qrup/mal/stansiya yoxdursa avtomatik yaranır. Miqdar boşdursa yalnız kataloq.</p>
+    <div class="boot-toolbar">
+      <button id="boot-add-10" type="button">+10 sətir</button>
+      <button id="boot-draft" type="button">Saxla draft</button>
+      <button id="boot-preview" type="button">Önizlə</button>
+      <button id="boot-commit" class="gold" type="button">Təsdiq et</button>
+      <button id="boot-clear" type="button">Ləğv</button>
+    </div>
+    <p id="boot-preview-box" class="hint boot-preview hidden"></p>
+    <div class="boot-scroll">
+      <table class="boot-table" id="boot-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Qrup</th>
+            <th>Mal</th>
+            <th>Satış qiyməti</th>
+            <th>Miqdar</th>
+            <th>Alış qiyməti</th>
+            <th>Stansiya</th>
+            <th>Vahid</th>
+          </tr>
+        </thead>
+        <tbody id="boot-body"></tbody>
+      </table>
+    </div>
+    <datalist id="boot-groups"></datalist>
+    <datalist id="boot-products"></datalist>
+    <datalist id="boot-stations"></datalist>
+    <datalist id="boot-units">
+      <option value="əd"></option>
+      <option value="kq"></option>
+      <option value="l"></option>
+      <option value="qr"></option>
+      <option value="ml"></option>
+    </datalist>
+  </main>
+
+  <script src="dom.js"></script>
+  <script src="nav.js"></script>
+  <script src="bootstrap-ui.js?v=1"></script>
+</body>
+</html>

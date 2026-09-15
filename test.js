@@ -2677,4 +2677,107 @@ test('printer windows/tcp: normalize; list/UI; mock flags', function () {
   assert.ok(serverSrc.indexOf("/api/printers/windows-list") >= 0);
 });
 
+test('ilkin doldurma bootstrap: create/update/station/qty', function () {
+  const bootstrap = require('./bootstrap');
+  withTempDb(function () {
+    catalog.writeCatalog({
+      nextGroupId: 1,
+      nextProductId: 1,
+      nextStationId: 4,
+      soldOutDay: '',
+      groups: [],
+      stations: [
+        { id: 1, name: 'Mətbəx' },
+        { id: 2, name: 'Manqal' },
+        { id: 3, name: 'Bar' }
+      ],
+      products: []
+    });
+    settings.writeSettings({ opsMode: 'full' });
+    const lines = [
+      { groupName: 'İçkilər', productName: 'Cola 0.5', salePrice: 2.5, qty: 24, buyPrice: 1.2, stationName: 'Bar', unit: 'əd' },
+      { groupName: 'İçkilər', productName: 'Su', salePrice: 1, stationName: 'Bar' },
+      { groupName: 'Yemək', productName: 'Pizza', salePrice: 8, stationName: 'Mətbəx' },
+      { groupName: 'Yemək', productName: 'Burger', salePrice: 6 },
+      { groupName: 'İçkilər', productName: 'Çay', salePrice: 1.5, stationName: 'Şərbət' }
+    ];
+    const dry = bootstrap.applyBootstrapLines(lines, {
+      confirm: false,
+      stockMode: true,
+      canStockEdit: true,
+      warehouseId: 1
+    });
+    assert.strictEqual(dry.newGroups, 2);
+    assert.strictEqual(dry.newStations, 1);
+    assert.strictEqual(dry.newProducts, 5);
+    assert.strictEqual(catalog.readCatalog().products.length, 0);
+
+    const out = bootstrap.applyBootstrapLines(lines, {
+      confirm: true,
+      stockMode: true,
+      canStockEdit: true,
+      warehouseId: 1,
+      who: 'test'
+    });
+    assert.strictEqual(out.newGroups, 2);
+    assert.strictEqual(out.newStations, 1);
+    assert.strictEqual(out.newProducts, 5);
+    assert.strictEqual(out.productIds.length, 5);
+    const cat = catalog.readCatalog();
+    assert.strictEqual(cat.groups.length, 2);
+    assert.ok(cat.stations.some(function (s) { return s.name === 'Bar'; }));
+    assert.ok(cat.stations.some(function (s) { return s.name === 'Şərbət'; }));
+    assert.strictEqual(cat.products.length, 5);
+    const cola = cat.products.find(function (p) { return p.name === 'Cola 0.5'; });
+    assert.ok(cola);
+    assert.strictEqual(cola.salePrice, 2.5);
+    const box = stock.readStock();
+    const colaStock = box.items.find(function (i) { return i.name === 'Cola 0.5'; });
+    assert.ok(colaStock);
+    assert.ok(Number(colaStock.qty) >= 24);
+
+    const again = bootstrap.applyBootstrapLines([
+      { groupName: 'İçkilər', productName: 'Cola 0.5', salePrice: 3, buyPrice: 1.5 }
+    ], {
+      confirm: true,
+      stockMode: true,
+      canStockEdit: true,
+      warehouseId: 1
+    });
+    assert.strictEqual(again.newProducts, 0);
+    assert.strictEqual(again.updatedProducts, 1);
+    assert.strictEqual(catalog.readCatalog().products.filter(function (p) {
+      return p.name === 'Cola 0.5';
+    }).length, 1);
+    assert.strictEqual(catalog.readCatalog().products.find(function (p) {
+      return p.name === 'Cola 0.5';
+    }).salePrice, 3);
+
+    settings.writeSettings({ opsMode: 'sales' });
+    const sales = bootstrap.applyBootstrapLines([
+      { groupName: 'İçkilər', productName: 'Fanta', salePrice: 2, qty: 10 }
+    ], {
+      confirm: true,
+      stockMode: false,
+      canStockEdit: true,
+      warehouseId: 1
+    });
+    assert.strictEqual(sales.newProducts, 1);
+    assert.ok(sales.warnings.some(function (w) {
+      return String(w).indexOf('satış rejimində') >= 0;
+    }));
+    assert.ok(catalog.readCatalog().products.some(function (p) { return p.name === 'Fanta'; }));
+  });
+
+  assert.ok(fs.existsSync(path.join(__dirname, 'public', 'bootstrap.html')));
+  assert.ok(fs.existsSync(path.join(__dirname, 'public', 'bootstrap-ui.js')));
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'bootstrap.html'), 'utf8');
+  assert.ok(html.indexOf('İlkin doldurma') >= 0);
+  assert.ok(html.indexOf('boot-commit') >= 0);
+  const serverSrc = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  assert.ok(serverSrc.indexOf("/api/catalog/bootstrap") >= 0);
+  const prodHtml = fs.readFileSync(path.join(__dirname, 'public', 'products.html'), 'utf8');
+  assert.ok(prodHtml.indexOf('/bootstrap.html') >= 0);
+});
+
 console.log('Bütün testlər keçdi.');

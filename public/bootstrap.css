@@ -1,0 +1,101 @@
+.bootstrap-page {
+  grid-template-columns: 1fr;
+}
+
+.bootstrap-main {
+  padding: 12px 16px 20px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.boot-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 12px;
+  align-items: center;
+}
+
+.boot-toolbar button {
+  min-height: 36px;
+  padding: 6px 12px;
+}
+
+.boot-preview {
+  margin-bottom: 8px;
+  white-space: pre-wrap;
+}
+
+.boot-scroll {
+  overflow: auto;
+  max-height: calc(100vh - 210px);
+  border: 1px solid #c9bba8;
+  border-radius: 8px;
+  background: #f7f1e6;
+}
+
+.boot-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 980px;
+  font-size: 14px;
+}
+
+.boot-table th,
+.boot-table td {
+  border-bottom: 1px solid #ddd2c0;
+  padding: 4px 6px;
+  vertical-align: middle;
+}
+
+.boot-table th {
+  position: sticky;
+  top: 0;
+  background: #e8dfd0;
+  z-index: 1;
+  text-align: left;
+  font-weight: 650;
+}
+
+.boot-table td.num {
+  width: 36px;
+  text-align: center;
+  color: #6a5d4d;
+}
+
+.boot-table input {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid #c9bba8;
+  border-radius: 6px;
+  padding: 4px 8px;
+  background: #fff;
+  font-size: 14px;
+}
+
+.boot-cell {
+  position: relative;
+}
+
+.boot-new {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: #8a5a12;
+  background: #f3e0b8;
+  border-radius: 4px;
+  padding: 1px 5px;
+  pointer-events: none;
+}
+
+.boot-cell.has-new input {
+  padding-right: 48px;
+}
+
+@media (max-width: 980px) {
+  .boot-scroll {
+    max-height: calc(100vh - 240px);
+  }
+}

@@ -5,6 +5,7 @@ const path = require('path');
 const store = require('./store');
 
 const catalog = require('./catalog');
+const bootstrap = require('./bootstrap');
 const printers = require('./printers');
 const logger = require('./logger');
 const users = require('./users');
@@ -563,6 +564,34 @@ app.get('/api/catalog/manage', function (req, res) {
   } catch (error) {
     res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
   }
+});
+
+app.post('/api/catalog/bootstrap', function (req, res) {
+  if (!needPerm(req, res, 'products.edit')) {
+    return;
+  }
+  const body = req.body || {};
+  const confirm = body.confirm === true;
+  lock.withLock('write', function () {
+    const out = bootstrap.applyBootstrapLines(body.lines, {
+      confirm: confirm,
+      warehouseId: Number(body.warehouseId) || 1,
+      stockMode: settings.isStockMode(),
+      canStockEdit: users.hasPermission(req.staff && req.staff.role, 'stock.edit'),
+      who: req.staff && req.staff.user ? req.staff.user.name : ''
+    });
+    if (confirm && out.applied === 0 && !(out.productIds && out.productIds.length)) {
+      reject(400, (out.warnings && out.warnings[0]) || 'Dolu sətir yoxdur.');
+    }
+    return out;
+  }).then(function (out) {
+    if (confirm && out.applied) {
+      audit(req, 'bootstrap', 'İlkin doldurma: ' + out.applied + ' sətir');
+    }
+    res.status(confirm ? 201 : 200).json({ success: true, data: out });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
 });
 
 app.get('/api/catalog/prices', function (req, res) {
