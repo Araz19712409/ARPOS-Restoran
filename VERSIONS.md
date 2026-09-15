@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 
+- **1.2.60** — 2026-09-15 — İlkin doldurma: 1C axtar+Yarat; Ayarlar menyusu
 - **1.2.59** — 2026-09-15 — İlkin doldurma: batch commit, local dropdown, draft qalır
 - **1.2.58** — 2026-09-15 — İlkin doldurma: cədvəl şrifti oxunaqlı (tünd mətn)
 - **1.2.57** — 2026-09-15 — İlkin doldurma (Excel/1C cədvəl bootstrap)

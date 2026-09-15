@@ -114,6 +114,101 @@
   padding-right: 48px;
 }
 
+.boot-combo-wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.boot-combo-wrap input {
+  flex: 1;
+  min-width: 0;
+}
+
+.boot-plus {
+  flex: 0 0 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid #9a8b76;
+  border-radius: 6px;
+  background: #efe4d2;
+  color: #1f1a14;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.boot-plus:hover {
+  background: #e0d0b4;
+}
+
+.boot-drop {
+  position: absolute;
+  left: 0;
+  right: 38px;
+  top: calc(100% + 2px);
+  z-index: 20;
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #9a8b76;
+  border-radius: 6px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+}
+
+.boot-drop.hidden {
+  display: none;
+}
+
+.boot-drop-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.boot-drop-pick {
+  flex: 1;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: #1f1a14;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.boot-drop-pick:hover,
+.boot-drop-create .boot-drop-pick {
+  background: #f3e8d6;
+}
+
+.boot-drop-create .boot-drop-pick {
+  font-weight: 650;
+  color: #5a3a08;
+}
+
+.boot-drop-del {
+  flex: 0 0 28px;
+  border: 0;
+  background: transparent;
+  color: #8a3030;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px;
+}
+
+.boot-drop-empty {
+  padding: 8px 10px;
+  color: #6a5c4a;
+  font-size: 12px;
+}
+
 .boot-table tr.boot-err td {
   background: #f3c6c6;
 }
@@ -135,6 +230,15 @@
 .boot-clear-after input {
   width: 16px;
   height: 16px;
+}
+
+.boot-settings-link {
+  margin: 12px 0 0;
+}
+
+.boot-settings-link a {
+  color: #c9a227;
+  font-weight: 650;
 }
 
 @media (max-width: 980px) {

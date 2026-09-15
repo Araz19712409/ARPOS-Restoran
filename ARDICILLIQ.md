@@ -217,6 +217,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 201. [x] 1.2.57 — İlkin doldurma (bootstrap cədvəl)
 202. [x] 1.2.58 — İlkin doldurma cədvəl şrifti (ağ→tünd)
 203. [x] 1.2.59 — İlkin doldurma: batch/draft/local siyahı (ara təsdiq yox)
+204. [x] 1.2.60 — İlkin doldurma: 1C axtar+Yarat; Ayarlar menyusu
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı

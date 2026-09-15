@@ -6,13 +6,13 @@
   <title>İlkin doldurma</title>
   <link rel="stylesheet" href="app.css?v=21">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="bootstrap.css?v=3">
+  <link rel="stylesheet" href="bootstrap.css?v=4">
 </head>
 <body class="catalog-page bootstrap-page" data-need="products.edit">
   <header class="top">
     <div>
       <h1>İlkin doldurma</h1>
-      <p id="waiter-line">Excel/1C tipli cədvəl — qrup, mal, qiymət. Draft avtomatik saxlanır.</p>
+      <p id="waiter-line">Ayarlar → Excel/1C cədvəl. Axtar + açıq Yarat. Draft avtomatik.</p>
     </div>
     <nav class="app-nav waiter-nav">
       <a href="/orders.html">Sifariş</a>
@@ -26,12 +26,12 @@
           <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
           <a href="/" data-need="layout.edit">Çertyoj</a>
           <a href="/products.html" data-need="products.edit">Məhsullar</a>
-          <a class="active" href="/bootstrap.html" data-need="products.edit">İlkin doldurma</a>
           <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
           <a href="/customers.html" data-need="payments.take">Müştərilər</a>
           <a href="/printers.html" data-need="printers.view">Printerlər</a>
           <a href="/users.html" data-need="users.view">İstifadəçilər</a>
           <a href="/settings.html" data-need="settings.view">Ayarlar</a>
+          <a class="active" href="/bootstrap.html" data-need="products.edit">İlkin doldurma</a>
         </div>
       </details>
       <button id="logout" type="button">Çıxış</button>
@@ -40,7 +40,7 @@
 
   <main class="catalog-main bootstrap-main">
     <p id="message" class="message"></p>
-    <p class="hint">Yeni ad dərhal siyahıdadır. Serverə yalnız «Təsdiq et» ilə gedir. Miqdar boşdursa yalnız kataloq.</p>
+    <p class="hint">Axtarış: mövcud siyahı. Yeni ad yalnız + və ya «Yarat: …» ilə. Serverə yalnız «Təsdiq et».</p>
     <div class="boot-toolbar">
       <button id="boot-add-10" type="button">+10 sətir</button>
       <button id="boot-draft" type="button">Saxla draft</button>
@@ -70,9 +70,6 @@
         <tbody id="boot-body"></tbody>
       </table>
     </div>
-    <datalist id="boot-groups"></datalist>
-    <datalist id="boot-products"></datalist>
-    <datalist id="boot-stations"></datalist>
     <datalist id="boot-units">
       <option value="əd"></option>
       <option value="kq"></option>
@@ -84,6 +81,6 @@
 
   <script src="dom.js"></script>
   <script src="nav.js"></script>
-  <script src="bootstrap-ui.js?v=2"></script>
+  <script src="bootstrap-ui.js?v=3"></script>
 </body>
 </html>

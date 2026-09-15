@@ -26,12 +26,12 @@
           <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
           <a href="/" data-need="layout.edit">Çertyoj</a>
           <a href="/products.html" data-need="products.edit">Məhsullar</a>
-          <a href="/bootstrap.html" data-need="products.edit">İlkin doldurma</a>
           <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
           <a href="/customers.html" data-need="payments.take">Müştərilər</a>
           <a href="/printers.html" data-need="printers.view">Printerlər</a>
           <a href="/users.html" data-need="users.view">İstifadəçilər</a>
           <a class="active" href="/settings.html" data-need="settings.view">Ayarlar</a>
+          <a href="/bootstrap.html" data-need="products.edit">İlkin doldurma</a>
         </div>
       </details>
       <button id="logout" type="button">Çıxış</button>
@@ -70,6 +70,11 @@
       <article class="settings-panel" data-tab="general">
         <h2>Ümumi</h2>
         <p class="hint">Satış rejimi, faizlər və kassa kilidi.</p>
+        <section data-need="products.edit">
+          <h3>İlkin doldurma</h3>
+          <p class="hint">Excel/1C tipli cədvəl: qrup, mal, qiymət, opsional qalıq. Axtar + açıq Yarat.</p>
+          <p class="boot-settings-link"><a href="/bootstrap.html">İlkin doldurma səhifəsini aç →</a></p>
+        </section>
         <section>
           <h3>İş rejimi</h3>
           <p class="hint">Yalnız satış: anbar yoxdur. Tam: xammal və maya.</p>
