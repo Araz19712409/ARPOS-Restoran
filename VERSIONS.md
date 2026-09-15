@@ -1,4 +1,4 @@
-# Arpos Restoran — versiyalar
+﻿# Arpos Restoran — versiyalar
 
 ## Reliz qaydası
 - Hər hotfix Setup = yeni patch (məs. 1.2.31 → 1.2.32). Eyni semver ilə yeniləmə göndərilməz.
@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 
+- **1.2.59** — 2026-09-15 — İlkin doldurma: batch commit, local dropdown, draft qalır
 - **1.2.58** — 2026-09-15 — İlkin doldurma: cədvəl şrifti oxunaqlı (tünd mətn)
 - **1.2.57** — 2026-09-15 — İlkin doldurma (Excel/1C cədvəl bootstrap)
 - **1.2.56** — 2026-09-14 — Orders canlı sync + toxunuş; yeniləmə 504 retry

@@ -216,6 +216,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 200. [x] 1.2.56 — Orders poll/toxunuş; yeniləmə GitHub 504 retry
 201. [x] 1.2.57 — İlkin doldurma (bootstrap cədvəl)
 202. [x] 1.2.58 — İlkin doldurma cədvəl şrifti (ağ→tünd)
+203. [x] 1.2.59 — İlkin doldurma: batch/draft/local siyahı (ara təsdiq yox)
 
 ### Ciddi (10.09) — bir-bir
 138. [x] Ödəniş / növbə / anbar avtomatik test — qalıq vs paidTotal, geri nağd növbə, sqlite anbar çıxışı

@@ -6,13 +6,13 @@
   <title>İlkin doldurma</title>
   <link rel="stylesheet" href="app.css?v=21">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="bootstrap.css?v=2">
+  <link rel="stylesheet" href="bootstrap.css?v=3">
 </head>
 <body class="catalog-page bootstrap-page" data-need="products.edit">
   <header class="top">
     <div>
       <h1>İlkin doldurma</h1>
-      <p id="waiter-line">Excel/1C tipli cədvəl — qrup, mal, qiymət.</p>
+      <p id="waiter-line">Excel/1C tipli cədvəl — qrup, mal, qiymət. Draft avtomatik saxlanır.</p>
     </div>
     <nav class="app-nav waiter-nav">
       <a href="/orders.html">Sifariş</a>
@@ -40,13 +40,17 @@
 
   <main class="catalog-main bootstrap-main">
     <p id="message" class="message"></p>
-    <p class="hint">Qrup/mal/stansiya yoxdursa avtomatik yaranır. Miqdar boşdursa yalnız kataloq.</p>
+    <p class="hint">Yeni ad dərhal siyahıdadır. Serverə yalnız «Təsdiq et» ilə gedir. Miqdar boşdursa yalnız kataloq.</p>
     <div class="boot-toolbar">
       <button id="boot-add-10" type="button">+10 sətir</button>
       <button id="boot-draft" type="button">Saxla draft</button>
       <button id="boot-preview" type="button">Önizlə</button>
       <button id="boot-commit" class="gold" type="button">Təsdiq et</button>
-      <button id="boot-clear" type="button">Ləğv</button>
+      <button id="boot-clear" type="button">Cədvəli təmizlə</button>
+      <label class="boot-clear-after" for="boot-clear-after">
+        <input id="boot-clear-after" type="checkbox">
+        Uğurdan sonra cədvəli təmizlə
+      </label>
     </div>
     <p id="boot-preview-box" class="hint boot-preview hidden"></p>
     <div class="boot-scroll">
@@ -80,6 +84,6 @@
 
   <script src="dom.js"></script>
   <script src="nav.js"></script>
-  <script src="bootstrap-ui.js?v=1"></script>
+  <script src="bootstrap-ui.js?v=2"></script>
 </body>
 </html>

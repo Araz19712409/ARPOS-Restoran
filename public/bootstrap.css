@@ -114,6 +114,29 @@
   padding-right: 48px;
 }
 
+.boot-table tr.boot-err td {
+  background: #f3c6c6;
+}
+
+.boot-table tr.boot-done td.num {
+  color: #2d6a3e;
+}
+
+.boot-clear-after {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  color: #d8c7aa;
+  font-size: 13px;
+  user-select: none;
+}
+
+.boot-clear-after input {
+  width: 16px;
+  height: 16px;
+}
+
 @media (max-width: 980px) {
   .boot-scroll {
     max-height: calc(100vh - 240px);
