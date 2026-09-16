@@ -136,6 +136,27 @@
     refitFloorMapIfReady();
   }
 
+  function applyFloorMapAxesLive(nextX, nextY) {
+    var x = Number(nextX);
+    var y = Number(nextY);
+    if (Number.isFinite(x)) {
+      floorMapScaleX = Math.min(160, Math.max(50, x));
+    }
+    if (Number.isFinite(y)) {
+      floorMapScaleY = Math.min(160, Math.max(50, y));
+    }
+    syncFloorMapControls();
+    refitFloorMapIfReady();
+  }
+
+  function finishFloorMapDrag() {
+    floorMapScaleX = clampFloorAxisPct(floorMapScaleX);
+    floorMapScaleY = clampFloorAxisPct(floorMapScaleY);
+    persistFloorMapPrefs();
+    syncFloorMapControls();
+    refitFloorMapIfReady();
+  }
+
   function setText(id, text) {
     if (Dom.setText) {
       Dom.setText(id, text);
@@ -1389,22 +1410,130 @@
       maxY = 1;
     }
     var uniform = Math.min(maxX, maxY);
+    if (!Number.isFinite(uniform) || uniform <= 0) {
+      uniform = 1;
+    }
     var scaleX = uniform * (floorMapScaleX / 100);
     var scaleY = uniform * (floorMapScaleY / 100);
-    // Ekrandan kənara çıxmasın — hər ox ayrı clamp
     scaleX = Math.min(Math.max(scaleX, maxX * 0.28), maxX);
     scaleY = Math.min(Math.max(scaleY, maxY * 0.28), maxY);
     map.setAttribute('data-nw', String(naturalW));
     map.setAttribute('data-nh', String(naturalH));
+    map.setAttribute('data-uniform', String(uniform));
+    map.setAttribute('data-max-x', String(maxX));
+    map.setAttribute('data-max-y', String(maxY));
     map.style.width = naturalW + 'px';
     map.style.height = naturalH + 'px';
     map.style.transformOrigin = 'top left';
     map.style.transform = 'scale(' + scaleX + ', ' + scaleY + ')';
+    board.style.position = 'relative';
     board.style.width = Math.ceil(naturalW * scaleX) + 'px';
     board.style.height = Math.ceil(naturalH * scaleY) + 'px';
     board.style.maxWidth = '100%';
-    board.style.overflow = 'hidden';
-    return { scaleX: scaleX, scaleY: scaleY };
+    board.style.overflow = 'visible';
+    return { scaleX: scaleX, scaleY: scaleY, uniform: uniform, maxX: maxX, maxY: maxY };
+  }
+
+  function mountFloorMapDrag(board, map) {
+    if (!board || !map) {
+      return;
+    }
+    Array.prototype.slice.call(board.querySelectorAll('.floor-map-handle')).forEach(function (node) {
+      node.parentNode.removeChild(node);
+    });
+    function makeHandle(kind, title) {
+      var h = document.createElement('div');
+      h.className = 'floor-map-handle floor-map-handle-' + kind;
+      h.setAttribute('role', 'separator');
+      h.setAttribute('aria-label', title);
+      h.title = title;
+      board.appendChild(h);
+      return h;
+    }
+    var handleE = makeHandle('e', 'Yatay dartın');
+    var handleS = makeHandle('s', 'Şaquli dartın');
+    var handleSe = makeHandle('se', 'Yatay və şaquli dartın');
+
+    function bindHandle(node, mode) {
+      node.addEventListener('pointerdown', function (event) {
+        if (event.button != null && event.button !== 0) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        var nw = Number(map.getAttribute('data-nw'));
+        var nh = Number(map.getAttribute('data-nh'));
+        var uniform = Number(map.getAttribute('data-uniform'));
+        var maxX = Number(map.getAttribute('data-max-x'));
+        var maxY = Number(map.getAttribute('data-max-y'));
+        if (!Number.isFinite(nw) || !Number.isFinite(nh) || nw <= 0 || nh <= 0) {
+          return;
+        }
+        if (!Number.isFinite(uniform) || uniform <= 0) {
+          uniform = 1;
+        }
+        if (!Number.isFinite(maxX) || maxX <= 0) {
+          maxX = 1;
+        }
+        if (!Number.isFinite(maxY) || maxY <= 0) {
+          maxY = 1;
+        }
+        var startClientX = event.clientX;
+        var startClientY = event.clientY;
+        var startPctX = floorMapScaleX;
+        var startPctY = floorMapScaleY;
+        var startW = nw * uniform * (startPctX / 100);
+        var startH = nh * uniform * (startPctY / 100);
+        var ptrId = event.pointerId;
+        try {
+          node.setPointerCapture(ptrId);
+        } catch (err) { /* ignore */ }
+        board.classList.add('floor-map-dragging');
+
+        function onMove(ev) {
+          if (ev.pointerId !== ptrId) {
+            return;
+          }
+          var dx = ev.clientX - startClientX;
+          var dy = ev.clientY - startClientY;
+          var nextX = startPctX;
+          var nextY = startPctY;
+          if (mode === 'e' || mode === 'se') {
+            var scaleX = (startW + dx) / nw;
+            scaleX = Math.min(Math.max(scaleX, maxX * 0.28), maxX);
+            nextX = (scaleX / uniform) * 100;
+          }
+          if (mode === 's' || mode === 'se') {
+            var scaleY = (startH + dy) / nh;
+            scaleY = Math.min(Math.max(scaleY, maxY * 0.28), maxY);
+            nextY = (scaleY / uniform) * 100;
+          }
+          applyFloorMapAxesLive(nextX, nextY);
+        }
+
+        function onUp(ev) {
+          if (ev.pointerId !== ptrId) {
+            return;
+          }
+          board.classList.remove('floor-map-dragging');
+          node.removeEventListener('pointermove', onMove);
+          node.removeEventListener('pointerup', onUp);
+          node.removeEventListener('pointercancel', onUp);
+          try {
+            node.releasePointerCapture(ptrId);
+          } catch (err2) { /* ignore */ }
+          finishFloorMapDrag();
+        }
+
+        node.addEventListener('pointermove', onMove);
+        node.addEventListener('pointerup', onUp);
+        node.addEventListener('pointercancel', onUp);
+      });
+    }
+
+    bindHandle(handleE, 'e');
+    bindHandle(handleS, 's');
+    bindHandle(handleSe, 'se');
   }
 
   function renderFloor() {
@@ -1478,6 +1607,7 @@
       board.appendChild(map);
       window.setTimeout(function () {
         fitFloorMap(board, map, size.mapW, size.mapH);
+        mountFloorMapDrag(board, map);
         refreshColScrolls();
       }, 0);
     } else {
