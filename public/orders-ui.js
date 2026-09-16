@@ -14,6 +14,10 @@
   var tableFilter = 'all';
   var payLock = false;
   var HALL_COLLAPSE_KEY = 'arpos-hall-collapse';
+  var FLOOR_ZOOM_KEY = 'arpos-floor-map-zoom';
+  var FLOOR_ORIENT_KEY = 'arpos-floor-map-orient';
+  var floorMapZoom = 100;
+  var floorMapOrient = 'auto';
 
   var M = window.PosMoney;
   var Dom = window.PosDom || {};
@@ -33,6 +37,79 @@
   function useFloorMap() {
     return isOrderWizard() && window.matchMedia &&
       window.matchMedia('(min-width: 901px)').matches;
+  }
+
+  function loadFloorMapPrefs() {
+    try {
+      var z = Number(window.localStorage.getItem(FLOOR_ZOOM_KEY));
+      if (Number.isFinite(z) && z >= 50 && z <= 160) {
+        floorMapZoom = Math.round(z / 5) * 5;
+      }
+      var o = String(window.localStorage.getItem(FLOOR_ORIENT_KEY) || '');
+      if (o === 'auto' || o === 'h' || o === 'v') {
+        floorMapOrient = o;
+      }
+    } catch (err) { /* ignore */ }
+  }
+
+  function persistFloorMapPrefs() {
+    try {
+      window.localStorage.setItem(FLOOR_ZOOM_KEY, String(floorMapZoom));
+      window.localStorage.setItem(FLOOR_ORIENT_KEY, floorMapOrient);
+    } catch (err) { /* ignore */ }
+  }
+
+  function syncFloorMapControls() {
+    var box = el('floor-map-controls');
+    if (!box) {
+      return;
+    }
+    var show = useFloorMap();
+    box.hidden = !show;
+    if (!show) {
+      return;
+    }
+    ['auto', 'h', 'v'].forEach(function (key) {
+      var btn = el(key === 'auto' ? 'floor-orient-auto' : (key === 'h' ? 'floor-orient-h' : 'floor-orient-v'));
+      if (btn) {
+        if (floorMapOrient === key) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      }
+    });
+    var range = el('floor-map-zoom');
+    if (range) {
+      range.value = String(floorMapZoom);
+    }
+  }
+
+  function setFloorMapOrient(next) {
+    if (next !== 'auto' && next !== 'h' && next !== 'v') {
+      return;
+    }
+    floorMapOrient = next;
+    persistFloorMapPrefs();
+    syncFloorMapControls();
+    if (waiter) {
+      renderFloor();
+    }
+  }
+
+  function applyFloorMapZoom(next, persist) {
+    var n = Math.round(Number(next) / 5) * 5;
+    if (!Number.isFinite(n)) {
+      return;
+    }
+    floorMapZoom = Math.min(160, Math.max(50, n));
+    if (persist !== false) {
+      persistFloorMapPrefs();
+    }
+    syncFloorMapControls();
+    if (waiter && useFloorMap()) {
+      renderFloor();
+    }
   }
 
   function setText(id, text) {
@@ -1250,14 +1327,37 @@
     var y = 10;
     var maxH = 0;
     boxes.forEach(function (box) {
+      maxH = Math.max(maxH, box.h);
+    });
+    boxes.forEach(function (box) {
       box.x = x;
       box.y = y;
+      box.h = maxH;
       x += box.w + gap;
-      maxH = Math.max(maxH, box.h);
     });
     return {
       mapW: Math.max(320, x + 6),
       mapH: Math.max(200, maxH + 20)
+    };
+  }
+
+  function packRoomsVertical(boxes) {
+    var gap = 14;
+    var x = 10;
+    var y = 10;
+    var maxW = 0;
+    boxes.forEach(function (box) {
+      maxW = Math.max(maxW, box.w);
+    });
+    boxes.forEach(function (box) {
+      box.x = x;
+      box.y = y;
+      box.w = maxW;
+      y += box.h + gap;
+    });
+    return {
+      mapW: Math.max(320, maxW + 20),
+      mapH: Math.max(200, y + 6)
     };
   }
 
@@ -1271,24 +1371,40 @@
     return { mapW: mapW, mapH: mapH };
   }
 
+  function resolveUseHorizontal(boxes, natural, viewW, viewH) {
+    if (floorMapOrient === 'h') {
+      return true;
+    }
+    if (floorMapOrient === 'v') {
+      return false;
+    }
+    return boxes.length > 1 && (
+      natural.mapH > natural.mapW * 0.9 ||
+      natural.mapH > viewH * 1.05 ||
+      natural.mapW / Math.max(1, natural.mapH) < viewW / Math.max(1, viewH) * 0.75
+    );
+  }
+
   function fitFloorMap(board, map, naturalW, naturalH) {
     var host = el('floor-scroll') || board.parentElement;
     var viewW = Math.max(120, (host && host.clientWidth) || board.clientWidth || 800);
     var viewH = Math.max(120, (host && host.clientHeight) || 480);
-    var pad = 8;
-    var scale = Math.min((viewW - pad) / naturalW, (viewH - pad) / naturalH);
-    if (!Number.isFinite(scale) || scale <= 0) {
-      scale = 1;
+    var pad = 10;
+    var fit = Math.min((viewW - pad) / naturalW, (viewH - pad) / naturalH);
+    if (!Number.isFinite(fit) || fit <= 0) {
+      fit = 1;
     }
-    scale = Math.min(Math.max(scale, 0.28), 1.2);
+    fit = Math.min(Math.max(fit, 0.22), 2.8);
+    var scale = fit * (floorMapZoom / 100);
+    scale = Math.min(Math.max(scale, 0.18), 3.2);
     map.style.width = naturalW + 'px';
     map.style.height = naturalH + 'px';
     map.style.transformOrigin = 'top left';
     map.style.transform = 'scale(' + scale + ')';
     board.style.width = Math.ceil(naturalW * scale) + 'px';
     board.style.height = Math.ceil(naturalH * scale) + 'px';
-    board.style.maxWidth = '100%';
-    board.style.overflow = 'hidden';
+    board.style.maxWidth = 'none';
+    board.style.overflow = 'visible';
     return scale;
   }
 
@@ -1299,6 +1415,7 @@
     board.innerHTML = '';
     board.removeAttribute('style');
     renderServiceBoard();
+    syncFloorMapControls();
     var nowMs = Date.now();
     floors.forEach(function (floor) {
       var btn = document.createElement('button');
@@ -1326,14 +1443,16 @@
       var viewW = Math.max(120, (host && host.clientWidth) || 800);
       var viewH = Math.max(120, (host && host.clientHeight) || 480);
       var natural = naturalMapSize(boxes);
-      var useHorizontal = boxes.length > 1 && (
-        natural.mapH > natural.mapW * 0.9 ||
-        natural.mapH > viewH * 1.05 ||
-        natural.mapW / Math.max(1, natural.mapH) < viewW / Math.max(1, viewH) * 0.75
-      );
-      var size = useHorizontal ? packRoomsHorizontal(boxes) : natural;
+      var useHorizontal = resolveUseHorizontal(boxes, natural, viewW, viewH);
+      var size;
       if (useHorizontal) {
+        size = packRoomsHorizontal(boxes);
         map.classList.add('floor-map-horizontal');
+      } else if (floorMapOrient === 'v') {
+        size = packRoomsVertical(boxes);
+        map.classList.add('floor-map-vertical');
+      } else {
+        size = natural;
       }
       boxes.forEach(function (box) {
         var article = document.createElement('article');
@@ -1349,10 +1468,10 @@
         box.tables.forEach(function (table) {
           var btn = buildTableTile(table, nowMs);
           btn.className += ' floor-map-tile';
-          var tw = Math.max(68, Number(table.w) || 84);
-          var th = Math.max(68, Number(table.h) || 84);
-          btn.style.left = Math.max(8, Number(table.x) || 8) + 'px';
-          btn.style.top = Math.max(26, Number(table.y) || 26) + 'px';
+          var tw = Math.max(76, Number(table.w) || 92);
+          var th = Math.max(76, Number(table.h) || 92);
+          btn.style.left = Math.max(10, Number(table.x) || 10) + 'px';
+          btn.style.top = Math.max(30, Number(table.y) || 30) + 'px';
           btn.style.width = tw + 'px';
           btn.style.height = th + 'px';
           article.appendChild(btn);
@@ -3618,6 +3737,38 @@
   document.getElementById('scale-up').addEventListener('click', function () {
     applyScale(cardScale + 1);
   });
+  loadFloorMapPrefs();
+  syncFloorMapControls();
+  var floorOrientAuto = el('floor-orient-auto');
+  var floorOrientH = el('floor-orient-h');
+  var floorOrientV = el('floor-orient-v');
+  if (floorOrientAuto) {
+    floorOrientAuto.addEventListener('click', function () { setFloorMapOrient('auto'); });
+  }
+  if (floorOrientH) {
+    floorOrientH.addEventListener('click', function () { setFloorMapOrient('h'); });
+  }
+  if (floorOrientV) {
+    floorOrientV.addEventListener('click', function () { setFloorMapOrient('v'); });
+  }
+  var floorZoomRange = el('floor-map-zoom');
+  if (floorZoomRange) {
+    floorZoomRange.addEventListener('input', function (event) {
+      applyFloorMapZoom(event.target.value);
+    });
+  }
+  var floorZoomDown = el('floor-zoom-down');
+  var floorZoomUp = el('floor-zoom-up');
+  if (floorZoomDown) {
+    floorZoomDown.addEventListener('click', function () {
+      applyFloorMapZoom(floorMapZoom - 10);
+    });
+  }
+  if (floorZoomUp) {
+    floorZoomUp.addEventListener('click', function () {
+      applyFloorMapZoom(floorMapZoom + 10);
+    });
+  }
   bindColScroll('floor-scroll', 'floor-scroll-up', 'floor-scroll-down');
   bindColScroll('product-grid', 'menu-scroll-up', 'menu-scroll-down');
   bindColScroll('check-list', 'check-scroll-up', 'check-scroll-down');

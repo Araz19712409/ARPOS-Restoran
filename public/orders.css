@@ -2239,7 +2239,7 @@ html.waiter-mode .more-nav,
 }
 
 .order-wizard[data-zone="floor"] .floor-col {
-  padding-bottom: 92px;
+  padding-bottom: 10px;
 }
 
 .order-wizard[data-zone="groups"] .menu-col,
@@ -2247,12 +2247,9 @@ html.waiter-mode .more-nav,
   padding-bottom: min(46vh, 340px);
 }
 
-.order-wizard[data-zone="floor"] .check-col {
-  display: flex;
-  background: transparent;
-  pointer-events: none;
-  z-index: 8;
-  padding: 0;
+.order-wizard[data-zone="floor"] .check-col,
+.order-wizard[data-zone="floor"] .check-foot {
+  display: none !important;
 }
 
 .order-wizard[data-zone="groups"] .check-col,
@@ -2610,7 +2607,7 @@ html.waiter-mode .more-nav,
 }
 
 .order-wizard[data-zone="floor"] .floor-col {
-  padding: 8px 10px 88px;
+  padding: 8px 10px 10px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -2712,6 +2709,51 @@ html.waiter-mode .more-nav,
 .order-wizard .floor-extra button {
   color: #e2b65a;
   border-color: #5a4c3a;
+}
+
+.order-wizard .floor-map-controls {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.order-wizard .floor-map-controls[hidden] {
+  display: none !important;
+}
+
+.order-wizard .floor-orient-chips {
+  flex: 0 0 auto;
+}
+
+.order-wizard .floor-zoom-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  color: #d8c7aa;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.order-wizard .floor-zoom-scale button {
+  flex: 0 0 auto;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+  border-radius: 8px;
+  background: #221d17;
+  border: 1px solid #3d3428;
+  color: #e2b65a;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.order-wizard .floor-zoom-scale input[type="range"] {
+  width: 88px;
+  accent-color: #c4a574;
 }
 
 .order-wizard[data-zone="floor"] #service-board.table-grid {
@@ -2847,9 +2889,13 @@ html.waiter-mode .more-nav,
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4px 3px;
-  border-radius: 10px;
+  padding: 6px 4px;
+  border-radius: 12px;
   cursor: pointer;
+  border-width: 1.5px;
+  box-shadow:
+    0 1px 0 rgba(255, 246, 232, 0.08) inset,
+    0 10px 22px rgba(0, 0, 0, 0.34);
 }
 
 .order-wizard .floor-map-tile.round {
@@ -2858,11 +2904,20 @@ html.waiter-mode .more-nav,
 
 .order-wizard .floor-map-tile span {
   font-weight: 800;
-  font-size: 0.85rem;
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
 }
 
 .order-wizard .floor-map-tile small {
-  font-size: 0.65rem;
+  font-size: 0.68rem;
+  opacity: 0.92;
+}
+
+.order-wizard .floor-map-tile.selected {
+  border-color: #e2b65a;
+  box-shadow:
+    0 0 0 2px rgba(226, 182, 90, 0.45),
+    0 12px 28px rgba(196, 165, 116, 0.3);
 }
 
 .order-wizard[data-zone="floor"] .floor-tools {

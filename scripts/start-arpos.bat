@@ -9,4 +9,5 @@ if exist "runtime\node.exe" (
 ) else (
   start "" /min node server.js
 )
-start "" http://127.0.0.1:3004/orders.html
+rem Brauzeri login-da avtomatik acma ? donmanin bir sebebini azalt
+exit /b 0

@@ -13,7 +13,7 @@
   <title>Sifariş</title>
   <link rel="stylesheet" href="app.css?v=22">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css?v=37">
+  <link rel="stylesheet" href="orders.css?v=38">
   <link rel="stylesheet" href="dates.css">
 </head>
 <body class="order-page order-wizard" data-zone="floor">
@@ -95,6 +95,19 @@
           <button id="new-takeaway" type="button" title="Takeaway">Götür</button>
           <button id="new-delivery" type="button" title="Çatdırılma">Çatdır</button>
           <button id="waitlist-open" type="button" title="Növbə">Növbə</button>
+        </div>
+        <div id="floor-map-controls" class="floor-map-controls" hidden>
+          <div class="floor-chips floor-orient-chips" role="group" aria-label="Zal istiqaməti">
+            <button type="button" id="floor-orient-auto" data-orient="auto" class="active" title="Avtomatik">Avto</button>
+            <button type="button" id="floor-orient-h" data-orient="h" title="Horizontal">Yatay</button>
+            <button type="button" id="floor-orient-v" data-orient="v" title="Vertikal">Şaquli</button>
+          </div>
+          <div class="floor-zoom-scale" aria-label="Zal ölçüsü">
+            <span>Ölçü</span>
+            <button type="button" id="floor-zoom-down" aria-label="Kiçilt">−</button>
+            <input id="floor-map-zoom" type="range" min="50" max="160" step="5" value="100">
+            <button type="button" id="floor-zoom-up" aria-label="Böyüt">+</button>
+          </div>
         </div>
       </div>
     </div>
@@ -587,6 +600,6 @@
   <script src="orders-zones.js?v=3"></script>
   <script src="orders-shift.js?v=4"></script>
   <script src="orders-pay.js?v=4"></script>
-  <script src="orders-ui.js?v=44"></script>
+  <script src="orders-ui.js?v=45"></script>
 </body>
 </html>

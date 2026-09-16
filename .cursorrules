@@ -30,3 +30,27 @@
 - `/api/license/issue` və ya uzaqdan kod yazan API YARADILMAZ.
 - `license.js` içində imzalama/açar yaratma müştəri nüsxəsində olmaz.
 - Agent özəl açarı oxumaz, çap etməz, commit etməz, başqa yerə köçürməz.
+
+# Reliz və hotfix (məcburi)
+- Hər müştəriyə gedən Setup/hotfix = mütləq yeni semver (patch+1). Eyni versiya nömrəsi ilə yeniləmə/Setup GÖNDƏRİLMƏZ (updater eyni tag-i «artıq var» sanır).
+- Bir buraxılışda eyni nömrə: package.json = VERSIONS.md = launcher = GitHub release tag.
+- Hər relizdə SHA256SUMS.txt olmalıdır; yoxdursa yeniləmə rədd olunur.
+- Checklist sırası: versiya bump → npm test → scripts/build-setup.ps1 → SHA → GitHub release. Addım atlanırsa EXE göndərilməz.
+- VERSIONS.md-ə 1–2 sətir: nə dəyişdi (hotfix/özellik).
+
+# UI sabitlik (sifariş/kassa)
+- public/orders-ui.js monolitdir: kiçik JS xətası (SyntaxError / null.textContent) bütün PIN+sifariş ekranını öldürür. Dəyişəndə ehtiyatlı ol.
+- DOM yazıları: mümkün qədər PosDom.el / setText / setVal. getElementById(x).textContent = ... birbaşa YAZMA (element yoxdursa runtime xəta).
+- Yeni HTML id silinəndə və ya ad dəyişəndə: eyni PR-də bütün JS istinadlarını yoxla (xüsusilə pay-* , pin-*, modal).
+- Modal z-index: .modal ≥ 55; #pin-lock = 30; pos-ask ~70. Modal PIN-in altında qalmamalıdır.
+- Cache: orders.html-də orders-ui.js / orders.css / app.css / dom.js üçün ?v= bump (UI hotfix-lərdə).
+
+# Əhatə intizamı
+- İstənməyənə toxunma: money.js qəpik API, anbar FIFO/lots, e-kassa adapter, çatdırılma Faza2, Bank POS, HTTPS/updater hash məntiqi.
+- Bank POS Azərbaycan kiçik/orta kassada defer — ayrı tapşırıq olmadan əlavə etmə.
+- Əvvəl qısa plan (fayl map), təsdiqdən sonra kod. Böyük refactor (orders-ui split) yalnız ayrıca Accept ilə.
+
+# Yoxlama (hər UI/ödəniş PR)
+- node --check dəyişən JS fayllarına.
+- npm test keçməlidir.
+- Əl: PIN giriş → Qəbul → Ödəniş modal → (əgər toxunulubsa) Endirim/Z/Porsiya.

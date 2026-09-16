@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 
+- **1.2.78** — 2026-09-16 — Zal: H/V + zoom + son görünüş yaddaşı; floor dock gizlədilir
 - **1.2.77** — 2026-09-16 — Zal: kompakt toolbar + xəritə ekrana sığır
 - **1.2.76** — 2026-09-16 — PC sifariş wizard (çertyoj→menyu) + premium skin
 - **1.2.75** — 2026-09-16 — Waiter desktop skin + səbət həmişə görünür
