@@ -226,6 +226,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 219. [x] 1.2.76 — PC sifariş: wizard axın + çertyoj map + premium
 220. [x] 1.2.77 — Zal kompakt toolbar + fit-to-screen / horizontal map
 221. [x] 1.2.78 — Zal H/V + zoom + görünüş yaddaşı; floor dock gizlədilir
+222. [x] 1.2.79 — Zal ayrı yatay/şaquli ölçü; ekran clamp; yaddaş
 215. [x] 1.2.71 — Zal/menyu scroll oxları qızılı görünən
 214. [x] 1.2.70 — Sağ çek/səbət premium (ad×miqdar+məbləğ)
 213. [x] 1.2.69 — Sifariş: sticky/fav, mənim masalarım, scroll oxları

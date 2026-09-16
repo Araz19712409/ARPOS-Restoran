@@ -2723,11 +2723,7 @@ html.waiter-mode .more-nav,
   display: none !important;
 }
 
-.order-wizard .floor-orient-chips {
-  flex: 0 0 auto;
-}
-
-.order-wizard .floor-zoom-scale {
+.order-wizard .floor-axis-scale {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -2737,7 +2733,7 @@ html.waiter-mode .more-nav,
   font-weight: 700;
 }
 
-.order-wizard .floor-zoom-scale button {
+.order-wizard .floor-axis-scale button {
   flex: 0 0 auto;
   min-width: 26px;
   min-height: 26px;
@@ -2751,8 +2747,8 @@ html.waiter-mode .more-nav,
   cursor: pointer;
 }
 
-.order-wizard .floor-zoom-scale input[type="range"] {
-  width: 88px;
+.order-wizard .floor-axis-scale input[type="range"] {
+  width: 78px;
   accent-color: #c4a574;
 }
 

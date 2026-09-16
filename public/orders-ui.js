@@ -14,10 +14,11 @@
   var tableFilter = 'all';
   var payLock = false;
   var HALL_COLLAPSE_KEY = 'arpos-hall-collapse';
-  var FLOOR_ZOOM_KEY = 'arpos-floor-map-zoom';
-  var FLOOR_ORIENT_KEY = 'arpos-floor-map-orient';
-  var floorMapZoom = 100;
-  var floorMapOrient = 'auto';
+  var FLOOR_SCALE_X_KEY = 'arpos-floor-map-scale-x';
+  var FLOOR_SCALE_Y_KEY = 'arpos-floor-map-scale-y';
+  var FLOOR_ZOOM_LEGACY_KEY = 'arpos-floor-map-zoom';
+  var floorMapScaleX = 100;
+  var floorMapScaleY = 100;
 
   var M = window.PosMoney;
   var Dom = window.PosDom || {};
@@ -39,23 +40,43 @@
       window.matchMedia('(min-width: 901px)').matches;
   }
 
+  function clampFloorAxisPct(n) {
+    var v = Math.round(Number(n) / 5) * 5;
+    if (!Number.isFinite(v)) {
+      return 100;
+    }
+    return Math.min(160, Math.max(50, v));
+  }
+
   function loadFloorMapPrefs() {
     try {
-      var z = Number(window.localStorage.getItem(FLOOR_ZOOM_KEY));
-      if (Number.isFinite(z) && z >= 50 && z <= 160) {
-        floorMapZoom = Math.round(z / 5) * 5;
+      var sx = Number(window.localStorage.getItem(FLOOR_SCALE_X_KEY));
+      var sy = Number(window.localStorage.getItem(FLOOR_SCALE_Y_KEY));
+      if (Number.isFinite(sx) && sx >= 50 && sx <= 160) {
+        floorMapScaleX = clampFloorAxisPct(sx);
       }
-      var o = String(window.localStorage.getItem(FLOOR_ORIENT_KEY) || '');
-      if (o === 'auto' || o === 'h' || o === 'v') {
-        floorMapOrient = o;
+      if (Number.isFinite(sy) && sy >= 50 && sy <= 160) {
+        floorMapScaleY = clampFloorAxisPct(sy);
+      }
+      if ((!Number.isFinite(sx) || !Number.isFinite(sy))) {
+        var legacy = Number(window.localStorage.getItem(FLOOR_ZOOM_LEGACY_KEY));
+        if (Number.isFinite(legacy) && legacy >= 50 && legacy <= 160) {
+          var z = clampFloorAxisPct(legacy);
+          if (!Number.isFinite(sx)) {
+            floorMapScaleX = z;
+          }
+          if (!Number.isFinite(sy)) {
+            floorMapScaleY = z;
+          }
+        }
       }
     } catch (err) { /* ignore */ }
   }
 
   function persistFloorMapPrefs() {
     try {
-      window.localStorage.setItem(FLOOR_ZOOM_KEY, String(floorMapZoom));
-      window.localStorage.setItem(FLOOR_ORIENT_KEY, floorMapOrient);
+      window.localStorage.setItem(FLOOR_SCALE_X_KEY, String(floorMapScaleX));
+      window.localStorage.setItem(FLOOR_SCALE_Y_KEY, String(floorMapScaleY));
     } catch (err) { /* ignore */ }
   }
 
@@ -69,47 +90,50 @@
     if (!show) {
       return;
     }
-    ['auto', 'h', 'v'].forEach(function (key) {
-      var btn = el(key === 'auto' ? 'floor-orient-auto' : (key === 'h' ? 'floor-orient-h' : 'floor-orient-v'));
-      if (btn) {
-        if (floorMapOrient === key) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
-        }
-      }
-    });
-    var range = el('floor-map-zoom');
-    if (range) {
-      range.value = String(floorMapZoom);
+    var rx = el('floor-map-scale-x');
+    var ry = el('floor-map-scale-y');
+    if (rx) {
+      rx.value = String(floorMapScaleX);
+    }
+    if (ry) {
+      ry.value = String(floorMapScaleY);
     }
   }
 
-  function setFloorMapOrient(next) {
-    if (next !== 'auto' && next !== 'h' && next !== 'v') {
+  function refitFloorMapIfReady() {
+    if (!(waiter && useFloorMap())) {
       return;
     }
-    floorMapOrient = next;
-    persistFloorMapPrefs();
-    syncFloorMapControls();
-    if (waiter) {
+    var board = el('table-board');
+    var map = board && board.querySelector ? board.querySelector('.floor-map-canvas') : null;
+    if (!board || !map) {
       renderFloor();
-    }
-  }
-
-  function applyFloorMapZoom(next, persist) {
-    var n = Math.round(Number(next) / 5) * 5;
-    if (!Number.isFinite(n)) {
       return;
     }
-    floorMapZoom = Math.min(160, Math.max(50, n));
+    var nw = Number(map.getAttribute('data-nw'));
+    var nh = Number(map.getAttribute('data-nh'));
+    if (!Number.isFinite(nw) || !Number.isFinite(nh) || nw <= 0 || nh <= 0) {
+      renderFloor();
+      return;
+    }
+    fitFloorMap(board, map, nw, nh);
+    refreshColScrolls();
+  }
+
+  function applyFloorMapAxis(axis, next, persist) {
+    var n = clampFloorAxisPct(next);
+    if (axis === 'x') {
+      floorMapScaleX = n;
+    } else if (axis === 'y') {
+      floorMapScaleY = n;
+    } else {
+      return;
+    }
     if (persist !== false) {
       persistFloorMapPrefs();
     }
     syncFloorMapControls();
-    if (waiter && useFloorMap()) {
-      renderFloor();
-    }
+    refitFloorMapIfReady();
   }
 
   function setText(id, text) {
@@ -1341,26 +1365,6 @@
     };
   }
 
-  function packRoomsVertical(boxes) {
-    var gap = 14;
-    var x = 10;
-    var y = 10;
-    var maxW = 0;
-    boxes.forEach(function (box) {
-      maxW = Math.max(maxW, box.w);
-    });
-    boxes.forEach(function (box) {
-      box.x = x;
-      box.y = y;
-      box.w = maxW;
-      y += box.h + gap;
-    });
-    return {
-      mapW: Math.max(320, maxW + 20),
-      mapH: Math.max(200, y + 6)
-    };
-  }
-
   function naturalMapSize(boxes) {
     var mapW = 320;
     var mapH = 200;
@@ -1371,41 +1375,36 @@
     return { mapW: mapW, mapH: mapH };
   }
 
-  function resolveUseHorizontal(boxes, natural, viewW, viewH) {
-    if (floorMapOrient === 'h') {
-      return true;
-    }
-    if (floorMapOrient === 'v') {
-      return false;
-    }
-    return boxes.length > 1 && (
-      natural.mapH > natural.mapW * 0.9 ||
-      natural.mapH > viewH * 1.05 ||
-      natural.mapW / Math.max(1, natural.mapH) < viewW / Math.max(1, viewH) * 0.75
-    );
-  }
-
   function fitFloorMap(board, map, naturalW, naturalH) {
     var host = el('floor-scroll') || board.parentElement;
     var viewW = Math.max(120, (host && host.clientWidth) || board.clientWidth || 800);
     var viewH = Math.max(120, (host && host.clientHeight) || 480);
     var pad = 10;
-    var fit = Math.min((viewW - pad) / naturalW, (viewH - pad) / naturalH);
-    if (!Number.isFinite(fit) || fit <= 0) {
-      fit = 1;
+    var maxX = (viewW - pad) / Math.max(1, naturalW);
+    var maxY = (viewH - pad) / Math.max(1, naturalH);
+    if (!Number.isFinite(maxX) || maxX <= 0) {
+      maxX = 1;
     }
-    fit = Math.min(Math.max(fit, 0.22), 2.8);
-    var scale = fit * (floorMapZoom / 100);
-    scale = Math.min(Math.max(scale, 0.18), 3.2);
+    if (!Number.isFinite(maxY) || maxY <= 0) {
+      maxY = 1;
+    }
+    var uniform = Math.min(maxX, maxY);
+    var scaleX = uniform * (floorMapScaleX / 100);
+    var scaleY = uniform * (floorMapScaleY / 100);
+    // Ekrandan kənara çıxmasın — hər ox ayrı clamp
+    scaleX = Math.min(Math.max(scaleX, maxX * 0.28), maxX);
+    scaleY = Math.min(Math.max(scaleY, maxY * 0.28), maxY);
+    map.setAttribute('data-nw', String(naturalW));
+    map.setAttribute('data-nh', String(naturalH));
     map.style.width = naturalW + 'px';
     map.style.height = naturalH + 'px';
     map.style.transformOrigin = 'top left';
-    map.style.transform = 'scale(' + scale + ')';
-    board.style.width = Math.ceil(naturalW * scale) + 'px';
-    board.style.height = Math.ceil(naturalH * scale) + 'px';
-    board.style.maxWidth = 'none';
-    board.style.overflow = 'visible';
-    return scale;
+    map.style.transform = 'scale(' + scaleX + ', ' + scaleY + ')';
+    board.style.width = Math.ceil(naturalW * scaleX) + 'px';
+    board.style.height = Math.ceil(naturalH * scaleY) + 'px';
+    board.style.maxWidth = '100%';
+    board.style.overflow = 'hidden';
+    return { scaleX: scaleX, scaleY: scaleY };
   }
 
   function renderFloor() {
@@ -1443,16 +1442,14 @@
       var viewW = Math.max(120, (host && host.clientWidth) || 800);
       var viewH = Math.max(120, (host && host.clientHeight) || 480);
       var natural = naturalMapSize(boxes);
-      var useHorizontal = resolveUseHorizontal(boxes, natural, viewW, viewH);
-      var size;
+      var useHorizontal = boxes.length > 1 && (
+        natural.mapH > natural.mapW * 0.9 ||
+        natural.mapH > viewH * 1.05 ||
+        natural.mapW / Math.max(1, natural.mapH) < viewW / Math.max(1, viewH) * 0.75
+      );
+      var size = useHorizontal ? packRoomsHorizontal(boxes) : natural;
       if (useHorizontal) {
-        size = packRoomsHorizontal(boxes);
         map.classList.add('floor-map-horizontal');
-      } else if (floorMapOrient === 'v') {
-        size = packRoomsVertical(boxes);
-        map.classList.add('floor-map-vertical');
-      } else {
-        size = natural;
       }
       boxes.forEach(function (box) {
         var article = document.createElement('article');
@@ -3739,36 +3736,28 @@
   });
   loadFloorMapPrefs();
   syncFloorMapControls();
-  var floorOrientAuto = el('floor-orient-auto');
-  var floorOrientH = el('floor-orient-h');
-  var floorOrientV = el('floor-orient-v');
-  if (floorOrientAuto) {
-    floorOrientAuto.addEventListener('click', function () { setFloorMapOrient('auto'); });
+  function bindFloorAxis(axis, rangeId, downId, upId) {
+    var range = el(rangeId);
+    var down = el(downId);
+    var up = el(upId);
+    if (range) {
+      range.addEventListener('input', function (event) {
+        applyFloorMapAxis(axis, event.target.value);
+      });
+    }
+    if (down) {
+      down.addEventListener('click', function () {
+        applyFloorMapAxis(axis, (axis === 'x' ? floorMapScaleX : floorMapScaleY) - 10);
+      });
+    }
+    if (up) {
+      up.addEventListener('click', function () {
+        applyFloorMapAxis(axis, (axis === 'x' ? floorMapScaleX : floorMapScaleY) + 10);
+      });
+    }
   }
-  if (floorOrientH) {
-    floorOrientH.addEventListener('click', function () { setFloorMapOrient('h'); });
-  }
-  if (floorOrientV) {
-    floorOrientV.addEventListener('click', function () { setFloorMapOrient('v'); });
-  }
-  var floorZoomRange = el('floor-map-zoom');
-  if (floorZoomRange) {
-    floorZoomRange.addEventListener('input', function (event) {
-      applyFloorMapZoom(event.target.value);
-    });
-  }
-  var floorZoomDown = el('floor-zoom-down');
-  var floorZoomUp = el('floor-zoom-up');
-  if (floorZoomDown) {
-    floorZoomDown.addEventListener('click', function () {
-      applyFloorMapZoom(floorMapZoom - 10);
-    });
-  }
-  if (floorZoomUp) {
-    floorZoomUp.addEventListener('click', function () {
-      applyFloorMapZoom(floorMapZoom + 10);
-    });
-  }
+  bindFloorAxis('x', 'floor-map-scale-x', 'floor-scale-x-down', 'floor-scale-x-up');
+  bindFloorAxis('y', 'floor-map-scale-y', 'floor-scale-y-down', 'floor-scale-y-up');
   bindColScroll('floor-scroll', 'floor-scroll-up', 'floor-scroll-down');
   bindColScroll('product-grid', 'menu-scroll-up', 'menu-scroll-down');
   bindColScroll('check-list', 'check-scroll-up', 'check-scroll-down');
