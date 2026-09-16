@@ -1015,11 +1015,123 @@
     }
   }
 
+  function isFs() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+
+  function enterFs() {
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req) {
+      return req.call(el);
+    }
+  }
+
+  function exitFs() {
+    var x = document.exitFullscreen || document.webkitExitFullscreen;
+    if (x) {
+      return x.call(document);
+    }
+  }
+
+  function fsApiOk() {
+    var el = document.documentElement;
+    return !!(el.requestFullscreen || el.webkitRequestFullscreen);
+  }
+
+  function isWaiterUi() {
+    if ((document.body && document.body.classList.contains('waiter-mode')) ||
+        (document.documentElement && document.documentElement.classList.contains('waiter-mode'))) {
+      return true;
+    }
+    try {
+      return new URLSearchParams(location.search).get('mode') === 'waiter';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function setFsLabel(btn, on) {
+    btn.textContent = '';
+    var ico = document.createElement('span');
+    ico.className = 'fs-ico';
+    ico.setAttribute('aria-hidden', 'true');
+    ico.textContent = on ? '↙' : '⛶';
+    btn.appendChild(ico);
+    btn.appendChild(document.createTextNode(on ? ' Çıx' : ' Tam ekran'));
+    btn.setAttribute('aria-label', on ? 'Tam ekrandan çıx' : 'Tam ekran');
+  }
+
+  function syncFsBtn(btn) {
+    if (!btn || btn.disabled) {
+      return;
+    }
+    setFsLabel(btn, isFs());
+  }
+
+  function bindFullscreenBtn() {
+    if (isWaiterUi()) {
+      var hide = document.getElementById('fullscreen-toggle');
+      if (hide) {
+        hide.hidden = true;
+      }
+      return;
+    }
+    var nav = document.querySelector('nav.app-nav');
+    if (!nav) {
+      return;
+    }
+    var btn = document.getElementById('fullscreen-toggle');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.id = 'fullscreen-toggle';
+      btn.type = 'button';
+      var logout = document.getElementById('logout');
+      if (logout && logout.parentNode === nav) {
+        nav.insertBefore(btn, logout);
+      } else {
+        nav.appendChild(btn);
+      }
+    }
+    if (!fsApiOk()) {
+      btn.disabled = true;
+      btn.title = 'Bu brauzerdə dəstəklənmir — F11 sınayın';
+      setFsLabel(btn, false);
+      return;
+    }
+    syncFsBtn(btn);
+    if (btn.getAttribute('data-fs-bound') === '1') {
+      return;
+    }
+    btn.setAttribute('data-fs-bound', '1');
+    btn.addEventListener('click', function () {
+      var p;
+      try {
+        p = isFs() ? exitFs() : enterFs();
+      } catch (err) {
+        banner('Tam ekran açıla bilmədi. F11 sınayın.', 'warn');
+        return;
+      }
+      if (p && typeof p.then === 'function') {
+        p.catch(function () {
+          banner('Tam ekran açıla bilmədi. Brauzer icazəsini yoxlayın.', 'warn');
+        });
+      }
+    });
+    document.addEventListener('fullscreenchange', function () {
+      syncFsBtn(btn);
+    });
+    document.addEventListener('webkitfullscreenchange', function () {
+      syncFsBtn(btn);
+    });
+  }
+
   function boot() {
     checkLicense(function () {
       guard();
       bindKeyboard();
       bindMoreNav();
+      bindFullscreenBtn();
       refreshPrintQueue = watchPrintQueue('print-queue-box') || null;
     });
   }

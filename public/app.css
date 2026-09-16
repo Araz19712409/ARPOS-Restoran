@@ -685,3 +685,43 @@ body.has-banner {
   color: #e2b65a;
   word-break: break-all;
 }
+
+#fullscreen-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 12px;
+  margin: 0;
+  border: 1px solid #c4a574;
+  border-radius: 8px;
+  background: #2c261f;
+  color: #f4eadc;
+  font-weight: 700;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+#fullscreen-toggle:hover:not(:disabled) {
+  background: #221d17;
+  border-color: #c4a574;
+  color: #f4eadc;
+}
+
+#fullscreen-toggle:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+#fullscreen-toggle .fs-ico {
+  color: #c4a574;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+html.waiter-mode #fullscreen-toggle,
+.waiter-mode #fullscreen-toggle {
+  display: none !important;
+}
