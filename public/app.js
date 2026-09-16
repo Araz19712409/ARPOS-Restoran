@@ -5,7 +5,9 @@
   let layout = { floors: [], rooms: [], tables: [] };
   let floorId = null;
   let roomId = null;
-  const GRID = 32;
+  let selectedTableId = null;
+  var undoStack = [];
+  const GRID = 16;
 
   function snap(value, min, max) {
     var n = Math.round(Number(value) / GRID) * GRID;
@@ -23,6 +25,71 @@
 
   function canLayout(key) {
     return window.PosNav && window.PosNav.can(key);
+  }
+
+  function cloneLayout() {
+    return JSON.parse(JSON.stringify({
+      floors: layout.floors,
+      rooms: layout.rooms,
+      tables: layout.tables,
+      nextFloorId: layout.nextFloorId,
+      nextRoomId: layout.nextRoomId,
+      nextTableId: layout.nextTableId
+    }));
+  }
+
+  function pushUndo() {
+    undoStack.push(cloneLayout());
+    if (undoStack.length > 20) {
+      undoStack.shift();
+    }
+    var btn = document.getElementById('undo-layout');
+    if (btn) {
+      btn.disabled = !undoStack.length;
+    }
+  }
+
+  function syncSelTableBox() {
+    var box = document.getElementById('sel-table-box');
+    var title = document.getElementById('sel-table-title');
+    var shape = document.getElementById('sel-shape');
+    var w = document.getElementById('sel-w');
+    var h = document.getElementById('sel-h');
+    var table = layout.tables.find(function (item) { return item.id === selectedTableId; });
+    if (!box) {
+      return;
+    }
+    if (!table) {
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
+    if (title) {
+      title.textContent = (table.name || ('Masa ' + table.number)) + ' · #' + table.number;
+    }
+    if (shape) {
+      shape.value = table.shape === 'round' ? 'round' : 'square';
+    }
+    if (w) {
+      w.value = String(tableW(table));
+    }
+    if (h) {
+      h.value = String(tableH(table));
+    }
+  }
+
+  function selectTable(id) {
+    selectedTableId = Number(id) || null;
+    syncSelTableBox();
+    blueprint.querySelectorAll('.table.selected').forEach(function (node) {
+      node.classList.remove('selected');
+    });
+    if (selectedTableId) {
+      var card = blueprint.querySelector('[data-table="' + selectedTableId + '"]');
+      if (card) {
+        card.classList.add('selected');
+      }
+    }
   }
 
   function say(text, kind) {
@@ -211,12 +278,12 @@
       mapH = Math.max(mapH, box.y + box.h + GRID * 2);
       const tables = list.map(function (table) {
         const title = table.name || ('Masa ' + table.number);
-        const w = snap(tableW(table), GRID * 2, GRID * 12);
-        const h = snap(tableH(table), GRID * 2, GRID * 12);
+        const w = snap(tableW(table), GRID * 4, GRID * 24);
+        const h = snap(tableH(table), GRID * 4, GRID * 24);
         const left = snap(table.x || 0, 0);
         const top = snap(table.y || 0, 0);
         return (
-          '<div class="table ' + table.shape + '" data-table="' + table.id + '" style="left:' + left + 'px;top:' + top + 'px;width:' + w + 'px;height:' + h + 'px">' +
+          '<div class="table ' + (table.shape === 'round' ? 'round' : 'square') + (table.id === selectedTableId ? ' selected' : '') + '" data-table="' + table.id + '" style="left:' + left + 'px;top:' + top + 'px;width:' + w + 'px;height:' + h + 'px">' +
             '<button class="del" type="button" data-del-table="' + table.id + '">×</button>' +
             '<button class="btn-rename" type="button" data-rename="' + table.id + '">Ad</button>' +
             '<span class="tname">' + esc(title) + '</span>' +
@@ -248,6 +315,7 @@
     }
 
     bindDrags();
+    syncSelTableBox();
   }
 
   function renameRoom(id) {
@@ -399,6 +467,7 @@
 
   function saveRoomBox(el) {
     const id = Number(el.dataset.room);
+    pushUndo();
     const list = tablesInRoom(id);
     const min = roomMinSize(list);
     const payload = {
@@ -430,11 +499,12 @@
   // Masanın yerini və ölçüsünü saxlayırıq
   function saveTableBox(el) {
     const id = Number(el.dataset.table);
+    pushUndo();
     const payload = {
       x: snap(el.offsetLeft, 0),
       y: snap(el.offsetTop, 0),
-      w: snap(el.offsetWidth, GRID * 2, GRID * 12),
-      h: snap(el.offsetHeight, GRID * 2, GRID * 12)
+      w: snap(el.offsetWidth, GRID * 4, GRID * 24),
+      h: snap(el.offsetHeight, GRID * 4, GRID * 24)
     };
     el.style.left = payload.x + 'px';
     el.style.top = payload.y + 'px';
@@ -631,8 +701,8 @@
           capacity: Number(document.getElementById('table-capacity').value),
           x: slot.x,
           y: slot.y,
-          w: GRID * 2,
-          h: GRID * 2
+          w: GRID * 5,
+          h: GRID * 5
         })
       });
       document.getElementById('table-name').value = '';
@@ -719,13 +789,78 @@
           return;
         }
         await api('/api/tables/' + delTable, { method: 'DELETE' });
+        if (selectedTableId === delTable) {
+          selectedTableId = null;
+        }
         say(title + ' silindi.', 'ok');
         await load();
+        return;
+      }
+      var tableCard = event.target.closest('[data-table]');
+      if (tableCard && !event.target.closest('button')) {
+        selectTable(tableCard.getAttribute('data-table'));
       }
     } catch (error) {
       say(error.message, 'err');
     }
   });
+
+  var undoBtn = document.getElementById('undo-layout');
+  if (undoBtn) {
+    undoBtn.addEventListener('click', function () {
+      if (!undoStack.length) {
+        return;
+      }
+      var prev = undoStack.pop();
+      undoBtn.disabled = !undoStack.length;
+      layout.floors = prev.floors || [];
+      layout.rooms = prev.rooms || [];
+      layout.tables = prev.tables || [];
+      render();
+      say('Son yerləşdirmə geri alındı. Yeniləmədən əvvəl mövqeləri yenidən saxlayın (sürükləyin).', 'ok');
+    });
+  }
+
+  var selApply = document.getElementById('sel-apply');
+  if (selApply) {
+    selApply.addEventListener('click', function () {
+      var table = layout.tables.find(function (item) { return item.id === selectedTableId; });
+      if (!table) {
+        return;
+      }
+      pushUndo();
+      var shapeEl = document.getElementById('sel-shape');
+      var wEl = document.getElementById('sel-w');
+      var hEl = document.getElementById('sel-h');
+      var payload = {
+        shape: shapeEl && shapeEl.value === 'round' ? 'round' : 'square',
+        w: snap(wEl ? wEl.value : table.w, GRID * 4, GRID * 24),
+        h: snap(hEl ? hEl.value : table.h, GRID * 4, GRID * 24)
+      };
+      table.shape = payload.shape;
+      table.w = payload.w;
+      table.h = payload.h;
+      api('/api/tables/' + table.id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(function () {
+        say('Masa saxlanıldı.', 'ok');
+        render();
+      }).catch(function (error) {
+        say(error.message, 'err');
+      });
+    });
+  }
+
+  var selRename = document.getElementById('sel-rename');
+  if (selRename) {
+    selRename.addEventListener('click', function () {
+      if (selectedTableId) {
+        renameTable(selectedTableId);
+      }
+    });
+  }
 
   document.getElementById('logout').addEventListener('click', function () {
     if (window.PosNav) {

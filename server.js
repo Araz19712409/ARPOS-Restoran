@@ -194,7 +194,7 @@ function writeLayout(data) {
   store.writeJson(layoutFile(), data);
 }
 
-const GRID = 32;
+const GRID = 16;
 
 function snapGrid(value, min, max, fallback) {
   const n = num(value, min, max, fallback);
@@ -464,6 +464,12 @@ app.put('/api/tables/:id', function (req, res) {
     }
     if (body.h != null) {
       table.h = snapGrid(body.h, 64, 384, table.h || 64);
+    }
+    if (body.shape != null) {
+      table.shape = body.shape === 'round' ? 'round' : 'square';
+    }
+    if (body.capacity != null) {
+      table.capacity = num(body.capacity, 1, 99, table.capacity || 4);
     }
     writeLayout(store);
     return table;

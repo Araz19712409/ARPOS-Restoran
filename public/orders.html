@@ -13,7 +13,7 @@
   <title>Sifariş</title>
   <link rel="stylesheet" href="app.css?v=22">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css?v=41">
+  <link rel="stylesheet" href="orders.css?v=42">
   <link rel="stylesheet" href="dates.css">
 </head>
 <body class="order-page order-wizard" data-zone="floor">
@@ -60,7 +60,7 @@
           <a href="/receipts.html" data-need="payments.take|reports.view">Çeklər</a>
           <a href="/shift.html" data-need="payments.take|reports.view">Kassa</a>
           <a href="/reports.html" data-need="reports.view">Hesabatlar</a>
-          <a href="/" data-need="layout.edit">Çertyoj</a>
+          <a href="/" data-need="layout.edit">Zal planı</a>
           <a href="/products.html" data-need="products.edit">Məhsullar</a>
           <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
           <a href="/customers.html" data-need="payments.take">Müştərilər</a>
@@ -91,37 +91,30 @@
           <button type="button" data-filter="busy">Hesab</button>
           <button type="button" data-filter="mine" id="filter-mine" hidden>Mənim</button>
         </div>
-        <div class="table-filters floor-extra floor-chips">
-          <button id="new-takeaway" type="button" title="Takeaway">Götür</button>
-          <button id="new-delivery" type="button" title="Çatdırılma">Çatdır</button>
-          <button id="waitlist-open" type="button" title="Növbə">Növbə</button>
+        <div id="floor-map-controls" class="floor-view-controls" hidden>
+          <button type="button" id="floor-zoom-out" aria-label="Kiçilt" title="Kiçilt">−</button>
+          <button type="button" id="floor-fit" title="Ekrana sığdır">Fit</button>
+          <button type="button" id="floor-zoom-in" aria-label="Böyüt" title="Böyüt">+</button>
         </div>
-        <div id="floor-map-controls" class="floor-map-controls" hidden>
-          <div class="floor-axis-scale" aria-label="Yatay ölçü">
-            <span>Yatay</span>
-            <button type="button" id="floor-scale-x-down" aria-label="Yatay kiçilt">−</button>
-            <input id="floor-map-scale-x" type="range" min="50" max="160" step="5" value="100">
-            <button type="button" id="floor-scale-x-up" aria-label="Yatay böyüt">+</button>
+        <details class="floor-more">
+          <summary title="Digər">⋯</summary>
+          <div class="floor-more-panel">
+            <button id="new-takeaway" type="button">Götür</button>
+            <button id="new-delivery" type="button">Çatdır</button>
+            <button id="waitlist-open" type="button">Növbə</button>
+            <a id="floor-plan-link" class="floor-plan-link" href="/" data-need="layout.edit">Zal planı</a>
           </div>
-          <div class="floor-axis-scale" aria-label="Şaquli ölçü">
-            <span>Şaquli</span>
-            <button type="button" id="floor-scale-y-down" aria-label="Şaquli kiçilt">−</button>
-            <input id="floor-map-scale-y" type="range" min="50" max="160" step="5" value="100">
-            <button type="button" id="floor-scale-y-up" aria-label="Şaquli böyüt">+</button>
-          </div>
-        </div>
+        </details>
       </div>
     </div>
     <div class="floor-scroll-host" id="floor-scroll-host">
       <button type="button" class="col-scroll-btn col-scroll-up" id="floor-scroll-up" aria-label="Zal yuxarı" hidden></button>
       <div class="floor-scroll" id="floor-scroll">
         <div id="service-board" class="table-grid"></div>
+        <div id="floor-unplaced" class="floor-unplaced" hidden></div>
         <div id="table-board" class="table-board"></div>
       </div>
       <button type="button" class="col-scroll-btn col-scroll-down" id="floor-scroll-down" aria-label="Zal aşağı" hidden></button>
-      <div id="floor-drag-e" class="floor-map-handle floor-map-handle-e" role="separator" title="Yatay dartın" aria-label="Yatay dartın" hidden></div>
-      <div id="floor-drag-s" class="floor-map-handle floor-map-handle-s" role="separator" title="Şaquli dartın" aria-label="Şaquli dartın" hidden></div>
-      <div id="floor-drag-se" class="floor-map-handle floor-map-handle-se" role="separator" title="Yatay və şaquli dartın" aria-label="Yatay və şaquli dartın" hidden></div>
     </div>
   </aside>
   <div id="floor-resizer" class="floor-resizer" title="Eni dartın"></div>
@@ -604,6 +597,6 @@
   <script src="orders-zones.js?v=3"></script>
   <script src="orders-shift.js?v=4"></script>
   <script src="orders-pay.js?v=4"></script>
-  <script src="orders-ui.js?v=48"></script>
+  <script src="orders-ui.js?v=49"></script>
 </body>
 </html>

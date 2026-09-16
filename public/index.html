@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin — Restoran çertyojı</title>
-  <link rel="stylesheet" href="app.css?v=22">
+  <title>Zal planı — Arpos</title>
+  <link rel="stylesheet" href="app.css?v=23">
 </head>
-<body data-need="layout.edit">
+<body class="plan-editor" data-need="layout.edit">
   <header class="top">
     <div>
-      <h1>Restoran çertyojı</h1>
-      <p>Mərtəbə → otaq → masa. Adı siz yazın, yeri çertyojda sürükləyin.</p>
+      <h1>Zal planı</h1>
+      <p>Masaları sürükləyin, ölçün, Saxla. Sifariş ekranı bu yerləşdirməni göstərir.</p>
     </div>
     <nav class="app-nav waiter-nav">
       <a href="/orders.html">Sifariş</a>
@@ -22,7 +22,7 @@
         <div class="more-nav-list">
           <a href="/reports.html" data-need="reports.view">Hesabat</a>
           <a href="/waiter-report.html" data-need="reports.view">Ofisiant günü</a>
-          <a class="active" href="/" data-need="layout.edit">Çertyoj</a>
+          <a class="active" href="/" data-need="layout.edit">Zal planı</a>
           <a href="/products.html" data-need="products.edit">Məhsullar</a>
           <a href="/stock.html" data-need="stock.view" data-ops="full">Anbar</a>
           <a href="/printers.html" data-need="printers.view">Printerlər</a>
@@ -62,8 +62,8 @@
       </label>
       <label>Forma
         <select id="table-shape">
-          <option value="square">Düzbucaqlı masa</option>
-          <option value="round">Yumru masa</option>
+          <option value="square">Kvadrat / düzbucaq</option>
+          <option value="round">Dairə</option>
         </select>
       </label>
       <label>Tutum
@@ -78,8 +78,32 @@
       <button id="add-table" class="primary" type="button">Masa yarat</button>
     </section>
 
+    <section id="sel-table-box" class="sel-table-box" hidden>
+      <h2>Seçilmiş masa</h2>
+      <p id="sel-table-title" class="sel-table-title">—</p>
+      <label>Forma
+        <select id="sel-shape">
+          <option value="square">Kvadrat / düzbucaq</option>
+          <option value="round">Dairə</option>
+        </select>
+      </label>
+      <label>En (px)
+        <input id="sel-w" type="number" min="64" max="384" step="16" value="80">
+      </label>
+      <label>Hündürlük (px)
+        <input id="sel-h" type="number" min="64" max="384" step="16" value="80">
+      </label>
+      <div class="row">
+        <button id="sel-apply" class="primary" type="button">Saxla</button>
+        <button id="sel-rename" type="button">Ad</button>
+      </div>
+    </section>
+
+    <div class="row plan-actions">
+      <button id="undo-layout" type="button" disabled title="Son yerləşdirməni geri al">Geri al</button>
+    </div>
     <p id="message" class="message"></p>
-    <p class="hint">Otaq və masa xanalara yapışır. Otağı başlıqdan sürükləyin, küncdən ölçün. Ad üçün «Ad» basın.</p>
+    <p class="hint">Tor 16 px. Otağı başlıqdan, masanı gövdədən sürükləyin; küncdən ölçün. Dəyişiklik dərhal saxlanır.</p>
   </aside>
 
   <main class="blueprint-wrap">
@@ -91,6 +115,6 @@
   <script src="offline.js"></script>
   <script src="dom.js"></script>
   <script src="nav.js?v=2"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>

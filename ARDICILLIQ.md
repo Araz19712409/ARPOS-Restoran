@@ -229,6 +229,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 222. [x] 1.2.79 — Zal ayrı yatay/şaquli ölçü; ekran clamp; yaddaş
 223. [x] 1.2.80 — Zal slider + əl dartması (sağ/aşağı); son ölçü yadda
 224. [x] 1.2.81 — Zal çertyoj düzülüşü; viewport dartma; scroll yox
+225. [x] 1.2.82 — Admin Zal planı + Fit/Pan; X/Y slider təmizləndi
 215. [x] 1.2.71 — Zal/menyu scroll oxları qızılı görünən
 214. [x] 1.2.70 — Sağ çek/səbət premium (ad×miqdar+məbləğ)
 213. [x] 1.2.69 — Sifariş: sticky/fav, mənim masalarım, scroll oxları
