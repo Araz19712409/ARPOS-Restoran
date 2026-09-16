@@ -198,45 +198,64 @@
     });
   }
 
-  function createLocal(kind, rawName, groupName) {
+  function createLocal(kind, rawName, groupName, opts) {
+    var quiet = !!(opts && opts.silent);
     var name = String(rawName || '').trim();
     if (!name) {
-      say('Ad boşdur.', 'err');
+      if (!quiet) {
+        say('Ad boşdur.', 'err');
+      }
       return false;
     }
     if (kind === 'group') {
       if (nameIn(catalog.groups, name) || nameIn(localGroups, name)) {
-        say('Qrup artıq siyahıdadır.', 'ok');
+        if (!quiet) {
+          say('Qrup artıq siyahıdadır.', 'ok');
+        }
         return true;
       }
       localGroups.push({ name: name });
-      say('Qrup əlavə olundu (təsdiqə qədər lokal)', 'ok');
+      if (!quiet) {
+        say('Qrup əlavə olundu (təsdiqə qədər lokal)', 'ok');
+      }
       return true;
     }
     if (kind === 'station') {
       if (nameIn(catalog.stations, name) || nameIn(localStations, name)) {
-        say('Stansiya artıq siyahıdadır.', 'ok');
+        if (!quiet) {
+          say('Stansiya artıq siyahıdadır.', 'ok');
+        }
         return true;
       }
       localStations.push({ name: name });
-      say('Stansiya əlavə olundu (təsdiqə qədər lokal)', 'ok');
+      if (!quiet) {
+        say('Stansiya əlavə olundu (təsdiqə qədər lokal)', 'ok');
+      }
       return true;
     }
     var g = String(groupName || '').trim();
     if (!g) {
-      say('Əvvəl qrup seçin və ya yaradın.', 'err');
+      if (!quiet) {
+        say('Əvvəl qrup seçin və ya yaradın.', 'err');
+      }
       return false;
     }
     if (!isResolved('group', g)) {
-      say('Əvvəl qrupu + ilə yaradın və ya siyahıdan seçin.', 'err');
+      if (!quiet) {
+        say('Əvvəl qrupu + ilə yaradın və ya siyahıdan seçin.', 'err');
+      }
       return false;
     }
     if (isResolved('product', name, g)) {
-      say('Mal artıq siyahıdadır.', 'ok');
+      if (!quiet) {
+        say('Mal artıq siyahıdadır.', 'ok');
+      }
       return true;
     }
     localProducts.push({ name: name, groupName: g });
-    say('Mal əlavə olundu (təsdiqə qədər lokal)', 'ok');
+    if (!quiet) {
+      say('Mal əlavə olundu (təsdiqə qədər lokal)', 'ok');
+    }
     return true;
   }
 
@@ -776,6 +795,315 @@
     });
   }
 
+  var IMPORT_MAX = 2000;
+  var HEADER_ALIASES = {
+    qrup: 'groupName',
+    group: 'groupName',
+    groupname: 'groupName',
+    mal: 'productName',
+    mehsul: 'productName',
+    məhsul: 'productName',
+    product: 'productName',
+    productname: 'productName',
+    'satışqiyməti': 'salePrice',
+    'satisqiymeti': 'salePrice',
+    satis: 'salePrice',
+    sale: 'salePrice',
+    saleprice: 'salePrice',
+    miqdar: 'qty',
+    qty: 'qty',
+    quantity: 'qty',
+    'alışqiyməti': 'buyPrice',
+    'alisqiymeti': 'buyPrice',
+    alis: 'buyPrice',
+    buy: 'buyPrice',
+    buyprice: 'buyPrice',
+    stansiya: 'stationName',
+    station: 'stationName',
+    stationname: 'stationName',
+    vahid: 'unit',
+    unit: 'unit'
+  };
+
+  function headerKey(raw) {
+    var s = String(raw || '').trim().toLowerCase()
+      .replace(/[\uFEFF]/g, '')
+      .replace(/\s+/g, '')
+      .replace(/[_-]+/g, '');
+    return HEADER_ALIASES[s] || '';
+  }
+
+  function parseMoney(raw) {
+    var s = String(raw == null ? '' : raw).trim().replace(/\s/g, '').replace(',', '.');
+    if (!s) {
+      return { ok: false, value: '' };
+    }
+    var n = Number(s);
+    if (!Number.isFinite(n) || n < 0) {
+      return { ok: false, value: String(raw) };
+    }
+    return { ok: true, value: String(Number(n.toFixed(2))) };
+  }
+
+  function detectCsvDelim(line) {
+    var semi = (line.match(/;/g) || []).length;
+    var comma = (line.match(/,/g) || []).length;
+    return semi >= comma ? ';' : ',';
+  }
+
+  function splitCsvLine(line, delim) {
+    var out = [];
+    var cur = '';
+    var q = false;
+    var i;
+    for (i = 0; i < line.length; i += 1) {
+      var ch = line.charAt(i);
+      if (ch === '"') {
+        if (q && line.charAt(i + 1) === '"') {
+          cur += '"';
+          i += 1;
+        } else {
+          q = !q;
+        }
+      } else if (ch === delim && !q) {
+        out.push(cur);
+        cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+    out.push(cur);
+    return out;
+  }
+
+  function parseCsvText(text) {
+    var raw = String(text || '').replace(/^\uFEFF/, '');
+    var lines = raw.split(/\r\n|\n|\r/).filter(function (ln) {
+      return String(ln || '').trim() !== '';
+    });
+    if (!lines.length) {
+      return { error: 'Fayl boşdur.' };
+    }
+    var delim = detectCsvDelim(lines[0]);
+    var headers = splitCsvLine(lines[0], delim).map(headerKey);
+    if (headers.indexOf('groupName') < 0 || headers.indexOf('productName') < 0 ||
+        headers.indexOf('salePrice') < 0) {
+      return { error: 'Başlıqda Qrup, Mal və Satış qiyməti olmalıdır.' };
+    }
+    var matrix = [];
+    var i;
+    for (i = 1; i < lines.length; i += 1) {
+      matrix.push(splitCsvLine(lines[i], delim));
+    }
+    return { headers: headers, matrix: matrix };
+  }
+
+  function parseXlsxBuffer(buf) {
+    if (!window.XLSX) {
+      return { error: 'Excel kitabxanası yüklənməyib.' };
+    }
+    var wb = window.XLSX.read(buf, { type: 'array' });
+    var sheetName = wb.SheetNames && wb.SheetNames[0];
+    if (!sheetName) {
+      return { error: 'Excel boşdur.' };
+    }
+    var sheet = wb.Sheets[sheetName];
+    var aoa = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+    if (!aoa || !aoa.length) {
+      return { error: 'Excel boşdur.' };
+    }
+    var headers = (aoa[0] || []).map(headerKey);
+    if (headers.indexOf('groupName') < 0 || headers.indexOf('productName') < 0 ||
+        headers.indexOf('salePrice') < 0) {
+      return { error: 'Başlıqda Qrup, Mal və Satış qiyməti olmalıdır.' };
+    }
+    return { headers: headers, matrix: aoa.slice(1) };
+  }
+
+  function trimTrailingEmpty() {
+    while (rows.length && rowIsEmpty(rows[rows.length - 1])) {
+      rows.pop();
+    }
+  }
+
+  function applyImportMatrix(headers, matrix) {
+    var added = 0;
+    var failed = 0;
+    var errMsgs = [];
+    var importErrIdx = {};
+    if (matrix.length > IMPORT_MAX) {
+      return { error: 'Maksimum ' + IMPORT_MAX + ' sətir. Faylda: ' + matrix.length + '.' };
+    }
+    var wipe = document.getElementById('boot-import-wipe');
+    readCells();
+    if (wipe && wipe.checked) {
+      rows = [];
+      localGroups = [];
+      localStations = [];
+      localProducts = [];
+    } else {
+      trimTrailingEmpty();
+    }
+    var startIdx = rows.length;
+    matrix.forEach(function (cells, mi) {
+      var row = emptyRow();
+      var allBlank = true;
+      headers.forEach(function (key, ci) {
+        if (!key) {
+          return;
+        }
+        var val = cells[ci];
+        if (val == null) {
+          val = '';
+        }
+        val = String(val).trim();
+        if (val) {
+          allBlank = false;
+        }
+        row[key] = val;
+      });
+      if (allBlank) {
+        return;
+      }
+      var g = String(row.groupName || '').trim();
+      var p = String(row.productName || '').trim();
+      var price = parseMoney(row.salePrice);
+      var buy = row.buyPrice ? parseMoney(row.buyPrice) : { ok: true, value: '' };
+      var qty = row.qty ? parseMoney(row.qty) : { ok: true, value: '' };
+      var rowBad = false;
+      var reasons = [];
+      if (!g) {
+        rowBad = true;
+        reasons.push('qrup yoxdur');
+      }
+      if (!p) {
+        rowBad = true;
+        reasons.push('mal yoxdur');
+      }
+      if (!price.ok) {
+        rowBad = true;
+        reasons.push('satış qiyməti səhv');
+      } else {
+        row.salePrice = price.value;
+      }
+      if (row.buyPrice && !buy.ok) {
+        rowBad = true;
+        reasons.push('alış qiyməti səhv');
+      } else if (buy.ok && buy.value) {
+        row.buyPrice = buy.value;
+      }
+      if (row.qty && !qty.ok) {
+        rowBad = true;
+        reasons.push('miqdar səhv');
+      } else if (qty.ok && qty.value) {
+        row.qty = qty.value;
+      }
+      var idx = rows.length;
+      rows.push(row);
+      added += 1;
+      if (rowBad) {
+        failed += 1;
+        importErrIdx[idx] = true;
+        errMsgs.push('Sətir ' + (idx + 1) + ': ' + reasons.join(', ') + '.');
+        return;
+      }
+      createLocal('group', g, '', { silent: true });
+      createLocal('product', p, g, { silent: true });
+      if (String(row.stationName || '').trim()) {
+        createLocal('station', row.stationName, '', { silent: true });
+      }
+    });
+    if (!rows.length) {
+      ensureRows(12);
+    } else {
+      rows.push(emptyRow());
+    }
+    render();
+    clearRowMarks();
+    var body = document.getElementById('boot-body');
+    Object.keys(importErrIdx).forEach(function (k) {
+      var i = Number(k);
+      if (body && body.querySelectorAll('tr')[i]) {
+        body.querySelectorAll('tr')[i].classList.add('boot-err');
+      }
+    });
+    scheduleDraft();
+    var msg = added + ' sətir əlavə olundu';
+    if (failed) {
+      msg += ' / ' + failed + ' sətir xəta';
+    }
+    if (errMsgs.length) {
+      msg += '. ' + errMsgs.slice(0, 3).join(' ');
+    }
+    say(msg, failed ? 'warn' : 'ok');
+    return { added: added, failed: failed, startIdx: startIdx };
+  }
+
+  function importFile(file) {
+    if (!file) {
+      return;
+    }
+    var name = String(file.name || '').toLowerCase();
+    var reader = new FileReader();
+    reader.onerror = function () {
+      say('Fayl oxunmadı.', 'err');
+    };
+    if (name.slice(-4) === '.csv') {
+      reader.onload = function () {
+        var parsed = parseCsvText(String(reader.result || ''));
+        if (parsed.error) {
+          say(parsed.error, 'err');
+          return;
+        }
+        var out = applyImportMatrix(parsed.headers, parsed.matrix);
+        if (out && out.error) {
+          say(out.error, 'err');
+        }
+      };
+      reader.readAsText(file, 'UTF-8');
+      return;
+    }
+    if (!/\.xlsx?$/.test(name)) {
+      say('Yalnız .xlsx, .xls və ya .csv.', 'err');
+      return;
+    }
+    reader.onload = function () {
+      var parsed = parseXlsxBuffer(new Uint8Array(reader.result));
+      if (parsed.error) {
+        say(parsed.error, 'err');
+        return;
+      }
+      var out = applyImportMatrix(parsed.headers, parsed.matrix);
+      if (out && out.error) {
+        say(out.error, 'err');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function downloadTemplate() {
+    var header = ['Qrup', 'Mal', 'Satış qiyməti', 'Miqdar', 'Alış qiyməti', 'Stansiya', 'Vahid'];
+    var sample = ['İçkilər', 'Çay', '2.50', '10', '1.20', 'Bar', 'əd'];
+    if (window.XLSX) {
+      var wb = window.XLSX.utils.book_new();
+      var ws = window.XLSX.utils.aoa_to_sheet([header, sample]);
+      window.XLSX.utils.book_append_sheet(wb, ws, 'Şablon');
+      window.XLSX.writeFile(wb, 'arpos-bootstrap-sablon.xlsx');
+      return;
+    }
+    var csv = header.join(';') + '\n' + sample.join(';') + '\n';
+    var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'arpos-bootstrap-sablon.csv';
+    document.body.appendChild(a);
+    a.click();
+    window.setTimeout(function () {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 500);
+  }
+
   function validateForCommit() {
     readCells();
     clearRowMarks();
@@ -802,6 +1130,13 @@
           bad = true;
           errors.push('Sətir ' + (i + 1) + ': malı seçin və ya + ilə yaradın.');
         }
+      }
+      var price = parseMoney(row.salePrice);
+      if (!price.ok) {
+        bad = true;
+        errors.push('Sətir ' + (i + 1) + ': satış qiyməti vacibdir.');
+      } else {
+        row.salePrice = price.value;
       }
       if (s && !isResolved('station', s)) {
         bad = true;
@@ -1040,6 +1375,24 @@
     render();
     scheduleDraft();
   });
+  var importBtn = document.getElementById('boot-import');
+  var importFileEl = document.getElementById('boot-import-file');
+  if (importBtn && importFileEl) {
+    importBtn.addEventListener('click', function () {
+      importFileEl.value = '';
+      importFileEl.click();
+    });
+    importFileEl.addEventListener('change', function () {
+      var f = importFileEl.files && importFileEl.files[0];
+      if (f) {
+        importFile(f);
+      }
+    });
+  }
+  var templateBtn = document.getElementById('boot-template');
+  if (templateBtn) {
+    templateBtn.addEventListener('click', downloadTemplate);
+  }
   document.getElementById('boot-draft').addEventListener('click', saveDraft);
   document.getElementById('boot-preview').addEventListener('click', function () {
     var check = validateForCommit();

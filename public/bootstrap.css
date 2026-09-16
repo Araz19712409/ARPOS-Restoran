@@ -230,6 +230,20 @@
 .boot-clear-after input {
   width: 16px;
   height: 16px;
+  accent-color: #c4a574;
+}
+
+.boot-toolbar #boot-import,
+.boot-toolbar #boot-template {
+  background: #2c261f;
+  color: #f4eadc;
+  border: 1px solid #c4a574;
+}
+
+.boot-toolbar #boot-import:hover,
+.boot-toolbar #boot-template:hover {
+  background: #221d17;
+  color: #f4eadc;
 }
 
 .boot-settings-link {

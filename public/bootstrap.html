@@ -6,7 +6,7 @@
   <title>İlkin doldurma</title>
   <link rel="stylesheet" href="app.css?v=22">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="bootstrap.css?v=4">
+  <link rel="stylesheet" href="bootstrap.css?v=5">
 </head>
 <body class="catalog-page bootstrap-page" data-need="products.edit">
   <header class="top">
@@ -43,6 +43,13 @@
     <p class="hint">Axtarış: mövcud siyahı. Yeni ad yalnız + və ya «Yarat: …» ilə. Serverə yalnız «Təsdiq et».</p>
     <div class="boot-toolbar">
       <button id="boot-add-10" type="button">+10 sətir</button>
+      <button id="boot-import" type="button">Excel-dən yüklə</button>
+      <input id="boot-import-file" type="file" accept=".xlsx,.xls,.csv,text/csv" hidden>
+      <button id="boot-template" type="button">Şablon endir</button>
+      <label class="boot-clear-after" for="boot-import-wipe">
+        <input id="boot-import-wipe" type="checkbox">
+        Əvvəl cədvəli təmizlə
+      </label>
       <button id="boot-draft" type="button">Saxla draft</button>
       <button id="boot-preview" type="button">Önizlə</button>
       <button id="boot-commit" class="gold" type="button">Təsdiq et</button>
@@ -81,6 +88,7 @@
 
   <script src="dom.js"></script>
   <script src="nav.js?v=2"></script>
-  <script src="bootstrap-ui.js?v=3"></script>
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="bootstrap-ui.js?v=4"></script>
 </body>
 </html>

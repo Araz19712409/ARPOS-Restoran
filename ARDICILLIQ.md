@@ -220,6 +220,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 204. [x] 1.2.60 — İlkin doldurma: 1C axtar+Yarat; Ayarlar menyusu
 205. [x] 1.2.61 — Ayarlar: İlkin doldurma linki oxunaqlı
 206. [x] 1.2.62 — Satış çeki 1|2 nüsxə; Son çek + Çeklər drawer
+211. [x] 1.2.67 — İlkin doldurma: Excel/CSV yüklə + şablon
 210. [x] 1.2.66 — Brauzer Tam ekran düyməsi (Fullscreen API)
 209. [x] 1.2.65 — Z: Kassadan pulu çıxart (default on)
 208. [x] 1.2.64 — Qəbul et: stol dərhal busy (renderFloor)
