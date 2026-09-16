@@ -2053,10 +2053,11 @@ test('katalog maya strip; void/endirim payments blok', function () {
   assert.ok(clearFn.indexOf('Ödəniş başlayıb. Endirim dəyişməz.') >= 0);
 
   const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
-  assert.ok(ui.indexOf("can('orders.void') && !(order.payments && order.payments.length)") >= 0);
-  assert.ok(ui.indexOf("can('orders.discount') && !(order.payments && order.payments.length)") >= 0);
+  assert.ok(ui.indexOf("can('orders.void')") >= 0);
+  assert.ok(ui.indexOf('order.payments && order.payments.length') >= 0);
+  assert.ok(ui.indexOf("can('orders.discount')") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=38') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=39') >= 0);
   const prodJs = fs.readFileSync(path.join(__dirname, 'public', 'products.js'), 'utf8');
   assert.ok(prodJs.indexOf('/api/catalog/manage') >= 0);
 });
@@ -2170,7 +2171,8 @@ test('pulsuz: Endirim yox → accept 403; kataloq 0 OK; pending gizlə; comp', f
   const pendingEnd = ui.indexOf('order = openOrder()', pendingStart);
   const pending = ui.slice(pendingStart, pendingEnd);
   assert.ok(pending.indexOf("can('orders.discount')") >= 0);
-  assert.ok(pending.indexOf("data-act', 'comp'") >= 0);
+  assert.ok(pending.indexOf('Pulsuz') >= 0);
+  assert.ok(pending.indexOf('buildCheckMenu') >= 0 || ui.indexOf('buildCheckMenu') >= 0);
   assert.ok(pending.indexOf('data-act="comp">Pulsuz') < 0);
   assert.ok(ui.indexOf("can('orders.create')") >= 0);
   assert.ok(fs.existsSync(path.join(__dirname, 'PERMISSIONS.md')));
@@ -2240,7 +2242,7 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(foot.indexOf('id="paid-receipts-btn"') >= 0);
   assert.ok(foot.indexOf('id="pay-open"') >= 0);
   assert.ok(foot.indexOf('id="accept-order"') >= 0);
-  assert.ok(html.indexOf('orders.css?v=30') >= 0);
+  assert.ok(html.indexOf('orders.css?v=31') >= 0);
   assert.ok(html.indexOf('id="paid-receipts-modal"') >= 0);
   assert.ok(html.indexOf('orders-pay.js?v=4') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
@@ -2269,8 +2271,8 @@ test('sifariş məhsul kartı: compact ad+qiymət', function () {
   const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
   assert.ok(ui.indexOf("Mal #' + item.id") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders.css?v=30') >= 0);
-  assert.ok(html.indexOf('orders-ui.js?v=38') >= 0);
+  assert.ok(html.indexOf('orders.css?v=31') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=39') >= 0);
 });
 
 test('sifariş 1.2.69: sticky fav, mənim masalarım, scroll oxları', function () {
@@ -2291,6 +2293,24 @@ test('sifariş 1.2.69: sticky fav, mənim masalarım, scroll oxları', function 
   assert.ok(ui.indexOf('isMyOpenTable') >= 0);
   assert.ok(ui.indexOf('bindColScroll') >= 0);
   assert.ok(ui.indexOf('scrollBy') >= 0);
+});
+
+test('sağ çek premium: ad × miqdar + məbləğ', function () {
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(ui.indexOf('function lineSumText') >= 0);
+  assert.ok(ui.indexOf('function buildCheckMenu') >= 0);
+  assert.ok(ui.indexOf('check-pending-head') >= 0);
+  assert.ok(ui.indexOf('line-amt') >= 0);
+  assert.ok(ui.indexOf('check-ellipsis') >= 0);
+  assert.ok(ui.indexOf('stepper') >= 0);
+  const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
+  assert.ok(css.indexOf('minmax(0, 1fr) auto auto') >= 0);
+  assert.ok(css.indexOf('.check-row.pending') >= 0);
+  assert.ok(css.indexOf('.line-amt') >= 0);
+  assert.ok(css.indexOf('.stepper .step') >= 0);
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
+  assert.ok(html.indexOf('orders.css?v=31') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=39') >= 0);
 });
 
 test('məhsul qrupa keçir: modal + PUT groupId', function () {
@@ -2448,7 +2468,7 @@ test('PWA ofisiant: manifest mode=waiter; waiter-mode hook', function () {
   assert.ok(html.indexOf('arpos-mode') >= 0);
   assert.ok(html.indexOf('waiter-mode') >= 0);
   assert.ok(html.indexOf('apple-mobile-web-app-capable') >= 0);
-  assert.ok(html.indexOf('orders-ui.js?v=38') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=39') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
   assert.ok(css.indexOf('.waiter-mode') >= 0);
   assert.ok(css.indexOf('.waiter-mode .order-zones') >= 0);

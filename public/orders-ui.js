@@ -1730,6 +1730,73 @@
     });
   }
 
+  function lineSumText(item) {
+    if (item && item.complimentary) {
+      return '0.00';
+    }
+    var minor = lineMinor(item);
+    if (M && typeof M.fromMinor === 'function') {
+      return Number(M.fromMinor(minor)).toFixed(2);
+    }
+    return (Number(item && item.salePrice || 0) * Number(item && item.qty || 0)).toFixed(2);
+  }
+
+  function closeCheckMenus(except) {
+    document.querySelectorAll('.check-menu.open').forEach(function (menu) {
+      if (except && menu === except) {
+        return;
+      }
+      menu.classList.remove('open');
+    });
+  }
+
+  function buildCheckMenu(entries) {
+    var wrap = document.createElement('div');
+    wrap.className = 'check-more-wrap';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'check-ellipsis';
+    btn.setAttribute('aria-label', 'Əməliyyatlar');
+    btn.textContent = '⋯';
+    var menu = document.createElement('div');
+    menu.className = 'check-menu';
+    (entries || []).forEach(function (entry) {
+      if (!entry) {
+        return;
+      }
+      var opt = document.createElement('button');
+      opt.type = 'button';
+      opt.textContent = entry.label;
+      if (entry.danger) {
+        opt.className = 'danger';
+      }
+      opt.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCheckMenus();
+        if (typeof entry.action === 'function') {
+          entry.action();
+        }
+      });
+      menu.appendChild(opt);
+    });
+    if (!menu.childNodes.length) {
+      return null;
+    }
+    btn.addEventListener('click', function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      var open = menu.classList.contains('open');
+      closeCheckMenus();
+      if (!open) {
+        menu.classList.add('open');
+      }
+    });
+    wrap.appendChild(btn);
+    wrap.appendChild(menu);
+    return wrap;
+  }
+
   function renderCheck() {
     var table = tableById(tableId);
     var order = openOrder();
@@ -1876,93 +1943,193 @@
 
     sent.forEach(function (item) {
       var row = document.createElement('div');
-      row.className = 'check-row' + (item.voided ? ' voided' : '') + (item.settled ? ' settled' : '');
-      row.innerHTML = '<div><p class="name"></p><p class="note"></p><p class="sent"></p></div><div class="qty"></div>';
-      row.querySelector('.name').textContent = item.qty + '× ' + item.name;
-      row.querySelector('.note').textContent = lineNote(item);
-      row.querySelector('.sent').textContent = item.voided
-        ? ('Ləğv: ' + (item.voidedBy || ''))
-        : (item.settled
-          ? 'Ödənildi'
-          : ((item.sent ? 'Göndərildi' : 'Gözləyir • ' + courseLabel(item.course)) +
-            (item.complimentary ? ' • Pulsuz' : '') +
-            (item.waiterName ? ' • ' + item.waiterName : '')));
-      if (!item.voided && !item.settled) {
-        var actions = row.querySelector('.qty');
-        if (item.sent && can('orders.create')) {
-          var reprintBtn = document.createElement('button');
-          reprintBtn.type = 'button';
-          reprintBtn.textContent = 'Çap';
-          reprintBtn.addEventListener('click', function () {
-            runAction('/api/orders/reprint', { orderId: order.id, itemId: item.id }, 'Təkrar çap göndərilsin?');
-          });
-          actions.appendChild(reprintBtn);
-        }
-        if (can('orders.void') && !(order.payments && order.payments.length)) {
-          var voidBtn = document.createElement('button');
-          voidBtn.type = 'button';
-          voidBtn.textContent = 'Ləğv';
-          voidBtn.addEventListener('click', function () {
-            runAction('/api/orders/void', { orderId: order.id, itemId: item.id }, '"' + item.name + '" ləğv edilsin və stansiyaya getsin?');
-          });
-          actions.appendChild(voidBtn);
-        }
-        if (can('orders.discount') && !item.complimentary && !(order.payments && order.payments.length)) {
-          var compBtn = document.createElement('button');
-          compBtn.type = 'button';
-          compBtn.textContent = 'Pulsuz';
-          compBtn.addEventListener('click', function () {
-            runAction('/api/orders/comp', { orderId: order.id, itemId: item.id }, '"' + item.name + '" pulsuz olsun?');
-          });
-          actions.appendChild(compBtn);
+      row.className = 'check-row'
+        + (item.voided ? ' voided' : '')
+        + (item.settled ? ' settled' : '')
+        + (item.sent ? ' sent-line' : '');
+      var main = document.createElement('div');
+      main.className = 'check-main';
+      var nameEl = document.createElement('p');
+      nameEl.className = 'name';
+      var fullName = String(item.name || '').trim() || ('Mal #' + (item.id || ''));
+      nameEl.textContent = fullName + (item.complimentary ? ' · pulsuz' : '');
+      nameEl.title = fullName;
+      var noteEl = document.createElement('p');
+      noteEl.className = 'note';
+      var noteBits = [];
+      if (item.voided) {
+        noteBits.push('Ləğv' + (item.voidedBy ? (': ' + item.voidedBy) : ''));
+      } else if (item.settled) {
+        noteBits.push('Ödənildi');
+      } else if (item.sent) {
+        noteBits.push('Göndərildi');
+      } else {
+        noteBits.push('Gözləyir');
+        if (courseLabel(item.course)) {
+          noteBits.push(courseLabel(item.course));
         }
       }
+      var extraNote = lineNote(item);
+      if (extraNote) {
+        noteBits.push(extraNote);
+      }
+      noteEl.textContent = noteBits.join(' · ');
+      main.appendChild(nameEl);
+      main.appendChild(noteEl);
+
+      var qtyCell = document.createElement('div');
+      qtyCell.className = 'check-qty-cell';
+      qtyCell.textContent = '×' + String(item.qty || 0);
+
+      var amtCell = document.createElement('div');
+      amtCell.className = 'check-amt-cell';
+      var amt = document.createElement('span');
+      amt.className = 'line-amt';
+      amt.textContent = lineSumText(item);
+      amtCell.appendChild(amt);
+
+      if (!item.voided && !item.settled) {
+        var menuEntries = [];
+        if (item.sent && can('orders.create') && order) {
+          menuEntries.push({
+            label: 'Çap',
+            action: function () {
+              runAction('/api/orders/reprint', { orderId: order.id, itemId: item.id }, 'Təkrar çap göndərilsin?');
+            }
+          });
+        }
+        if (can('orders.void') && order && !(order.payments && order.payments.length)) {
+          menuEntries.push({
+            label: 'Ləğv',
+            danger: true,
+            action: function () {
+              runAction('/api/orders/void', { orderId: order.id, itemId: item.id },
+                '"' + item.name + '" ləğv edilsin və stansiyaya getsin?');
+            }
+          });
+        }
+        if (can('orders.discount') && !item.complimentary && order && !(order.payments && order.payments.length)) {
+          menuEntries.push({
+            label: 'Pulsuz',
+            action: function () {
+              runAction('/api/orders/comp', { orderId: order.id, itemId: item.id },
+                '"' + item.name + '" pulsuz olsun?');
+            }
+          });
+        }
+        var menu = buildCheckMenu(menuEntries);
+        if (menu) {
+          amtCell.appendChild(menu);
+        }
+      }
+
+      row.appendChild(main);
+      row.appendChild(qtyCell);
+      row.appendChild(amtCell);
       box.appendChild(row);
     });
 
+    if (pending.length) {
+      var pendHead = document.createElement('p');
+      pendHead.className = 'check-pending-head';
+      pendHead.textContent = 'Gözləyir · ' + pending.length;
+      box.appendChild(pendHead);
+    }
+
     pending.forEach(function (item, index) {
       var row = document.createElement('div');
-      row.className = 'check-row';
-      row.innerHTML =
-        '<div><p class="name"></p><p class="note"></p></div>' +
-        '<div class="qty"><button type="button" data-act="minus">−</button>' +
-        '<span></span><button type="button" data-act="plus">+</button>' +
-        '<button type="button" data-act="note">Qeyd</button></div>';
-      row.querySelector('.name').textContent = item.name + (item.complimentary ? ' • pulsuz' : '');
-      row.querySelector('.note').textContent = lineNote(item) || courseLabel(item.course);
-      row.querySelector('span').textContent = String(item.qty);
-      row.querySelector('[data-act="minus"]').addEventListener('click', function () {
+      row.className = 'check-row pending';
+      var main = document.createElement('div');
+      main.className = 'check-main';
+      var nameEl = document.createElement('p');
+      nameEl.className = 'name';
+      var fullName = String(item.name || '').trim() || 'Mal';
+      nameEl.textContent = fullName + (item.complimentary ? ' · pulsuz' : '');
+      nameEl.title = fullName;
+      var noteEl = document.createElement('p');
+      noteEl.className = 'note';
+      var pendBits = ['Yeni'];
+      var pendNote = lineNote(item);
+      if (pendNote) {
+        pendBits.push(pendNote);
+      } else if (courseLabel(item.course)) {
+        pendBits.push(courseLabel(item.course));
+      }
+      noteEl.textContent = pendBits.join(' · ');
+      main.appendChild(nameEl);
+      main.appendChild(noteEl);
+
+      var qtyCell = document.createElement('div');
+      qtyCell.className = 'check-qty-cell';
+      var stepper = document.createElement('div');
+      stepper.className = 'stepper';
+      var minus = document.createElement('button');
+      minus.type = 'button';
+      minus.className = 'step';
+      minus.setAttribute('aria-label', 'Azalt');
+      minus.textContent = '−';
+      var qSpan = document.createElement('span');
+      qSpan.className = 'q';
+      qSpan.textContent = String(item.qty || 0);
+      var plus = document.createElement('button');
+      plus.type = 'button';
+      plus.className = 'step';
+      plus.setAttribute('aria-label', 'Artır');
+      plus.textContent = '+';
+      minus.addEventListener('click', function () {
         item.qty -= 1;
         if (item.qty < 1) {
           pending.splice(index, 1);
         }
         renderCheck();
       });
-      row.querySelector('[data-act="plus"]').addEventListener('click', function () {
+      plus.addEventListener('click', function () {
         item.qty += 1;
         renderCheck();
       });
-      row.querySelector('[data-act="note"]').addEventListener('click', function () {
-        var note = window.prompt('Qeyd', item.note || '');
-        if (note == null) {
-          return;
+      stepper.appendChild(minus);
+      stepper.appendChild(qSpan);
+      stepper.appendChild(plus);
+      qtyCell.appendChild(stepper);
+
+      var amtCell = document.createElement('div');
+      amtCell.className = 'check-amt-cell';
+      var amt = document.createElement('span');
+      amt.className = 'line-amt';
+      amt.textContent = lineSumText(item);
+      amtCell.appendChild(amt);
+
+      var pendMenu = [];
+      pendMenu.push({
+        label: 'Qeyd',
+        action: function () {
+          var note = window.prompt('Qeyd', item.note || '');
+          if (note == null) {
+            return;
+          }
+          item.note = note.trim().slice(0, 80);
+          item.choiceKey = choiceKey(item.portionId, item.extraIds, item.note);
+          renderCheck();
         }
-        item.note = note.trim().slice(0, 80);
-        item.choiceKey = choiceKey(item.portionId, item.extraIds, item.note);
-        renderCheck();
       });
       if (can('orders.discount')) {
-        var compBtn = document.createElement('button');
-        compBtn.type = 'button';
-        compBtn.setAttribute('data-act', 'comp');
-        compBtn.textContent = 'Pulsuz';
-        compBtn.addEventListener('click', function () {
-          item.complimentary = !item.complimentary;
-          item.salePrice = item.complimentary ? 0 : (item.basePrice || item.salePrice);
-          renderCheck();
+        pendMenu.push({
+          label: item.complimentary ? 'Pulsuzu götür' : 'Pulsuz',
+          action: function () {
+            item.complimentary = !item.complimentary;
+            item.salePrice = item.complimentary ? 0 : (item.basePrice || item.salePrice);
+            renderCheck();
+          }
         });
-        row.querySelector('.qty').appendChild(compBtn);
       }
+      var menu = buildCheckMenu(pendMenu);
+      if (menu) {
+        amtCell.appendChild(menu);
+      }
+
+      row.appendChild(main);
+      row.appendChild(qtyCell);
+      row.appendChild(amtCell);
       box.appendChild(row);
     });
 
@@ -2062,6 +2229,11 @@
   document.getElementById('table-search').addEventListener('input', function (event) {
     tableQuery = event.target.value;
     renderFloor();
+  });
+  document.addEventListener('click', function (event) {
+    if (!event.target.closest || !event.target.closest('.check-more-wrap')) {
+      closeCheckMenus();
+    }
   });
   document.getElementById('table-filters').addEventListener('click', function (event) {
     var btn = event.target.closest('[data-filter]');

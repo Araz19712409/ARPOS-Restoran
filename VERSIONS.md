@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 
+- **1.2.70** — 2026-09-16 — Sağ çek/səbət premium (ad×miqdar+məbləğ)
 - **1.2.69** — 2026-09-16 — Sifariş: sticky/fav, mənim masalarım, scroll oxları
 - **1.2.68** — 2026-09-16 — Sifariş kartları oxunaqlı; məhsulu qrupa keçir
 - **1.2.67** — 2026-09-16 — İlkin doldurma: Excel/CSV yüklə + şablon

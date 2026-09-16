@@ -936,19 +936,169 @@
 
 .check-row {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px;
-  padding: 11px 4px 12px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 8px 6px;
   border-bottom: 1px solid #3d3428;
+  background: transparent;
+}
+
+.check-row.pending {
+  background: #2a241c;
+  border-left: 3px solid #c4a574;
+  padding-left: 8px;
+  border-radius: 0 8px 8px 0;
+  margin: 2px 0;
+}
+
+.check-pending-head {
+  margin: 10px 0 4px;
+  padding: 0 4px;
+  color: #c4a574;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.check-main {
+  min-width: 0;
 }
 
 .check-row .name {
+  margin: 0;
   font-weight: 700;
+  color: #f4eadc;
+  font-size: 0.92rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .check-row .note {
-  color: #c9b89a;
-  font-size: 0.78rem;
+  margin: 2px 0 0;
+  color: #cbbba8;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.check-qty-cell {
+  flex: 0 0 auto;
+  color: #f4eadc;
+  font-weight: 700;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.check-amt-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 4.5rem;
+}
+
+.check-row .line-amt {
+  color: #e2b65a;
+  font-weight: 800;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.stepper .step {
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid #5a4c3a;
+  background: #221d17;
+  color: #f4eadc;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stepper .q {
+  min-width: 1.2rem;
+  text-align: center;
+  font-weight: 800;
+  color: #f4eadc;
+  font-size: 0.88rem;
+}
+
+.check-more-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.check-ellipsis {
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid #5a4c3a;
+  background: #221d17;
+  color: #c4a574;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.check-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  min-width: 120px;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid #5a4c3a;
+  background: #2c261f;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+.check-menu.open {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.check-menu button {
+  width: 100%;
+  min-height: 36px;
+  margin: 0;
+  padding: 6px 10px;
+  text-align: left;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #f4eadc;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.check-menu button:hover {
+  background: #3a3228;
+}
+
+.check-menu button.danger {
+  color: #e2a08a;
 }
 
 .option-card {
@@ -1002,8 +1152,8 @@
 }
 
 .qty button {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 28px;
+  min-height: 28px;
   padding: 0;
 }
 
