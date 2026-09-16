@@ -1865,6 +1865,22 @@
     return wrap;
   }
 
+  function syncWaiterBasketBadge() {
+    var badge = el('waiter-basket-badge') || document.getElementById('waiter-basket-badge');
+    if (!badge) {
+      return;
+    }
+    var n = 0;
+    var i;
+    for (i = 0; i < pending.length; i += 1) {
+      n += Math.max(0, Number(pending[i].qty) || 0);
+    }
+    var show = isWaiterMode() && n > 0;
+    badge.hidden = !show;
+    badge.classList.toggle('hidden', !show);
+    setText('waiter-basket-badge', show ? ('Səbət · ' + n) : 'Səbət');
+  }
+
   function renderCheck() {
     var table = tableById(tableId);
     var order = openOrder();
@@ -1998,6 +2014,7 @@
 
     var box = el('check-list');
     if (!box) {
+      syncWaiterBasketBadge();
       return;
     }
     box.textContent = '';
@@ -2005,7 +2022,11 @@
     if (!sent.length && !pending.length) {
       var empty = document.createElement('p');
       empty.className = 'hint';
-      empty.textContent = tableId ? 'Məhsula basın.' : 'Masa seçin.';
+      if (isWaiterMode()) {
+        empty.textContent = tableId ? 'Səbət boş' : 'Masa seçin.';
+      } else {
+        empty.textContent = tableId ? 'Məhsula basın.' : 'Masa seçin.';
+      }
       box.appendChild(empty);
     }
 
@@ -2237,6 +2258,7 @@
       tipRow.classList.add('hidden');
     }
     setText('check-total', parts.total.toFixed(2) + ' AZN');
+    syncWaiterBasketBadge();
     window.setTimeout(refreshColScrolls, 0);
   }
 

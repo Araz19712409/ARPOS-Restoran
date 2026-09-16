@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 
+- **1.2.75** — 2026-09-16 — Waiter desktop skin + səbət həmişə görünür
 - **1.2.74** — 2026-09-16 — Ofisiant axını (PIN→masa→qrup→mal→qəbul→PIN) + masa sahibliyi
 - **1.2.73** — 2026-09-16 — Səbət qızılı ↑↓ oxlar; ▲▼ CSS ikon
 - **1.2.71** — 2026-09-16 — Zal/menyu scroll oxları qızılı görünən

@@ -2238,19 +2238,38 @@ html.waiter-mode .more-nav,
   display: none;
 }
 
-.waiter-mode[data-zone="floor"] .floor-col,
-.waiter-mode[data-zone="groups"] .menu-col,
-.waiter-mode[data-zone="menu"] .menu-col {
+.waiter-mode[data-zone="floor"] .floor-col {
   padding-bottom: 92px;
 }
 
-.waiter-mode[data-zone="floor"] .check-col,
-.waiter-mode[data-zone="groups"] .check-col,
-.waiter-mode[data-zone="menu"] .check-col {
+.waiter-mode[data-zone="groups"] .menu-col,
+.waiter-mode[data-zone="menu"] .menu-col {
+  padding-bottom: min(46vh, 340px);
+}
+
+.waiter-mode[data-zone="floor"] .check-col {
   display: flex;
   background: transparent;
   pointer-events: none;
   z-index: 8;
+  padding: 0;
+}
+
+.waiter-mode[data-zone="groups"] .check-col,
+.waiter-mode[data-zone="menu"] .check-col {
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 25;
+  margin: 0;
+  max-height: min(42vh, 320px);
+  background: #221d17;
+  border-top: 1px solid #3d3428;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
   padding: 0;
 }
 
@@ -2262,15 +2281,11 @@ html.waiter-mode .more-nav,
 .waiter-mode[data-zone="floor"] .receipt-quick-actions,
 .waiter-mode[data-zone="floor"] .check-more,
 .waiter-mode[data-zone="groups"] .check-head,
-.waiter-mode[data-zone="groups"] .check-list,
-.waiter-mode[data-zone="groups"] .check-sum-box,
 .waiter-mode[data-zone="groups"] .check-foot-notes,
 .waiter-mode[data-zone="groups"] .sec-actions,
 .waiter-mode[data-zone="groups"] .receipt-quick-actions,
 .waiter-mode[data-zone="groups"] .check-more,
 .waiter-mode[data-zone="menu"] .check-head,
-.waiter-mode[data-zone="menu"] .check-list,
-.waiter-mode[data-zone="menu"] .check-sum-box,
 .waiter-mode[data-zone="menu"] .check-foot-notes,
 .waiter-mode[data-zone="menu"] .sec-actions,
 .waiter-mode[data-zone="menu"] .receipt-quick-actions,
@@ -2278,9 +2293,51 @@ html.waiter-mode .more-nav,
   display: none;
 }
 
-.waiter-mode[data-zone="floor"] .check-foot,
-.waiter-mode[data-zone="groups"] .check-foot,
-.waiter-mode[data-zone="menu"] .check-foot {
+.waiter-mode[data-zone="groups"] .check-scroll-host,
+.waiter-mode[data-zone="menu"] .check-scroll-host {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.waiter-mode[data-zone="groups"] .check-scroll-host .col-scroll-btn,
+.waiter-mode[data-zone="menu"] .check-scroll-host .col-scroll-btn {
+  display: none !important;
+}
+
+.waiter-mode[data-zone="groups"] .check-list,
+.waiter-mode[data-zone="menu"] .check-list {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 48px;
+  max-height: 140px;
+  overflow: auto;
+  padding: 6px 10px 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.waiter-mode[data-zone="groups"] .check-sum-box,
+.waiter-mode[data-zone="menu"] .check-sum-box {
+  display: block;
+  flex: 0 0 auto;
+  padding: 4px 10px 2px;
+  border-top: 1px solid #3d3428;
+  background: #221d17;
+}
+
+.waiter-mode[data-zone="groups"] .check-sum-box .check-sum.sub,
+.waiter-mode[data-zone="menu"] .check-sum-box .check-sum.sub {
+  display: none;
+}
+
+.waiter-mode[data-zone="groups"] .check-sum-box .check-sum:not(.sub),
+.waiter-mode[data-zone="menu"] .check-sum-box .check-sum:not(.sub) {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.waiter-mode[data-zone="floor"] .check-foot {
   pointer-events: auto;
   position: fixed;
   left: 0;
@@ -2292,6 +2349,19 @@ html.waiter-mode .more-nav,
   padding: 8px 10px;
   border-top: 1px solid #3d3428;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.waiter-mode[data-zone="groups"] .check-foot,
+.waiter-mode[data-zone="menu"] .check-foot {
+  pointer-events: auto;
+  position: static;
+  flex: 0 0 auto;
+  margin: 0;
+  background: #221d17;
+  padding: 8px 10px;
+  border-top: 1px solid #3d3428;
+  box-shadow: none;
+  z-index: 26;
 }
 
 .waiter-mode[data-zone="floor"] .check-foot .main-actions,
@@ -2323,6 +2393,37 @@ html.waiter-mode .more-nav,
   pointer-events: auto;
   position: relative;
   z-index: 26;
+}
+
+.waiter-mode[data-zone="groups"] .check-row .note,
+.waiter-mode[data-zone="menu"] .check-row .note,
+.waiter-mode[data-zone="groups"] .check-row .check-menu,
+.waiter-mode[data-zone="menu"] .check-row .check-menu {
+  display: none;
+}
+
+.waiter-mode[data-zone="groups"] .check-row,
+.waiter-mode[data-zone="menu"] .check-row {
+  padding: 6px 4px;
+  min-height: 40px;
+}
+
+.waiter-basket-badge {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #3d2e1c;
+  color: #f4eadc;
+  border: 1px solid #c4a574;
+  font-size: 0.85rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.waiter-basket-badge.hidden,
+.waiter-basket-badge[hidden] {
+  display: none !important;
 }
 
 .waiter-mode[data-zone="groups"] .menu-sticky {
@@ -2363,7 +2464,7 @@ html.waiter-mode .more-nav,
   font-size: 1.05rem;
   font-weight: 800;
   background: #2a241c;
-  color: #f6efe4;
+  color: #f4eadc;
   border: 1px solid #5a4c3a;
   border-radius: 12px;
 }
@@ -2410,7 +2511,70 @@ html.waiter-mode .more-nav,
   padding: 24px 18px calc(18px + env(safe-area-inset-bottom, 0px));
 }
 
-@media (max-width: 980px) {
+@media (min-width: 901px) {
+  .waiter-mode.order-page[data-zone="groups"],
+  .waiter-mode.order-page[data-zone="menu"] {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  }
+
+  .waiter-mode[data-zone="groups"] .menu-col,
+  .waiter-mode[data-zone="menu"] .menu-col {
+    grid-column: 1;
+    grid-row: 2;
+    padding-bottom: 12px;
+  }
+
+  .waiter-mode[data-zone="groups"] .check-col,
+  .waiter-mode[data-zone="menu"] .check-col {
+    grid-column: 2;
+    grid-row: 2;
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    max-height: none;
+    height: 100%;
+    box-shadow: none;
+    border-top: 0;
+    border-left: 1px solid #3d3428;
+    padding: 10px 12px;
+    background: #221d17;
+  }
+
+  .waiter-mode[data-zone="groups"] .check-list,
+  .waiter-mode[data-zone="menu"] .check-list {
+    max-height: none;
+    flex: 1 1 auto;
+  }
+
+  .waiter-mode[data-zone="groups"] .check-sum-box .check-sum.sub,
+  .waiter-mode[data-zone="menu"] .check-sum-box .check-sum.sub {
+    display: flex;
+  }
+
+  .waiter-mode[data-zone="groups"] #group-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .waiter-mode[data-zone="groups"] #group-tabs button {
+    min-height: 88px;
+    font-size: 1.12rem;
+  }
+
+  .waiter-mode .table-tile {
+    min-height: 84px;
+    min-width: 88px;
+  }
+
+  .waiter-mode .order-grid {
+    --card-min: 180px;
+    --title-size: 1rem;
+    --price-size: 1.02rem;
+  }
+}
+
+@media (max-width: 900px) {
   .waiter-mode .table-tile {
     min-height: 72px;
   }
