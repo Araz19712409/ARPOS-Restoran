@@ -857,7 +857,7 @@
       if (typeof uiBlockedForBarcode === 'function' && uiBlockedForBarcode()) {
         return;
       }
-      if (prevFloor !== floorBusyFootprint()) {
+      if (force || prevFloor !== floorBusyFootprint()) {
         renderFloor();
       }
       if (tableId && prevCheck !== orderFootprint(openOrder())) {
@@ -2212,6 +2212,8 @@
       var accepted = body.data && body.data.order;
       if (accepted) {
         patchLocalOrder(accepted);
+        renderFloor();
+        renderCheck();
         var needLayout = accepted.tableId && !isServiceId(accepted.tableId) && !tableById(accepted.tableId);
         if (needLayout) {
           return load().then(afterAcceptUi);

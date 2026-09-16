@@ -220,6 +220,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 204. [x] 1.2.60 — İlkin doldurma: 1C axtar+Yarat; Ayarlar menyusu
 205. [x] 1.2.61 — Ayarlar: İlkin doldurma linki oxunaqlı
 206. [x] 1.2.62 — Satış çeki 1|2 nüsxə; Son çek + Çeklər drawer
+208. [x] 1.2.64 — Qəbul et: stol dərhal busy (renderFloor)
 207. [x] 1.2.63 — Ödənişdə avto kassa çapı; dürüst çap toast
 
 ### Ciddi (10.09) — bir-bir
