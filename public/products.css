@@ -590,6 +590,32 @@
   padding: 4px 14px;
 }
 
+.move-group-card {
+  width: min(420px, 94vw);
+  background: #2c261f;
+  color: #f4eadc;
+  border: 1px solid #5a4c3a;
+}
+
+.move-group-card h3 {
+  color: #f4eadc;
+}
+
+.move-group-card label {
+  color: #c4a574;
+}
+
+.move-group-card input,
+.move-group-card select {
+  background: #221d17;
+  color: #f4eadc;
+  border: 1px solid #5a4c3a;
+}
+
+.move-group-card input[readonly] {
+  opacity: 0.9;
+}
+
 @media (max-width: 800px) {
   .catalog-page {
     grid-template-columns: 1fr;

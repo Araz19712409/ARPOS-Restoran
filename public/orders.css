@@ -591,16 +591,16 @@
   top: 4px;
   right: 4px;
   z-index: 2;
-  width: 28px;
-  min-height: 28px;
-  height: 28px;
+  width: 24px;
+  min-height: 24px;
+  height: 24px;
   margin: 0;
   padding: 0;
   border-radius: 50%;
   border: 1px solid #6a573c;
-  background: rgba(20, 16, 12, 0.75);
-  color: #9b8b72;
-  font-size: 0.9rem;
+  background: rgba(34, 29, 23, 0.85);
+  color: #c4a574;
+  font-size: 0.75rem;
   line-height: 1;
   cursor: pointer;
 }
@@ -683,15 +683,17 @@
 }
 
 .order-grid {
-  --card-min: 168px;
+  --card-min: 196px;
   --card-pad: 10px;
-  --title-size: 1.08rem;
-  --price-size: 1.12rem;
-  --gap: 12px;
+  --title-size: 0.95rem;
+  --price-size: 0.98rem;
+  --icon-size: 44px;
+  --card-min-h: 68px;
+  --gap: 10px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--card-min), 1fr));
   align-content: start;
-  align-items: start;
+  align-items: stretch;
   gap: var(--gap);
   flex: 1;
   min-height: 0;
@@ -699,68 +701,86 @@
 }
 
 .order-grid[data-scale="1"] {
-  --card-min: 112px;
+  --card-min: 148px;
   --card-pad: 6px;
-  --title-size: 0.82rem;
-  --price-size: 0.85rem;
-  --gap: 8px;
+  --title-size: 0.78rem;
+  --price-size: 0.82rem;
+  --icon-size: 40px;
+  --card-min-h: 64px;
+  --gap: 6px;
 }
 
 .order-grid[data-scale="2"] {
-  --card-min: 168px;
-  --card-pad: 10px;
-  --title-size: 1.08rem;
-  --price-size: 1.12rem;
-  --gap: 12px;
+  --card-min: 172px;
+  --card-pad: 8px;
+  --title-size: 0.88rem;
+  --price-size: 0.9rem;
+  --icon-size: 42px;
+  --card-min-h: 66px;
+  --gap: 8px;
 }
 
 .order-grid[data-scale="3"] {
   --card-min: 196px;
-  --card-pad: 12px;
-  --title-size: 1.16rem;
-  --price-size: 1.18rem;
-  --gap: 14px;
+  --card-pad: 10px;
+  --title-size: 0.95rem;
+  --price-size: 0.98rem;
+  --icon-size: 44px;
+  --card-min-h: 68px;
+  --gap: 10px;
 }
 
 .order-grid[data-scale="4"] {
-  --card-min: 228px;
-  --card-pad: 14px;
-  --title-size: 1.22rem;
-  --price-size: 1.24rem;
-  --gap: 16px;
+  --card-min: 220px;
+  --card-pad: 12px;
+  --title-size: 1.05rem;
+  --price-size: 1.08rem;
+  --icon-size: 46px;
+  --card-min-h: 70px;
+  --gap: 12px;
 }
 
 .order-grid[data-scale="5"] {
-  --card-min: 260px;
-  --card-pad: 16px;
-  --title-size: 1.28rem;
-  --price-size: 1.3rem;
-  --gap: 18px;
+  --card-min: 248px;
+  --card-pad: 14px;
+  --title-size: 1.12rem;
+  --price-size: 1.16rem;
+  --icon-size: 48px;
+  --card-min-h: 72px;
+  --gap: 14px;
 }
 
 .order-card {
   position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--card-min-h);
   background: #2a241c;
   border: 1px solid #4a3d2d;
-  border-radius: 14px;
+  border-radius: 12px;
   overflow: hidden;
-  padding: 0;
+  padding: 8px var(--card-pad) 8px 8px;
   text-align: left;
-  color: #f4ead8;
+  color: #f4eadc;
   cursor: pointer;
 }
 
 .order-card .photo {
   position: relative;
-  width: 100%;
-  aspect-ratio: 4 / 3;
+  flex: 0 0 var(--icon-size);
+  width: var(--icon-size);
+  height: var(--icon-size);
+  min-width: var(--icon-size);
+  min-height: var(--icon-size);
   overflow: hidden;
-  background: linear-gradient(135deg, #3a3228, #1f1a14);
+  border-radius: 8px;
+  background: #221d17;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9b8b72;
-  font-size: 0.75rem;
+  color: #c4a574;
 }
 
 .order-card .photo img {
@@ -773,27 +793,46 @@
 }
 
 .order-card .photo .group-icon {
-  width: 42%;
-  height: 42%;
-  max-width: 92px;
-  max-height: 92px;
+  width: 70%;
+  height: 70%;
+  max-width: 36px;
+  max-height: 36px;
   display: block;
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
+  filter: none;
 }
 
 .order-card .body {
-  padding: var(--card-pad);
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 22px 0 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
 }
 
 .order-card h3 {
+  margin: 0;
   font-size: var(--title-size);
-  margin-bottom: 6px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #f4eadc;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 .order-card .price {
+  margin: 0;
   color: #e2b65a;
   font-weight: 800;
   font-size: var(--price-size);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: visible;
 }
 
 .check-row {
@@ -1972,9 +2011,11 @@ html.waiter-mode .more-nav,
 }
 
 .waiter-mode .order-grid {
-  --card-min: 148px;
-  --title-size: 1.12rem;
-  --price-size: 1.16rem;
+  --card-min: 168px;
+  --title-size: 0.92rem;
+  --price-size: 0.95rem;
+  --icon-size: 44px;
+  --card-min-h: 68px;
 }
 
 .waiter-mode #accept-order {

@@ -11,6 +11,7 @@
   var editingGroupId = 0;
   var pickedIcon = '';
   var branchCode = '';
+  var moveProductId = 0;
 
   function dec(value) {
     return window.PosNav && window.PosNav.parseDec
@@ -559,7 +560,15 @@
         }).catch(function (error) { say(error.message, 'err'); });
       });
 
+      var moveBtn = document.createElement('button');
+      moveBtn.type = 'button';
+      moveBtn.textContent = 'Qrupa keçir';
+      moveBtn.addEventListener('click', function () {
+        openMoveGroupModal(item);
+      });
+
       body.querySelector('.card-actions').appendChild(editBtn);
+      body.querySelector('.card-actions').appendChild(moveBtn);
       body.querySelector('.card-actions').appendChild(blockBtn);
       body.querySelector('.card-actions').appendChild(soldBtn);
       body.querySelector('.card-actions').appendChild(delBtn);
@@ -1012,6 +1021,92 @@
     window.sessionStorage.removeItem('posWaiter');
     window.location.replace('/orders.html');
   });
+
+  function closeMoveGroupModal() {
+    moveProductId = 0;
+    var modal = document.getElementById('move-group-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+  }
+
+  function openMoveGroupModal(item) {
+    if (!item || !item.id) {
+      return;
+    }
+    moveProductId = item.id;
+    var nameEl = document.getElementById('move-group-product');
+    var sel = document.getElementById('move-group-select');
+    var modal = document.getElementById('move-group-modal');
+    if (!nameEl || !sel || !modal) {
+      return;
+    }
+    nameEl.value = item.name || ('Mal #' + item.id);
+    sel.innerHTML = '';
+    (store.groups || []).forEach(function (g) {
+      var opt = document.createElement('option');
+      opt.value = String(g.id);
+      opt.textContent = g.name + (Number(g.id) === Number(item.groupId) ? ' (cari)' : '');
+      if (Number(g.id) === Number(item.groupId)) {
+        opt.selected = true;
+      }
+      sel.appendChild(opt);
+    });
+    if (!sel.options.length) {
+      say('Qrup yoxdur.', 'err');
+      return;
+    }
+    modal.classList.remove('hidden');
+  }
+
+  var moveCancel = document.getElementById('move-group-cancel');
+  if (moveCancel) {
+    moveCancel.addEventListener('click', closeMoveGroupModal);
+  }
+  var moveForm = document.getElementById('move-group-form');
+  if (moveForm) {
+    moveForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+      if (!moveProductId || busy) {
+        return;
+      }
+      var sel = document.getElementById('move-group-select');
+      var nextId = Number(sel && sel.value);
+      var product = (store.products || []).find(function (row) {
+        return row.id === moveProductId;
+      });
+      if (!product) {
+        say('Məhsul tapılmadı.', 'err');
+        closeMoveGroupModal();
+        return;
+      }
+      if (!Number.isFinite(nextId) || nextId <= 0) {
+        say('Qrup seçin.', 'err');
+        return;
+      }
+      if (Number(product.groupId) === nextId) {
+        say('Məhsul artıq bu qrupdadır.', 'warn');
+        return;
+      }
+      var toGroup = (store.groups || []).find(function (g) {
+        return Number(g.id) === nextId;
+      });
+      busy = true;
+      api('/api/products/' + moveProductId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupId: nextId })
+      }).then(function () {
+        say('"' + product.name + '" → ' + ((toGroup && toGroup.name) || 'qrup'), 'ok');
+        closeMoveGroupModal();
+        return load();
+      }).catch(function (error) {
+        say(error.message, 'err');
+      }).then(function () {
+        busy = false;
+      });
+    });
+  }
 
   load();
 })();

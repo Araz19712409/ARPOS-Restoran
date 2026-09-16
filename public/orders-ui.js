@@ -1256,7 +1256,7 @@
       if (item.image) {
         var img = document.createElement('img');
         img.src = item.image;
-        img.alt = item.name;
+        img.alt = item.name || ('Mal #' + item.id);
         img.onerror = function () {
           if (window.PosGroupIcons) {
             window.PosGroupIcons.mount(photo, group || '');
@@ -1266,8 +1266,10 @@
       } else if (window.PosGroupIcons) {
         window.PosGroupIcons.mount(photo, group || '');
       }
-      card.querySelector('h3').textContent = item.name + (item.allergens ? ' ⚠' : '');
-      card.title = item.allergens || item.name;
+      var label = String(item.name || '').trim() || ('Mal #' + item.id);
+      var titleEl = card.querySelector('h3');
+      titleEl.textContent = label + (item.allergens ? ' ⚠' : '');
+      card.title = item.allergens ? (label + ' — ' + item.allergens) : label;
       card.querySelector('.price').textContent = Number(livePrice(item)).toFixed(2) + ' AZN' +
         (hasOptions(item) ? ' · seçim' : '');
       bindFavLongPress(card, item);

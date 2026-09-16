@@ -1486,6 +1486,7 @@ app.put('/api/products/:id', function (req, res) {
     if (!product) {
       reject(404, 'Məhsul tapılmadı.');
     }
+    const groupMove = { changed: false, oldName: '', newName: '' };
     if (body.name) {
       product.name = sanitize(body.name, 60);
     }
@@ -1495,6 +1496,12 @@ app.put('/api/products/:id', function (req, res) {
       if (!group) {
         reject(400, 'Qrup tapılmadı.');
       }
+      const oldGroup = store.groups.find(function (g) {
+        return g.id === product.groupId;
+      });
+      groupMove.oldName = (oldGroup && oldGroup.name) || '';
+      groupMove.newName = group.name || '';
+      groupMove.changed = Number(product.groupId) !== groupId;
       product.groupId = groupId;
     }
     if (body.stationId != null) {
@@ -1588,7 +1595,7 @@ app.put('/api/products/:id', function (req, res) {
       }
     }
     catalog.writeCatalog(store);
-    return { product: product, body: body };
+    return { product: product, body: body, groupMove: groupMove };
   }).then(function (result) {
     const product = result.product;
     const body = result.body;
@@ -1597,6 +1604,10 @@ app.put('/api/products/:id', function (req, res) {
     }
     if (body.soldOut != null) {
       audit(req, 'block', (product.soldOut ? '86: ' : 'Var: ') + product.name);
+    }
+    if (result.groupMove && result.groupMove.changed) {
+      audit(req, 'product', '"' + product.name + '" qrup dəyişdi: ' +
+        result.groupMove.oldName + ' → ' + result.groupMove.newName);
     }
     res.json({ success: true, data: product });
   }).catch(function (error) {

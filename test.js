@@ -2056,7 +2056,7 @@ test('katalog maya strip; void/endirim payments blok', function () {
   assert.ok(ui.indexOf("can('orders.void') && !(order.payments && order.payments.length)") >= 0);
   assert.ok(ui.indexOf("can('orders.discount') && !(order.payments && order.payments.length)") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=36') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=37') >= 0);
   const prodJs = fs.readFileSync(path.join(__dirname, 'public', 'products.js'), 'utf8');
   assert.ok(prodJs.indexOf('/api/catalog/manage') >= 0);
 });
@@ -2240,7 +2240,7 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(foot.indexOf('id="paid-receipts-btn"') >= 0);
   assert.ok(foot.indexOf('id="pay-open"') >= 0);
   assert.ok(foot.indexOf('id="accept-order"') >= 0);
-  assert.ok(html.indexOf('orders.css?v=28') >= 0);
+  assert.ok(html.indexOf('orders.css?v=29') >= 0);
   assert.ok(html.indexOf('id="paid-receipts-modal"') >= 0);
   assert.ok(html.indexOf('orders-pay.js?v=4') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
@@ -2254,6 +2254,38 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(css.indexOf('.paid-receipts-card') >= 0);
   assert.ok(css.indexOf('.paid-receipts-card') >= 0 && css.indexOf('background: #2c261f') >= 0);
   assert.ok(css.indexOf('[data-zone="floor"] .sec-actions') >= 0 || css.indexOf('.sec-actions') >= 0);
+});
+
+test('sifariş məhsul kartı: compact ad+qiymət', function () {
+  const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
+  assert.ok(css.indexOf('--icon-size') >= 0);
+  assert.ok(css.indexOf('--card-min-h') >= 0);
+  assert.ok(css.indexOf('-webkit-line-clamp: 2') >= 0);
+  assert.ok(css.indexOf('aspect-ratio: 4 / 3') < 0);
+  assert.ok(css.indexOf('.order-card .price') >= 0);
+  assert.ok(css.indexOf('color: #e2b65a') >= 0);
+  const cardBlock = css.slice(css.indexOf('.order-card {'), css.indexOf('.order-card .photo {'));
+  assert.ok(cardBlock.indexOf('display: flex') >= 0);
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(ui.indexOf("Mal #' + item.id") >= 0);
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
+  assert.ok(html.indexOf('orders.css?v=29') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=37') >= 0);
+});
+
+test('məhsul qrupa keçir: modal + PUT groupId', function () {
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'products.html'), 'utf8');
+  assert.ok(html.indexOf('id="move-group-modal"') >= 0);
+  assert.ok(html.indexOf('Qrupa keçir') >= 0);
+  assert.ok(html.indexOf('products.js?v=7') >= 0);
+  assert.ok(html.indexOf('products.css?v=2') >= 0);
+  const js = fs.readFileSync(path.join(__dirname, 'public', 'products.js'), 'utf8');
+  assert.ok(js.indexOf('openMoveGroupModal') >= 0);
+  assert.ok(js.indexOf("JSON.stringify({ groupId: nextId })") >= 0);
+  assert.ok(js.indexOf('Qrupa keçir') >= 0);
+  const serverSrc = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  assert.ok(serverSrc.indexOf('qrup dəyişdi') >= 0);
+  assert.ok(serverSrc.indexOf('groupMove') >= 0);
 });
 
 test('satış çeki printCopies 1|2; deliverReceipt override', function () {
@@ -2396,7 +2428,7 @@ test('PWA ofisiant: manifest mode=waiter; waiter-mode hook', function () {
   assert.ok(html.indexOf('arpos-mode') >= 0);
   assert.ok(html.indexOf('waiter-mode') >= 0);
   assert.ok(html.indexOf('apple-mobile-web-app-capable') >= 0);
-  assert.ok(html.indexOf('orders-ui.js?v=36') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=37') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
   assert.ok(css.indexOf('.waiter-mode') >= 0);
   assert.ok(css.indexOf('.waiter-mode .order-zones') >= 0);

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin — Məhsullar</title>
   <link rel="stylesheet" href="app.css?v=22">
-  <link rel="stylesheet" href="products.css">
+  <link rel="stylesheet" href="products.css?v=2">
 </head>
 <body class="catalog-page" data-need="products.edit">
   <header class="top">
@@ -175,12 +175,28 @@
     </form>
   </div>
 
+  <div id="move-group-modal" class="modal hidden">
+    <form id="move-group-form" class="modal-card move-group-card">
+      <h3>Qrupa keçir</h3>
+      <label>Məhsul
+        <input id="move-group-product" type="text" readonly>
+      </label>
+      <label>Yeni qrup
+        <select id="move-group-select" required></select>
+      </label>
+      <div class="modal-actions">
+        <button id="move-group-cancel" type="button">Ləğv</button>
+        <button class="gold" type="submit">Keçir</button>
+      </div>
+    </form>
+  </div>
+
   <script src="log-client.js"></script>
   <script src="confirm.js"></script>
   <script src="offline.js"></script>
   <script src="dom.js"></script>
   <script src="nav.js?v=2"></script>
   <script src="group-icons.js?v=3"></script>
-  <script src="products.js?v=6"></script>
+  <script src="products.js?v=7"></script>
 </body>
 </html>
