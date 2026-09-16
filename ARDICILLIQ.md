@@ -224,6 +224,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 217. [x] 1.2.74 — Ofisiant axını + masa sahibliyi (`orders.takeover`)
 218. [x] 1.2.75 — Waiter desktop skin + səbət strip həmişə
 219. [x] 1.2.76 — PC sifariş: wizard axın + çertyoj map + premium
+220. [x] 1.2.77 — Zal kompakt toolbar + fit-to-screen / horizontal map
 215. [x] 1.2.71 — Zal/menyu scroll oxları qızılı görünən
 214. [x] 1.2.70 — Sağ çek/səbət premium (ad×miqdar+məbləğ)
 213. [x] 1.2.69 — Sifariş: sticky/fav, mənim masalarım, scroll oxları

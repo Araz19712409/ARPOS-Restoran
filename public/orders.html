@@ -13,7 +13,7 @@
   <title>Sifariş</title>
   <link rel="stylesheet" href="app.css?v=22">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css?v=36">
+  <link rel="stylesheet" href="orders.css?v=37">
   <link rel="stylesheet" href="dates.css">
 </head>
 <body class="order-page order-wizard" data-zone="floor">
@@ -81,19 +81,21 @@
       <h2>Zal</h2>
       <div id="floor-tabs" class="group-tabs"></div>
     </div>
-    <div class="floor-tools">
-      <input id="table-search" type="search" placeholder="Masa və ya zal axtar..." maxlength="40">
-      <div id="table-filters" class="table-filters">
-        <button type="button" data-filter="all" class="active">Hamısı</button>
-        <button type="button" data-filter="empty">Boş</button>
-        <button type="button" data-filter="reserved">Rezerv</button>
-        <button type="button" data-filter="busy">Hesab</button>
-        <button type="button" data-filter="mine" id="filter-mine" hidden>Mənim masalarım</button>
-      </div>
-      <div class="table-filters floor-extra">
-        <button id="new-takeaway" type="button">Takeaway</button>
-        <button id="new-delivery" type="button">Çatdırılma</button>
-        <button id="waitlist-open" type="button">Növbə</button>
+    <div class="floor-tools floor-toolbar">
+      <div class="floor-toolbar-row">
+        <input id="table-search" type="search" placeholder="Axtar..." maxlength="40" aria-label="Masa axtar">
+        <div id="table-filters" class="table-filters floor-chips">
+          <button type="button" data-filter="all" class="active">Hamısı</button>
+          <button type="button" data-filter="empty">Boş</button>
+          <button type="button" data-filter="reserved">Rezerv</button>
+          <button type="button" data-filter="busy">Hesab</button>
+          <button type="button" data-filter="mine" id="filter-mine" hidden>Mənim</button>
+        </div>
+        <div class="table-filters floor-extra floor-chips">
+          <button id="new-takeaway" type="button" title="Takeaway">Götür</button>
+          <button id="new-delivery" type="button" title="Çatdırılma">Çatdır</button>
+          <button id="waitlist-open" type="button" title="Növbə">Növbə</button>
+        </div>
       </div>
     </div>
     <div class="floor-scroll-host">
@@ -585,6 +587,6 @@
   <script src="orders-zones.js?v=3"></script>
   <script src="orders-shift.js?v=4"></script>
   <script src="orders-pay.js?v=4"></script>
-  <script src="orders-ui.js?v=43"></script>
+  <script src="orders-ui.js?v=44"></script>
 </body>
 </html>

@@ -309,7 +309,7 @@
     var show = n > 0;
     btn.hidden = !show;
     btn.disabled = !show;
-    btn.textContent = show ? ('Mənim masalarım (' + n + ')') : 'Mənim masalarım';
+    btn.textContent = show ? ('Mənim (' + n + ')') : 'Mənim';
     if (!show && tableFilter === 'mine') {
       tableFilter = 'all';
       document.querySelectorAll('#table-filters button').forEach(function (item) {
@@ -1215,11 +1215,89 @@
     });
   }
 
+  function collectFloorRoomBoxes(list, q) {
+    var boxes = [];
+    list.forEach(function (room) {
+      var roomTables = roomTablesFiltered(room, q);
+      if (!roomTables.length && tableFilter !== 'all') {
+        return;
+      }
+      var rx = Math.max(0, Number(room.x) || 0);
+      var ry = Math.max(0, Number(room.y) || 0);
+      var rw = Math.max(180, Number(room.w) || 260);
+      var rh = Math.max(140, Number(room.h) || 180);
+      roomTables.forEach(function (table) {
+        var tw = Math.max(64, Number(table.w) || 80);
+        var th = Math.max(64, Number(table.h) || 80);
+        rw = Math.max(rw, (Number(table.x) || 0) + tw + 20);
+        rh = Math.max(rh, (Number(table.y) || 0) + th + 36);
+      });
+      boxes.push({
+        room: room,
+        tables: roomTables,
+        x: rx,
+        y: ry,
+        w: rw,
+        h: rh
+      });
+    });
+    return boxes;
+  }
+
+  function packRoomsHorizontal(boxes) {
+    var gap = 14;
+    var x = 10;
+    var y = 10;
+    var maxH = 0;
+    boxes.forEach(function (box) {
+      box.x = x;
+      box.y = y;
+      x += box.w + gap;
+      maxH = Math.max(maxH, box.h);
+    });
+    return {
+      mapW: Math.max(320, x + 6),
+      mapH: Math.max(200, maxH + 20)
+    };
+  }
+
+  function naturalMapSize(boxes) {
+    var mapW = 320;
+    var mapH = 200;
+    boxes.forEach(function (box) {
+      mapW = Math.max(mapW, box.x + box.w + 24);
+      mapH = Math.max(mapH, box.y + box.h + 24);
+    });
+    return { mapW: mapW, mapH: mapH };
+  }
+
+  function fitFloorMap(board, map, naturalW, naturalH) {
+    var host = el('floor-scroll') || board.parentElement;
+    var viewW = Math.max(120, (host && host.clientWidth) || board.clientWidth || 800);
+    var viewH = Math.max(120, (host && host.clientHeight) || 480);
+    var pad = 8;
+    var scale = Math.min((viewW - pad) / naturalW, (viewH - pad) / naturalH);
+    if (!Number.isFinite(scale) || scale <= 0) {
+      scale = 1;
+    }
+    scale = Math.min(Math.max(scale, 0.28), 1.2);
+    map.style.width = naturalW + 'px';
+    map.style.height = naturalH + 'px';
+    map.style.transformOrigin = 'top left';
+    map.style.transform = 'scale(' + scale + ')';
+    board.style.width = Math.ceil(naturalW * scale) + 'px';
+    board.style.height = Math.ceil(naturalH * scale) + 'px';
+    board.style.maxWidth = '100%';
+    board.style.overflow = 'hidden';
+    return scale;
+  }
+
   function renderFloor() {
     var tabs = document.getElementById('floor-tabs');
     var board = document.getElementById('table-board');
     tabs.innerHTML = '';
     board.innerHTML = '';
+    board.removeAttribute('style');
     renderServiceBoard();
     var nowMs = Date.now();
     floors.forEach(function (floor) {
@@ -1242,52 +1320,50 @@
       board.className = 'table-board floor-map';
       var map = document.createElement('div');
       map.className = 'floor-map-canvas';
-      var mapW = 960;
-      var mapH = 640;
-      list.forEach(function (room) {
-        var roomTables = roomTablesFiltered(room, q);
-        if (!roomTables.length && tableFilter !== 'all') {
-          return;
-        }
-        shown += 1;
-        var rx = Math.max(0, Number(room.x) || 0);
-        var ry = Math.max(0, Number(room.y) || 0);
-        var rw = Math.max(200, Number(room.w) || 280);
-        var rh = Math.max(160, Number(room.h) || 200);
-        roomTables.forEach(function (table) {
-          var tw = Math.max(64, Number(table.w) || 80);
-          var th = Math.max(64, Number(table.h) || 80);
-          rw = Math.max(rw, (Number(table.x) || 0) + tw + 24);
-          rh = Math.max(rh, (Number(table.y) || 0) + th + 40);
-        });
-        mapW = Math.max(mapW, rx + rw + 40);
-        mapH = Math.max(mapH, ry + rh + 40);
+      var boxes = collectFloorRoomBoxes(list, q);
+      shown = boxes.length;
+      var host = el('floor-scroll');
+      var viewW = Math.max(120, (host && host.clientWidth) || 800);
+      var viewH = Math.max(120, (host && host.clientHeight) || 480);
+      var natural = naturalMapSize(boxes);
+      var useHorizontal = boxes.length > 1 && (
+        natural.mapH > natural.mapW * 0.9 ||
+        natural.mapH > viewH * 1.05 ||
+        natural.mapW / Math.max(1, natural.mapH) < viewW / Math.max(1, viewH) * 0.75
+      );
+      var size = useHorizontal ? packRoomsHorizontal(boxes) : natural;
+      if (useHorizontal) {
+        map.classList.add('floor-map-horizontal');
+      }
+      boxes.forEach(function (box) {
         var article = document.createElement('article');
-        article.className = 'floor-map-room' + (roomTables.length ? '' : ' empty');
-        article.style.left = rx + 'px';
-        article.style.top = ry + 'px';
-        article.style.width = rw + 'px';
-        article.style.height = rh + 'px';
+        article.className = 'floor-map-room' + (box.tables.length ? '' : ' empty');
+        article.style.left = box.x + 'px';
+        article.style.top = box.y + 'px';
+        article.style.width = box.w + 'px';
+        article.style.height = box.h + 'px';
         var title = document.createElement('div');
         title.className = 'floor-map-room-title';
-        title.textContent = room.name;
+        title.textContent = box.room.name;
         article.appendChild(title);
-        roomTables.forEach(function (table) {
+        box.tables.forEach(function (table) {
           var btn = buildTableTile(table, nowMs);
           btn.className += ' floor-map-tile';
-          var tw = Math.max(72, Number(table.w) || 88);
-          var th = Math.max(72, Number(table.h) || 88);
+          var tw = Math.max(68, Number(table.w) || 84);
+          var th = Math.max(68, Number(table.h) || 84);
           btn.style.left = Math.max(8, Number(table.x) || 8) + 'px';
-          btn.style.top = Math.max(28, Number(table.y) || 28) + 'px';
+          btn.style.top = Math.max(26, Number(table.y) || 26) + 'px';
           btn.style.width = tw + 'px';
           btn.style.height = th + 'px';
           article.appendChild(btn);
         });
         map.appendChild(article);
       });
-      map.style.width = mapW + 'px';
-      map.style.height = mapH + 'px';
       board.appendChild(map);
+      window.setTimeout(function () {
+        fitFloorMap(board, map, size.mapW, size.mapH);
+        refreshColScrolls();
+      }, 0);
     } else {
       board.className = 'table-board';
       list.forEach(function (room) {
@@ -3546,11 +3622,21 @@
   bindColScroll('product-grid', 'menu-scroll-up', 'menu-scroll-down');
   bindColScroll('check-list', 'check-scroll-up', 'check-scroll-down');
   var floorMapMq = window.matchMedia ? window.matchMedia('(min-width: 901px)') : null;
-  if (floorMapMq) {
-    var onFloorMapMq = function () {
-      if (isOrderWizard() && waiter) {
+  var floorFitTimer = 0;
+  function scheduleFloorFit() {
+    if (floorFitTimer) {
+      window.clearTimeout(floorFitTimer);
+    }
+    floorFitTimer = window.setTimeout(function () {
+      floorFitTimer = 0;
+      if (isOrderWizard() && waiter && useFloorMap()) {
         renderFloor();
       }
+    }, 120);
+  }
+  if (floorMapMq) {
+    var onFloorMapMq = function () {
+      scheduleFloorFit();
     };
     if (floorMapMq.addEventListener) {
       floorMapMq.addEventListener('change', onFloorMapMq);
@@ -3558,6 +3644,7 @@
       floorMapMq.addListener(onFloorMapMq);
     }
   }
+  window.addEventListener('resize', scheduleFloorFit);
   window.addEventListener('pagehide', flushScale);
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') {
