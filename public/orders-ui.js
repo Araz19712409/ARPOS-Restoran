@@ -26,6 +26,15 @@
     return !!(document.body && document.body.classList.contains('waiter-mode'));
   }
 
+  function isOrderWizard() {
+    return !!(document.body && document.body.classList.contains('order-wizard'));
+  }
+
+  function useFloorMap() {
+    return isOrderWizard() && window.matchMedia &&
+      window.matchMedia('(min-width: 901px)').matches;
+  }
+
   function setText(id, text) {
     if (Dom.setText) {
       Dom.setText(id, text);
@@ -736,7 +745,7 @@
     pendingGuestAddress = existing ? (existing.guestAddress || '') : '';
     pendingCourier = existing ? (existing.courierName || '') : '';
     say('');
-    if (id && isWaiterMode()) {
+    if (id && isOrderWizard()) {
       setOrderZone('groups');
     } else if (id && (window.matchMedia && window.matchMedia('(max-width: 980px)').matches)) {
       setOrderZone('menu');
@@ -812,7 +821,7 @@
       window.sessionStorage.setItem('posWaiter', JSON.stringify(data));
       hideLock();
       drawWaiterLine();
-      if (isWaiterMode()) {
+      if (isOrderWizard()) {
         setOrderZone('floor');
       }
       ensureTerminal(false);
@@ -1114,6 +1123,98 @@
     });
   }
 
+  function bindTableTileClick(btn, table) {
+    btn.addEventListener('click', function () {
+      if (!waiter) {
+        showLock();
+        return;
+      }
+      if (!terminal) {
+        say('Terminal seçin.', 'err');
+        ensureTerminal(true);
+        return;
+      }
+      var other = tableLock(table.id);
+      if (other && other.terminalId !== terminal.id) {
+        say('Bu masa ' + other.terminalName + '-dədir.', 'err');
+        return;
+      }
+      selectSeat(table.id).catch(function (error) {
+        say(error.message, 'err');
+        return load();
+      });
+    });
+  }
+
+  function buildTableTile(table, nowMs) {
+    var state = tableState(table);
+    var open = state === 'busy' ? openOrderForTable(table.id) : null;
+    var age = open ? busyAgeParts(open, nowMs) : { cls: '', text: '' };
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'table-tile '
+      + (table.shape === 'round' ? 'round ' : '')
+      + state
+      + (age.cls ? ' ' + age.cls : '')
+      + (table.id === tableId ? ' selected' : '');
+    var label = document.createElement('span');
+    label.textContent = table.name || ('Masa ' + table.number);
+    var hold = tableLock(table.id);
+    var small = document.createElement('small');
+    if (hold && terminal && hold.terminalId !== terminal.id) {
+      small.textContent = hold.terminalName;
+      btn.className += ' locked';
+    } else {
+      var linked = orders.some(function (item) {
+        return item.status === 'open' && (item.linkedTableIds || []).indexOf(table.id) !== -1;
+      });
+      if (state === 'busy') {
+        small.textContent = linked
+          ? (age.text ? ('Birləşib · ' + age.text) : 'Birləşib')
+          : (age.text || 'Hesab');
+      } else if (state === 'reserved') {
+        small.textContent = 'Rezerv';
+      } else {
+        small.textContent = table.capacity + ' nəfər';
+      }
+    }
+    btn.appendChild(label);
+    btn.appendChild(small);
+    if (open && ownerLabel(open)) {
+      var who = document.createElement('small');
+      who.className = 'tile-waiter';
+      who.textContent = 'Ofisiant: ' + ownerLabel(open);
+      btn.appendChild(who);
+      if (isForeignOpen(open) && !canTakeOverTable()) {
+        btn.className += ' foreign-waiter';
+      }
+    }
+    bindTableTileClick(btn, table);
+    return btn;
+  }
+
+  function roomTablesFiltered(room, q) {
+    return tables.filter(function (item) {
+      if (item.roomId !== room.id) {
+        return false;
+      }
+      var state = tableState(item);
+      if (tableFilter === 'mine') {
+        if (!isMyOpenTable(item)) {
+          return false;
+        }
+      } else if (tableFilter !== 'all' && state !== tableFilter) {
+        return false;
+      }
+      if (!q) {
+        return true;
+      }
+      return normalize(item.name).indexOf(q) !== -1
+        || normalize(room.name).indexOf(q) !== -1
+        || String(item.number).indexOf(q) !== -1;
+    });
+  }
+
   function renderFloor() {
     var tabs = document.getElementById('floor-tabs');
     var board = document.getElementById('table-board');
@@ -1136,124 +1237,98 @@
     var q = normalize(tableQuery);
     var list = rooms.filter(function (room) { return room.floorId === floorId; });
     var shown = 0;
-    list.forEach(function (room) {
-      var roomTables = tables.filter(function (item) {
-        if (item.roomId !== room.id) {
-          return false;
+    var mapMode = useFloorMap();
+    if (mapMode) {
+      board.className = 'table-board floor-map';
+      var map = document.createElement('div');
+      map.className = 'floor-map-canvas';
+      var mapW = 960;
+      var mapH = 640;
+      list.forEach(function (room) {
+        var roomTables = roomTablesFiltered(room, q);
+        if (!roomTables.length && tableFilter !== 'all') {
+          return;
         }
-        var state = tableState(item);
-        if (tableFilter === 'mine') {
-          if (!isMyOpenTable(item)) {
-            return false;
-          }
-        } else if (tableFilter !== 'all' && state !== tableFilter) {
-          return false;
-        }
-        if (!q) {
-          return true;
-        }
-        return normalize(item.name).indexOf(q) !== -1
-          || normalize(room.name).indexOf(q) !== -1
-          || String(item.number).indexOf(q) !== -1;
-      });
-      if (!roomTables.length) {
-        return;
-      }
-      shown += 1;
-      var section = document.createElement('section');
-      section.className = 'hall-section';
-      section.setAttribute('data-room-id', String(room.id));
-      var heading = document.createElement('h3');
-      heading.className = 'hall-toggle';
-      heading.setAttribute('role', 'button');
-      heading.tabIndex = 0;
-      heading.textContent = room.name + ' · ' + roomTables.length;
-      var collapsed = !!hallCollapseMap()[String(room.id)];
-      if (collapsed) {
-        section.classList.add('collapsed');
-      }
-      heading.addEventListener('click', function () {
-        section.classList.toggle('collapsed');
-        setHallCollapsed(room.id, section.classList.contains('collapsed'));
-        refreshColScrolls();
-      });
-      heading.addEventListener('keydown', function (event) {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          heading.click();
-        }
-      });
-      var grid = document.createElement('div');
-      grid.className = 'table-grid';
-      roomTables.forEach(function (table) {
-        var state = tableState(table);
-        var open = state === 'busy' ? openOrderForTable(table.id) : null;
-        var age = open ? busyAgeParts(open, nowMs) : { cls: '', text: '' };
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'table-tile '
-          + (table.shape === 'round' ? 'round ' : '')
-          + state
-          + (age.cls ? ' ' + age.cls : '')
-          + (table.id === tableId ? ' selected' : '');
-        var label = document.createElement('span');
-        label.textContent = table.name || ('Masa ' + table.number);
-        var hold = tableLock(table.id);
-        var small = document.createElement('small');
-        if (hold && terminal && hold.terminalId !== terminal.id) {
-          small.textContent = hold.terminalName;
-          btn.className += ' locked';
-        } else {
-          var linked = orders.some(function (item) {
-            return item.status === 'open' && (item.linkedTableIds || []).indexOf(table.id) !== -1;
-          });
-          if (state === 'busy') {
-            small.textContent = linked
-              ? (age.text ? ('Birləşib · ' + age.text) : 'Birləşib')
-              : (age.text || 'Hesab');
-          } else if (state === 'reserved') {
-            small.textContent = 'Rezerv';
-          } else {
-            small.textContent = table.capacity + ' nəfər';
-          }
-        }
-        btn.appendChild(label);
-        btn.appendChild(small);
-        if (open && ownerLabel(open)) {
-          var who = document.createElement('small');
-          who.className = 'tile-waiter';
-          who.textContent = 'Ofisiant: ' + ownerLabel(open);
-          btn.appendChild(who);
-          if (isForeignOpen(open) && !canTakeOverTable()) {
-            btn.className += ' foreign-waiter';
-          }
-        }
-        btn.addEventListener('click', function () {
-          if (!waiter) {
-            showLock();
-            return;
-          }
-          if (!terminal) {
-            say('Terminal seçin.', 'err');
-            ensureTerminal(true);
-            return;
-          }
-          var other = tableLock(table.id);
-          if (other && other.terminalId !== terminal.id) {
-            say('Bu masa ' + other.terminalName + '-dədir.', 'err');
-            return;
-          }
-          selectSeat(table.id).catch(function (error) {
-            say(error.message, 'err');
-            return load();
-          });
+        shown += 1;
+        var rx = Math.max(0, Number(room.x) || 0);
+        var ry = Math.max(0, Number(room.y) || 0);
+        var rw = Math.max(200, Number(room.w) || 280);
+        var rh = Math.max(160, Number(room.h) || 200);
+        roomTables.forEach(function (table) {
+          var tw = Math.max(64, Number(table.w) || 80);
+          var th = Math.max(64, Number(table.h) || 80);
+          rw = Math.max(rw, (Number(table.x) || 0) + tw + 24);
+          rh = Math.max(rh, (Number(table.y) || 0) + th + 40);
         });
-        grid.appendChild(btn);
+        mapW = Math.max(mapW, rx + rw + 40);
+        mapH = Math.max(mapH, ry + rh + 40);
+        var article = document.createElement('article');
+        article.className = 'floor-map-room' + (roomTables.length ? '' : ' empty');
+        article.style.left = rx + 'px';
+        article.style.top = ry + 'px';
+        article.style.width = rw + 'px';
+        article.style.height = rh + 'px';
+        var title = document.createElement('div');
+        title.className = 'floor-map-room-title';
+        title.textContent = room.name;
+        article.appendChild(title);
+        roomTables.forEach(function (table) {
+          var btn = buildTableTile(table, nowMs);
+          btn.className += ' floor-map-tile';
+          var tw = Math.max(72, Number(table.w) || 88);
+          var th = Math.max(72, Number(table.h) || 88);
+          btn.style.left = Math.max(8, Number(table.x) || 8) + 'px';
+          btn.style.top = Math.max(28, Number(table.y) || 28) + 'px';
+          btn.style.width = tw + 'px';
+          btn.style.height = th + 'px';
+          article.appendChild(btn);
+        });
+        map.appendChild(article);
       });
-      section.appendChild(heading);
-      section.appendChild(grid);
-      board.appendChild(section);
-    });
+      map.style.width = mapW + 'px';
+      map.style.height = mapH + 'px';
+      board.appendChild(map);
+    } else {
+      board.className = 'table-board';
+      list.forEach(function (room) {
+        var roomTables = roomTablesFiltered(room, q);
+        if (!roomTables.length) {
+          return;
+        }
+        shown += 1;
+        var section = document.createElement('section');
+        section.className = 'hall-section';
+        section.setAttribute('data-room-id', String(room.id));
+        var heading = document.createElement('h3');
+        heading.className = 'hall-toggle';
+        heading.setAttribute('role', 'button');
+        heading.tabIndex = 0;
+        heading.textContent = room.name + ' · ' + roomTables.length;
+        var collapsed = !!hallCollapseMap()[String(room.id)];
+        if (collapsed) {
+          section.classList.add('collapsed');
+        }
+        heading.addEventListener('click', function () {
+          section.classList.toggle('collapsed');
+          setHallCollapsed(room.id, section.classList.contains('collapsed'));
+          refreshColScrolls();
+        });
+        heading.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            heading.click();
+          }
+        });
+        var grid = document.createElement('div');
+        grid.className = 'table-grid';
+        roomTables.forEach(function (table) {
+          grid.appendChild(buildTableTile(table, nowMs));
+        });
+        section.appendChild(heading);
+        section.appendChild(grid);
+        board.appendChild(section);
+      });
+    }
     if (!shown) {
       board.innerHTML = '<p class="hint">Masa tapılmadı.</p>';
     }
@@ -1283,7 +1358,7 @@
         document.getElementById('order-search').value = '';
         renderProducts();
         renderGroups();
-        if (isWaiterMode()) {
+        if (isOrderWizard()) {
           setOrderZone('menu');
         }
       });
@@ -1875,7 +1950,7 @@
     for (i = 0; i < pending.length; i += 1) {
       n += Math.max(0, Number(pending[i].qty) || 0);
     }
-    var show = isWaiterMode() && n > 0;
+    var show = isOrderWizard() && n > 0;
     badge.hidden = !show;
     badge.classList.toggle('hidden', !show);
     setText('waiter-basket-badge', show ? ('Səbət · ' + n) : 'Səbət');
@@ -2022,7 +2097,7 @@
     if (!sent.length && !pending.length) {
       var empty = document.createElement('p');
       empty.className = 'hint';
-      if (isWaiterMode()) {
+      if (isOrderWizard()) {
         empty.textContent = tableId ? 'Səbət boş' : 'Masa seçin.';
       } else {
         empty.textContent = tableId ? 'Məhsula basın.' : 'Masa seçin.';
@@ -3470,6 +3545,19 @@
   bindColScroll('floor-scroll', 'floor-scroll-up', 'floor-scroll-down');
   bindColScroll('product-grid', 'menu-scroll-up', 'menu-scroll-down');
   bindColScroll('check-list', 'check-scroll-up', 'check-scroll-down');
+  var floorMapMq = window.matchMedia ? window.matchMedia('(min-width: 901px)') : null;
+  if (floorMapMq) {
+    var onFloorMapMq = function () {
+      if (isOrderWizard() && waiter) {
+        renderFloor();
+      }
+    };
+    if (floorMapMq.addEventListener) {
+      floorMapMq.addEventListener('change', onFloorMapMq);
+    } else if (floorMapMq.addListener) {
+      floorMapMq.addListener(onFloorMapMq);
+    }
+  }
   window.addEventListener('pagehide', flushScale);
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') {

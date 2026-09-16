@@ -2057,7 +2057,7 @@ test('katalog maya strip; void/endirim payments blok', function () {
   assert.ok(ui.indexOf('order.payments && order.payments.length') >= 0);
   assert.ok(ui.indexOf("can('orders.discount')") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=42') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=43') >= 0);
   const prodJs = fs.readFileSync(path.join(__dirname, 'public', 'products.js'), 'utf8');
   assert.ok(prodJs.indexOf('/api/catalog/manage') >= 0);
 });
@@ -2242,7 +2242,7 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(foot.indexOf('id="paid-receipts-btn"') >= 0);
   assert.ok(foot.indexOf('id="pay-open"') >= 0);
   assert.ok(foot.indexOf('id="accept-order"') >= 0);
-  assert.ok(html.indexOf('orders.css?v=35') >= 0);
+  assert.ok(html.indexOf('orders.css?v=36') >= 0);
   assert.ok(html.indexOf('id="paid-receipts-modal"') >= 0);
   assert.ok(html.indexOf('orders-pay.js?v=4') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
@@ -2271,8 +2271,8 @@ test('sifariş məhsul kartı: compact ad+qiymət', function () {
   const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
   assert.ok(ui.indexOf("Mal #' + item.id") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders.css?v=35') >= 0);
-  assert.ok(html.indexOf('orders-ui.js?v=42') >= 0);
+  assert.ok(html.indexOf('orders.css?v=36') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=43') >= 0);
 });
 
 test('sifariş 1.2.69: sticky fav, mənim masalarım, scroll oxları', function () {
@@ -2318,8 +2318,8 @@ test('sağ çek premium: ad × miqdar + məbləğ', function () {
   assert.ok(css.indexOf('.line-amt') >= 0);
   assert.ok(css.indexOf('.stepper .step') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders.css?v=35') >= 0);
-  assert.ok(html.indexOf('orders-ui.js?v=42') >= 0);
+  assert.ok(html.indexOf('orders.css?v=36') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=43') >= 0);
 });
 
 test('məhsul qrupa keçir: modal + PUT groupId', function () {
@@ -2477,26 +2477,31 @@ test('PWA ofisiant: manifest mode=waiter; waiter-mode hook', function () {
   assert.ok(html.indexOf('arpos-mode') >= 0);
   assert.ok(html.indexOf('waiter-mode') >= 0);
   assert.ok(html.indexOf('apple-mobile-web-app-capable') >= 0);
-  assert.ok(html.indexOf('orders-ui.js?v=42') >= 0);
-  assert.ok(html.indexOf('orders-zones.js?v=2') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=43') >= 0);
+  assert.ok(html.indexOf('orders-zones.js?v=3') >= 0);
+  assert.ok(html.indexOf('order-wizard') >= 0);
   assert.ok(html.indexOf('id="order-back"') >= 0);
   assert.ok(html.indexOf('>Geri<') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
-  assert.ok(css.indexOf('.waiter-mode') >= 0);
-  assert.ok(css.indexOf('.waiter-mode .order-zones') >= 0);
+  assert.ok(css.indexOf('.order-wizard') >= 0);
+  assert.ok(css.indexOf('.order-wizard .order-zones') >= 0);
   assert.ok(css.indexOf('data-zone="groups"') >= 0);
   assert.ok(css.indexOf('.tile-waiter') >= 0);
   assert.ok(css.indexOf('.waiter-basket-badge') >= 0);
   assert.ok(css.indexOf('min-width: 901px') >= 0);
+  assert.ok(css.indexOf('.floor-map') >= 0);
   assert.ok(html.indexOf('id="waiter-basket-badge"') >= 0);
   const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
   assert.ok(ui.indexOf('function isWaiterMode') >= 0);
+  assert.ok(ui.indexOf('function isOrderWizard') >= 0);
+  assert.ok(ui.indexOf('function useFloorMap') >= 0);
   assert.ok(ui.indexOf("setOrderZone('groups')") >= 0);
   assert.ok(ui.indexOf('function confirmOpenForeign') >= 0);
   assert.ok(ui.indexOf('orders.takeover') >= 0);
   assert.ok(ui.indexOf('Ofisiant:') >= 0);
   assert.ok(ui.indexOf('function syncWaiterBasketBadge') >= 0);
   assert.ok(ui.indexOf('Səbət boş') >= 0);
+  assert.ok(ui.indexOf('floor-map-canvas') >= 0);
   assert.ok(ui.indexOf('isWaiterMode()') >= 0 && ui.indexOf('setWaiter(null)') >= 0);
   assert.ok(ui.indexOf('function refreshOrdersLight') >= 0);
   assert.ok(ui.indexOf('ORDERS_POLL_MS = 4000') >= 0);
@@ -2507,6 +2512,7 @@ test('PWA ofisiant: manifest mode=waiter; waiter-mode hook', function () {
   const zones = fs.readFileSync(path.join(__dirname, 'public', 'orders-zones.js'), 'utf8');
   assert.ok(zones.indexOf('orderZoneBack') >= 0);
   assert.ok(zones.indexOf("'groups'") >= 0);
+  assert.ok(zones.indexOf('order-wizard') >= 0);
   assert.ok(!fs.existsSync(path.join(__dirname, 'public', 'sw.js')));
 });
 
@@ -3066,7 +3072,7 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   });
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '1.2.75');
+  assert.strictEqual(require('./package.json').version, '1.2.76');
 });
 
 console.log('Bütün testlər keçdi.');

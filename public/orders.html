@@ -13,10 +13,10 @@
   <title>Sifariş</title>
   <link rel="stylesheet" href="app.css?v=22">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css?v=35">
+  <link rel="stylesheet" href="orders.css?v=36">
   <link rel="stylesheet" href="dates.css">
 </head>
-<body class="order-page" data-zone="floor">
+<body class="order-page order-wizard" data-zone="floor">
   <script>
     (function () {
       var q = '';
@@ -37,6 +37,8 @@
         document.documentElement.classList.add('waiter-mode');
         document.body.classList.add('waiter-mode');
       }
+      document.documentElement.classList.add('order-wizard');
+      document.body.classList.add('order-wizard');
     }());
   </script>
   <header class="top">
@@ -580,9 +582,9 @@
   <script src="dates.js"></script>
   <script src="group-icons.js?v=3"></script>
   <script src="money.js?v=1"></script>
-  <script src="orders-zones.js?v=2"></script>
+  <script src="orders-zones.js?v=3"></script>
   <script src="orders-shift.js?v=4"></script>
   <script src="orders-pay.js?v=4"></script>
-  <script src="orders-ui.js?v=42"></script>
+  <script src="orders-ui.js?v=43"></script>
 </body>
 </html>

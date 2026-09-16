@@ -4,6 +4,10 @@
       return;
     }
 
+    function isWizard() {
+      return !!(document.body && document.body.classList.contains('order-wizard'));
+    }
+
     function isWaiter() {
       return !!(document.body && document.body.classList.contains('waiter-mode'));
     }
@@ -13,7 +17,7 @@
       if (!back) {
         return;
       }
-      var show = isWaiter() && zone && zone !== 'floor';
+      var show = isWizard() && zone && zone !== 'floor';
       back.classList.toggle('hidden', !show);
       back.hidden = !show;
     }
@@ -25,7 +29,7 @@
         return;
       }
       var next = String(zone || 'floor');
-      if (isWaiter()) {
+      if (isWizard()) {
         if (next !== 'floor' && next !== 'groups' && next !== 'menu' && next !== 'check') {
           next = 'floor';
         }
@@ -69,7 +73,7 @@
           return;
         }
         var z = btn.getAttribute('data-zone');
-        if (isWaiter() && z === 'menu') {
+        if (isWizard() && z === 'menu') {
           setOrderZone('groups');
           return;
         }
