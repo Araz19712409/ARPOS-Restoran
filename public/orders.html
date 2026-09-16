@@ -13,7 +13,7 @@
   <title>Sifariş</title>
   <link rel="stylesheet" href="app.css?v=22">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css?v=40">
+  <link rel="stylesheet" href="orders.css?v=41">
   <link rel="stylesheet" href="dates.css">
 </head>
 <body class="order-page order-wizard" data-zone="floor">
@@ -112,13 +112,16 @@
         </div>
       </div>
     </div>
-    <div class="floor-scroll-host">
+    <div class="floor-scroll-host" id="floor-scroll-host">
       <button type="button" class="col-scroll-btn col-scroll-up" id="floor-scroll-up" aria-label="Zal yuxarı" hidden></button>
       <div class="floor-scroll" id="floor-scroll">
         <div id="service-board" class="table-grid"></div>
         <div id="table-board" class="table-board"></div>
       </div>
       <button type="button" class="col-scroll-btn col-scroll-down" id="floor-scroll-down" aria-label="Zal aşağı" hidden></button>
+      <div id="floor-drag-e" class="floor-map-handle floor-map-handle-e" role="separator" title="Yatay dartın" aria-label="Yatay dartın" hidden></div>
+      <div id="floor-drag-s" class="floor-map-handle floor-map-handle-s" role="separator" title="Şaquli dartın" aria-label="Şaquli dartın" hidden></div>
+      <div id="floor-drag-se" class="floor-map-handle floor-map-handle-se" role="separator" title="Yatay və şaquli dartın" aria-label="Yatay və şaquli dartın" hidden></div>
     </div>
   </aside>
   <div id="floor-resizer" class="floor-resizer" title="Eni dartın"></div>
@@ -601,6 +604,6 @@
   <script src="orders-zones.js?v=3"></script>
   <script src="orders-shift.js?v=4"></script>
   <script src="orders-pay.js?v=4"></script>
-  <script src="orders-ui.js?v=47"></script>
+  <script src="orders-ui.js?v=48"></script>
 </body>
 </html>

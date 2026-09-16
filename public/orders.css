@@ -2826,7 +2826,7 @@ html.waiter-mode .more-nav,
 
 .order-wizard .floor-map {
   position: relative;
-  overflow: visible;
+  overflow: hidden;
   min-height: 0;
   flex: 1 1 auto;
   width: 100%;
@@ -2838,45 +2838,59 @@ html.waiter-mode .more-nav,
   box-shadow: inset 0 0 0 1px rgba(255, 246, 232, 0.03);
 }
 
+.order-wizard .floor-scroll-host.floor-map-host {
+  padding-right: 18px;
+  padding-bottom: 18px;
+}
+
+.order-wizard .floor-scroll-host.floor-map-host .floor-scroll {
+  overflow: hidden !important;
+}
+
 .order-wizard .floor-map-handle {
   position: absolute;
-  z-index: 8;
-  background: rgba(196, 165, 116, 0.35);
-  border: 1px solid #c4a574;
+  z-index: 20;
+  background: #c4a574;
+  border: 1px solid #e2b65a;
   box-sizing: border-box;
   touch-action: none;
   user-select: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.order-wizard .floor-map-handle[hidden] {
+  display: none !important;
 }
 
 .order-wizard .floor-map-handle-e {
-  top: 10px;
-  right: -5px;
-  width: 12px;
-  bottom: 18px;
+  top: 8px;
+  right: 2px;
+  width: 16px;
+  bottom: 28px;
   cursor: ew-resize;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .order-wizard .floor-map-handle-s {
-  left: 10px;
-  right: 18px;
-  bottom: -5px;
-  height: 12px;
+  left: 8px;
+  right: 28px;
+  bottom: 2px;
+  height: 16px;
   cursor: ns-resize;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .order-wizard .floor-map-handle-se {
-  right: -6px;
-  bottom: -6px;
-  width: 18px;
-  height: 18px;
+  right: 2px;
+  bottom: 2px;
+  width: 22px;
+  height: 22px;
   cursor: nwse-resize;
-  border-radius: 5px;
-  background: #c4a574;
-  border-color: #e2b65a;
+  border-radius: 6px;
+  background: #e2b65a;
 }
 
+.order-wizard .floor-scroll-host.floor-map-dragging,
 .order-wizard .floor-map.floor-map-dragging {
   user-select: none;
 }

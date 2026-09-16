@@ -1400,7 +1400,7 @@
     var host = el('floor-scroll') || board.parentElement;
     var viewW = Math.max(120, (host && host.clientWidth) || board.clientWidth || 800);
     var viewH = Math.max(120, (host && host.clientHeight) || 480);
-    var pad = 10;
+    var pad = 16;
     var maxX = (viewW - pad) / Math.max(1, naturalW);
     var maxY = (viewH - pad) / Math.max(1, naturalH);
     if (!Number.isFinite(maxX) || maxX <= 0) {
@@ -1430,42 +1430,69 @@
     board.style.width = Math.ceil(naturalW * scaleX) + 'px';
     board.style.height = Math.ceil(naturalH * scaleY) + 'px';
     board.style.maxWidth = '100%';
-    board.style.overflow = 'visible';
+    board.style.overflow = 'hidden';
+    if (host) {
+      host.scrollLeft = 0;
+      host.scrollTop = 0;
+      host.style.overflow = 'hidden';
+    }
     return { scaleX: scaleX, scaleY: scaleY, uniform: uniform, maxX: maxX, maxY: maxY };
   }
 
+  function setFloorDragHandlesVisible(show) {
+    ['floor-drag-e', 'floor-drag-s', 'floor-drag-se'].forEach(function (id) {
+      var node = el(id);
+      if (node) {
+        node.hidden = !show;
+      }
+    });
+    var wrap = el('floor-scroll-host');
+    if (wrap) {
+      if (show) {
+        wrap.classList.add('floor-map-host');
+      } else {
+        wrap.classList.remove('floor-map-host');
+      }
+    }
+  }
+
+  var floorDragBound = false;
   function mountFloorMapDrag(board, map) {
     if (!board || !map) {
       return;
     }
-    Array.prototype.slice.call(board.querySelectorAll('.floor-map-handle')).forEach(function (node) {
-      node.parentNode.removeChild(node);
-    });
-    function makeHandle(kind, title) {
-      var h = document.createElement('div');
-      h.className = 'floor-map-handle floor-map-handle-' + kind;
-      h.setAttribute('role', 'separator');
-      h.setAttribute('aria-label', title);
-      h.title = title;
-      board.appendChild(h);
-      return h;
+    setFloorDragHandlesVisible(true);
+    if (floorDragBound) {
+      return;
     }
-    var handleE = makeHandle('e', 'Yatay dartın');
-    var handleS = makeHandle('s', 'Şaquli dartın');
-    var handleSe = makeHandle('se', 'Yatay və şaquli dartın');
+    floorDragBound = true;
 
-    function bindHandle(node, mode) {
+    function bindHandle(id, mode) {
+      var node = el(id);
+      if (!node) {
+        return;
+      }
       node.addEventListener('pointerdown', function (event) {
         if (event.button != null && event.button !== 0) {
           return;
         }
+        if (!useFloorMap()) {
+          return;
+        }
+        var liveBoard = el('table-board');
+        var liveMap = liveBoard && liveBoard.querySelector
+          ? liveBoard.querySelector('.floor-map-canvas')
+          : null;
+        if (!liveBoard || !liveMap) {
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
-        var nw = Number(map.getAttribute('data-nw'));
-        var nh = Number(map.getAttribute('data-nh'));
-        var uniform = Number(map.getAttribute('data-uniform'));
-        var maxX = Number(map.getAttribute('data-max-x'));
-        var maxY = Number(map.getAttribute('data-max-y'));
+        var nw = Number(liveMap.getAttribute('data-nw'));
+        var nh = Number(liveMap.getAttribute('data-nh'));
+        var uniform = Number(liveMap.getAttribute('data-uniform'));
+        var maxX = Number(liveMap.getAttribute('data-max-x'));
+        var maxY = Number(liveMap.getAttribute('data-max-y'));
         if (!Number.isFinite(nw) || !Number.isFinite(nh) || nw <= 0 || nh <= 0) {
           return;
         }
@@ -1482,13 +1509,22 @@
         var startClientY = event.clientY;
         var startPctX = floorMapScaleX;
         var startPctY = floorMapScaleY;
-        var startW = nw * uniform * (startPctX / 100);
-        var startH = nh * uniform * (startPctY / 100);
+        var startW = nw * Math.min(uniform * (startPctX / 100), maxX);
+        var startH = nh * Math.min(uniform * (startPctY / 100), maxY);
+        // Use actual rendered size if available
+        var renderedW = liveBoard.clientWidth || startW;
+        var renderedH = liveBoard.clientHeight || startH;
+        startW = renderedW;
+        startH = renderedH;
         var ptrId = event.pointerId;
         try {
           node.setPointerCapture(ptrId);
         } catch (err) { /* ignore */ }
-        board.classList.add('floor-map-dragging');
+        liveBoard.classList.add('floor-map-dragging');
+        var wrap = el('floor-scroll-host');
+        if (wrap) {
+          wrap.classList.add('floor-map-dragging');
+        }
 
         function onMove(ev) {
           if (ev.pointerId !== ptrId) {
@@ -1515,7 +1551,10 @@
           if (ev.pointerId !== ptrId) {
             return;
           }
-          board.classList.remove('floor-map-dragging');
+          liveBoard.classList.remove('floor-map-dragging');
+          if (wrap) {
+            wrap.classList.remove('floor-map-dragging');
+          }
           node.removeEventListener('pointermove', onMove);
           node.removeEventListener('pointerup', onUp);
           node.removeEventListener('pointercancel', onUp);
@@ -1531,9 +1570,9 @@
       });
     }
 
-    bindHandle(handleE, 'e');
-    bindHandle(handleS, 's');
-    bindHandle(handleSe, 'se');
+    bindHandle('floor-drag-e', 'e');
+    bindHandle('floor-drag-s', 's');
+    bindHandle('floor-drag-se', 'se');
   }
 
   function renderFloor() {
@@ -1567,19 +1606,8 @@
       map.className = 'floor-map-canvas';
       var boxes = collectFloorRoomBoxes(list, q);
       shown = boxes.length;
-      var host = el('floor-scroll');
-      var viewW = Math.max(120, (host && host.clientWidth) || 800);
-      var viewH = Math.max(120, (host && host.clientHeight) || 480);
-      var natural = naturalMapSize(boxes);
-      var useHorizontal = boxes.length > 1 && (
-        natural.mapH > natural.mapW * 0.9 ||
-        natural.mapH > viewH * 1.05 ||
-        natural.mapW / Math.max(1, natural.mapH) < viewW / Math.max(1, viewH) * 0.75
-      );
-      var size = useHorizontal ? packRoomsHorizontal(boxes) : natural;
-      if (useHorizontal) {
-        map.classList.add('floor-map-horizontal');
-      }
+      // Çertyoj: otaq/masa x,y,w,h olduğu kimi — pack yox
+      var size = naturalMapSize(boxes);
       boxes.forEach(function (box) {
         var article = document.createElement('article');
         article.className = 'floor-map-room' + (box.tables.length ? '' : ' empty');
@@ -1611,6 +1639,11 @@
         refreshColScrolls();
       }, 0);
     } else {
+      setFloorDragHandlesVisible(false);
+      var scrollHost = el('floor-scroll');
+      if (scrollHost) {
+        scrollHost.style.overflow = '';
+      }
       board.className = 'table-board';
       list.forEach(function (room) {
         var roomTables = roomTablesFiltered(room, q);
@@ -1653,6 +1686,9 @@
     }
     if (!shown) {
       board.innerHTML = '<p class="hint">Masa tapılmadı.</p>';
+      if (mapMode) {
+        setFloorDragHandlesVisible(false);
+      }
     }
     updateMineFilterBtn();
     window.setTimeout(refreshColScrolls, 0);
