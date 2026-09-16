@@ -32,6 +32,7 @@ const PERMISSIONS = [
   { key: 'orders.void', group: 'Sifariş', label: 'Ləğv' },
   { key: 'orders.discount', group: 'Sifariş', label: 'Endirim' },
   { key: 'orders.move', group: 'Sifariş', label: 'Köçür' },
+  { key: 'orders.takeover', group: 'Sifariş', label: 'Başqa masa' },
   { key: 'payments.take', group: 'Ödəniş', label: 'Qəbul' },
   { key: 'payments.refund', group: 'Ödəniş', label: 'Geri' },
   { key: 'kitchen.view', group: 'Stansiya', label: 'Bax' },
@@ -262,7 +263,7 @@ function defaultRoles() {
     ] },
     { id: 4, name: 'Kassir', system: true, permissions: [
       'layout.view', 'products.view', 'orders.create', 'orders.void',
-      'orders.move', 'payments.take', 'payments.refund', 'reports.view'
+      'orders.move', 'orders.takeover', 'payments.take', 'payments.refund', 'reports.view'
     ] },
     { id: 5, name: 'Mətbəx', system: true, permissions: ['products.view', 'kitchen.view', 'kitchen.done'] },
     { id: 6, name: 'Bar', system: true, permissions: ['products.view', 'kitchen.view', 'kitchen.done'] },
@@ -314,6 +315,13 @@ function readStore() {
     if ((role.id === 1 || role.id === 2 || role.id === 4) &&
         role.permissions.indexOf('orders.move') === -1) {
       role.permissions.push('orders.move');
+      changed = true;
+    }
+  });
+  store.roles.forEach(function (role) {
+    if ((role.id === 1 || role.id === 2 || role.id === 4) &&
+        role.permissions.indexOf('orders.takeover') === -1) {
+      role.permissions.push('orders.takeover');
       changed = true;
     }
   });

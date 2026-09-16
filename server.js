@@ -2533,6 +2533,22 @@ function reject(status, message) {
   throw error;
 }
 
+/** Açıq hesabın ofisiant sahibi; orders.takeover olmadan başqası toxuna bilməz. */
+function assertOrderOwner(order, staff) {
+  const wid = Number(order && order.waiterId) || 0;
+  if (!wid || !staff || !staff.user) {
+    return;
+  }
+  if (wid === Number(staff.user.id)) {
+    return;
+  }
+  const take = users.canUser(Number(staff.user.id), 'orders.takeover');
+  if (take && take.ok) {
+    return;
+  }
+  reject(403, 'Başqa ofisiantın masası');
+}
+
 function sendFail(res, error) {
   const status = Number(error.status) || 500;
   res.status(status).json({
@@ -2921,6 +2937,7 @@ app.post('/api/orders/accept', async function (req, res) {
         guestAddress: sanitize(body.guestAddress, 80),
         courierName: sanitize(body.courierName, 40)
       });
+      assertOrderOwner(order, staff);
       needOrderTables(order, terminal, staff.user.name);
       order.channel = seat.channel || order.channel || 'dine';
       if (body.guestName != null) {
@@ -3271,6 +3288,7 @@ app.post('/api/orders/void', async function (req, res) {
       if (order.payments && order.payments.length) {
         reject(400, 'Ödəniş başlayıb. Sətiri ləğv etmək olmaz.');
       }
+      assertOrderOwner(order, staff);
       needOrderTables(order, terminal);
       const line = order.items.find(function (item) { return item.id === Number(body.itemId); });
       if (!line || line.voided) {
@@ -3447,6 +3465,7 @@ app.post('/api/orders/comp', function (req, res) {
     if (!order) {
       reject(404, 'Açıq hesab tapılmadı.');
     }
+    assertOrderOwner(order, staff);
     needOrderTables(order, terminal);
     const line = order.items.find(function (item) { return item.id === Number(body.itemId); });
     if (!line || line.voided) {
@@ -3483,6 +3502,7 @@ app.post('/api/orders/handoff', function (req, res) {
     if (!order) {
       reject(404, 'Açıq hesab tapılmadı.');
     }
+    assertOrderOwner(order, staff);
     needOrderTables(order, terminal);
     const next = users.verifyPin(String(body.pin || '').replace(/\D/g, ''));
     if (!next) {
@@ -3519,6 +3539,7 @@ app.post('/api/orders/pay', function (req, res) {
     if (!order) {
       reject(404, 'Açıq hesab tapılmadı.');
     }
+    assertOrderOwner(order, staff);
     needOrderTables(order, terminal);
     ensureShiftAuto(req, terminal);
     const held = (order.items || []).some(function (item) {
@@ -4518,6 +4539,7 @@ app.post('/api/orders/discount', function (req, res) {
     if (order.payments && order.payments.length) {
       reject(400, 'Ödəniş başlayıb. Endirim dəyişməz.');
     }
+    assertOrderOwner(order, staff);
     needOrderTables(order, terminal);
     const type = body.type === 'amount' ? 'amount' : 'percent';
     const value = Number(body.value);
@@ -4582,6 +4604,7 @@ app.post('/api/orders/discount/clear', function (req, res) {
     if (order.payments && order.payments.length) {
       reject(400, 'Ödəniş başlayıb. Endirim dəyişməz.');
     }
+    assertOrderOwner(order, staff);
     needOrderTables(order, terminal);
     delete order.discount;
     order.updatedAt = new Date().toISOString();
@@ -4615,6 +4638,7 @@ app.post('/api/orders/move', async function (req, res) {
       if (!order) {
         reject(404, 'Açıq hesab tapılmadı.');
       }
+      assertOrderOwner(order, staff);
       needOrderTables(order, terminal);
       const destId = Number(body.tableId);
       if (!destId || destId === order.tableId) {

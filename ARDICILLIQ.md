@@ -221,6 +221,7 @@ Bir server: `3004`. Hər addım: əvvəl plan, sonra təsdiq, sonra kod.
 205. [x] 1.2.61 — Ayarlar: İlkin doldurma linki oxunaqlı
 206. [x] 1.2.62 — Satış çeki 1|2 nüsxə; Son çek + Çeklər drawer
 216. [x] 1.2.73 — Səbət qızılı ↑↓ oxlar; ▲▼ CSS ikon
+217. [x] 1.2.74 — Ofisiant axını + masa sahibliyi (`orders.takeover`)
 215. [x] 1.2.71 — Zal/menyu scroll oxları qızılı görünən
 214. [x] 1.2.70 — Sağ çek/səbət premium (ad×miqdar+məbləğ)
 213. [x] 1.2.69 — Sifariş: sticky/fav, mənim masalarım, scroll oxları

@@ -250,6 +250,34 @@
     return !!(open && Number(open.waiterId) === Number(waiter.user.id));
   }
 
+  function ownerLabel(open) {
+    if (!open) {
+      return '';
+    }
+    return String(open.waiterName || '').trim() || (open.waiterId ? ('#' + open.waiterId) : '');
+  }
+
+  function isForeignOpen(open) {
+    if (!open || !waiter || !waiter.user) {
+      return false;
+    }
+    var wid = Number(open.waiterId) || 0;
+    return wid > 0 && wid !== Number(waiter.user.id);
+  }
+
+  function canTakeOverTable() {
+    return can('orders.takeover');
+  }
+
+  function confirmOpenForeign(open) {
+    var who = ownerLabel(open) || 'başqa ofisiant';
+    if (!canTakeOverTable()) {
+      say('Bu masa ' + who + '-indir.', 'err');
+      return Promise.resolve(false);
+    }
+    return window.askYes('Masa', 'Bu masa ' + who + '-indir. Açılsın?');
+  }
+
   function countMyTables() {
     if (!waiter || !waiter.user) {
       return 0;
@@ -708,7 +736,9 @@
     pendingGuestAddress = existing ? (existing.guestAddress || '') : '';
     pendingCourier = existing ? (existing.courierName || '') : '';
     say('');
-    if (id && (isWaiterMode() || (window.matchMedia && window.matchMedia('(max-width: 980px)').matches))) {
+    if (id && isWaiterMode()) {
+      setOrderZone('groups');
+    } else if (id && (window.matchMedia && window.matchMedia('(max-width: 980px)').matches)) {
       setOrderZone('menu');
     }
     drawWaiterLine();
@@ -743,15 +773,27 @@
       applySeat(id);
       return Promise.resolve();
     }
-    if (pending.length && tableId && tableId !== id) {
-      return window.askYes('Masa', 'Qəbul olunmamış sətirlər silinəcək. Davam?').then(function (ok) {
+    function afterOwnerOk() {
+      if (pending.length && tableId && tableId !== id) {
+        return window.askYes('Masa', 'Qəbul olunmamış sətirlər silinəcək. Davam?').then(function (ok) {
+          if (!ok) {
+            return;
+          }
+          return go();
+        });
+      }
+      return go();
+    }
+    var open = openOrderForTable(id);
+    if (isForeignOpen(open)) {
+      return confirmOpenForeign(open).then(function (ok) {
         if (!ok) {
           return;
         }
-        return go();
+        return afterOwnerOk();
       });
     }
-    return go();
+    return afterOwnerOk();
   }
 
   function setWaiter(data) {
@@ -770,6 +812,9 @@
       window.sessionStorage.setItem('posWaiter', JSON.stringify(data));
       hideLock();
       drawWaiterLine();
+      if (isWaiterMode()) {
+        setOrderZone('floor');
+      }
       ensureTerminal(false);
       startOrdersPoll();
     } else {
@@ -1046,6 +1091,12 @@
       small.textContent = age.text ? (base + ' · ' + age.text) : base;
       btn.appendChild(label);
       btn.appendChild(small);
+      if (item.waiterName) {
+        var whoSvc = document.createElement('small');
+        whoSvc.className = 'tile-waiter';
+        whoSvc.textContent = 'Ofisiant: ' + item.waiterName;
+        btn.appendChild(whoSvc);
+      }
       var badge = document.createElement('span');
       badge.className = 'run-badge';
       badge.textContent = runStatusLabel(item.channel, runStatusOf(item));
@@ -1168,6 +1219,15 @@
         }
         btn.appendChild(label);
         btn.appendChild(small);
+        if (open && ownerLabel(open)) {
+          var who = document.createElement('small');
+          who.className = 'tile-waiter';
+          who.textContent = 'Ofisiant: ' + ownerLabel(open);
+          btn.appendChild(who);
+          if (isForeignOpen(open) && !canTakeOverTable()) {
+            btn.className += ' foreign-waiter';
+          }
+        }
         btn.addEventListener('click', function () {
           if (!waiter) {
             showLock();
@@ -1223,6 +1283,9 @@
         document.getElementById('order-search').value = '';
         renderProducts();
         renderGroups();
+        if (isWaiterMode()) {
+          setOrderZone('menu');
+        }
       });
       box.appendChild(btn);
     });
@@ -2525,7 +2588,11 @@
       say(warns.length ? warns.join(' ') : 'Sifariş qəbul olundu.');
       function afterAcceptUi() {
         if (isWaiterMode()) {
-          setOrderZone('check');
+          pending = [];
+          tableId = 0;
+          setOrderZone('floor');
+          setWaiter(null);
+          return body;
         }
         return body;
       }

@@ -11,6 +11,7 @@ Default rollar: `users.js` → `defaultRoles()`. Admin = bütün açarlar. Menec
 | Ödəniş | `payments.take` | `payments.take` | ✓ | ✓ | ✓ |
 | Refund (çeklər) | `payments.refund` | `payments.refund` | ✗ | ✓ | ✓ |
 | Köçür | `orders.move` \|\| `orders.create` | eyni | ✓ | ✓ | ✓ |
+| Başqa masa (takeover) | `orders.takeover` | accept/pay/void/discount/move | ✗ | ✓ | ✓ |
 | Fire (isti kurs) | `orders.create` | `orders.create` | ✓ | ✓ | ✓ |
 | Merge / Unmerge | `orders.create` | `orders.create` | ✓ | ✓ | ✓ |
 | Handoff | `orders.create` | `orders.create` | ✓ | ✓ | ✓ |
