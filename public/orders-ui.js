@@ -13,6 +13,7 @@
   var tableQuery = '';
   var tableFilter = 'all';
   var payLock = false;
+  var HALL_COLLAPSE_KEY = 'arpos-hall-collapse';
 
   var M = window.PosMoney;
   var Dom = window.PosDom || {};
@@ -222,6 +223,119 @@
     return orders.find(function (item) {
       return coversTable(item, id);
     }) || null;
+  }
+
+  function hallCollapseMap() {
+    try {
+      var raw = JSON.parse(window.sessionStorage.getItem(HALL_COLLAPSE_KEY) || '{}');
+      return raw && typeof raw === 'object' ? raw : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function setHallCollapsed(roomId, collapsed) {
+    var map = hallCollapseMap();
+    map[String(roomId)] = !!collapsed;
+    try {
+      window.sessionStorage.setItem(HALL_COLLAPSE_KEY, JSON.stringify(map));
+    } catch (e) {}
+  }
+
+  function isMyOpenTable(table) {
+    if (!waiter || !waiter.user || !table) {
+      return false;
+    }
+    var open = openOrderForTable(table.id);
+    return !!(open && Number(open.waiterId) === Number(waiter.user.id));
+  }
+
+  function countMyTables() {
+    if (!waiter || !waiter.user) {
+      return 0;
+    }
+    var n = 0;
+    tables.forEach(function (t) {
+      if (isMyOpenTable(t)) {
+        n += 1;
+      }
+    });
+    return n;
+  }
+
+  function updateMineFilterBtn() {
+    var btn = document.getElementById('filter-mine');
+    if (!btn) {
+      return;
+    }
+    var n = countMyTables();
+    var show = n > 0;
+    btn.hidden = !show;
+    btn.disabled = !show;
+    btn.textContent = show ? ('Mənim masalarım (' + n + ')') : 'Mənim masalarım';
+    if (!show && tableFilter === 'mine') {
+      tableFilter = 'all';
+      document.querySelectorAll('#table-filters button').forEach(function (item) {
+        item.className = item.getAttribute('data-filter') === 'all' ? 'active' : '';
+      });
+    }
+  }
+
+  function syncColScroll(box, upBtn, downBtn) {
+    if (!box || !upBtn || !downBtn) {
+      return;
+    }
+    var max = box.scrollHeight - box.clientHeight;
+    var need = max > 12;
+    upBtn.hidden = !need;
+    downBtn.hidden = !need;
+    if (!need) {
+      return;
+    }
+    upBtn.disabled = box.scrollTop <= 2;
+    downBtn.disabled = box.scrollTop >= max - 2;
+  }
+
+  function bindColScroll(boxId, upId, downId) {
+    var box = document.getElementById(boxId);
+    var up = document.getElementById(upId);
+    var down = document.getElementById(downId);
+    if (!box || !up || !down) {
+      return;
+    }
+    function refresh() {
+      syncColScroll(box, up, down);
+    }
+    function jump(dir) {
+      var step = Math.max(80, Math.floor(box.clientHeight * 0.8));
+      box.scrollBy({ top: dir * step, behavior: 'smooth' });
+    }
+    up.addEventListener('click', function () {
+      jump(-1);
+    });
+    down.addEventListener('click', function () {
+      jump(1);
+    });
+    box.addEventListener('scroll', refresh, { passive: true });
+    if (window.ResizeObserver) {
+      var ro = new window.ResizeObserver(refresh);
+      ro.observe(box);
+    }
+    window.setTimeout(refresh, 0);
+    window.setTimeout(refresh, 200);
+  }
+
+  function refreshColScrolls() {
+    syncColScroll(
+      document.getElementById('floor-scroll'),
+      document.getElementById('floor-scroll-up'),
+      document.getElementById('floor-scroll-down')
+    );
+    syncColScroll(
+      document.getElementById('product-grid'),
+      document.getElementById('menu-scroll-up'),
+      document.getElementById('menu-scroll-down')
+    );
   }
 
   function busyAgeParts(order, nowMs) {
@@ -972,7 +1086,11 @@
           return false;
         }
         var state = tableState(item);
-        if (tableFilter !== 'all' && state !== tableFilter) {
+        if (tableFilter === 'mine') {
+          if (!isMyOpenTable(item)) {
+            return false;
+          }
+        } else if (tableFilter !== 'all' && state !== tableFilter) {
           return false;
         }
         if (!q) {
@@ -988,8 +1106,27 @@
       shown += 1;
       var section = document.createElement('section');
       section.className = 'hall-section';
+      section.setAttribute('data-room-id', String(room.id));
       var heading = document.createElement('h3');
+      heading.className = 'hall-toggle';
+      heading.setAttribute('role', 'button');
+      heading.tabIndex = 0;
       heading.textContent = room.name + ' · ' + roomTables.length;
+      var collapsed = !!hallCollapseMap()[String(room.id)];
+      if (collapsed) {
+        section.classList.add('collapsed');
+      }
+      heading.addEventListener('click', function () {
+        section.classList.toggle('collapsed');
+        setHallCollapsed(room.id, section.classList.contains('collapsed'));
+        refreshColScrolls();
+      });
+      heading.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          heading.click();
+        }
+      });
       var grid = document.createElement('div');
       grid.className = 'table-grid';
       roomTables.forEach(function (table) {
@@ -1055,6 +1192,8 @@
     if (!shown) {
       board.innerHTML = '<p class="hint">Masa tapılmadı.</p>';
     }
+    updateMineFilterBtn();
+    window.setTimeout(refreshColScrolls, 0);
   }
 
   function renderGroups() {
@@ -1281,6 +1420,7 @@
       });
       grid.appendChild(card);
     });
+    window.setTimeout(refreshColScrolls, 0);
   }
 
   function addProduct(product) {
@@ -3048,6 +3188,7 @@
     if (persist !== false) {
       persistScale();
     }
+    window.setTimeout(refreshColScrolls, 0);
   }
 
   document.getElementById('order-card-scale').addEventListener('input', function (event) {
@@ -3059,6 +3200,8 @@
   document.getElementById('scale-up').addEventListener('click', function () {
     applyScale(cardScale + 1);
   });
+  bindColScroll('floor-scroll', 'floor-scroll-up', 'floor-scroll-down');
+  bindColScroll('product-grid', 'menu-scroll-up', 'menu-scroll-down');
   window.addEventListener('pagehide', flushScale);
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') {

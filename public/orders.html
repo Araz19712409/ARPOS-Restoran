@@ -13,7 +13,7 @@
   <title>Sifariş</title>
   <link rel="stylesheet" href="app.css?v=22">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css?v=29">
+  <link rel="stylesheet" href="orders.css?v=30">
   <link rel="stylesheet" href="dates.css">
 </head>
 <body class="order-page" data-zone="floor">
@@ -84,6 +84,7 @@
         <button type="button" data-filter="empty">Boş</button>
         <button type="button" data-filter="reserved">Rezerv</button>
         <button type="button" data-filter="busy">Hesab</button>
+        <button type="button" data-filter="mine" id="filter-mine" hidden>Mənim masalarım</button>
       </div>
       <div class="table-filters floor-extra">
         <button id="new-takeaway" type="button">Takeaway</button>
@@ -91,29 +92,39 @@
         <button id="waitlist-open" type="button">Növbə</button>
       </div>
     </div>
-    <div class="floor-scroll">
-      <div id="service-board" class="table-grid"></div>
-      <div id="table-board" class="table-board"></div>
+    <div class="floor-scroll-host">
+      <button type="button" class="col-scroll-btn col-scroll-up" id="floor-scroll-up" aria-label="Zal yuxarı" hidden>↑</button>
+      <div class="floor-scroll" id="floor-scroll">
+        <div id="service-board" class="table-grid"></div>
+        <div id="table-board" class="table-board"></div>
+      </div>
+      <button type="button" class="col-scroll-btn col-scroll-down" id="floor-scroll-down" aria-label="Zal aşağı" hidden>↓</button>
     </div>
   </aside>
   <div id="floor-resizer" class="floor-resizer" title="Eni dartın"></div>
 
   <main class="menu-col">
-    <div class="menu-top">
-      <div id="group-tabs" class="group-tabs"></div>
-      <div class="menu-tools">
-        <input id="order-search" type="search" placeholder="Ad və ya barkod..." maxlength="60">
-        <button id="search-focus" type="button" aria-label="Axtarış" title="Axtarış (/)">/</button>
-        <div class="size-scale">
-          <span>Ölçü</span>
-          <button id="scale-down" type="button" aria-label="Kiçilt">−</button>
-          <input id="order-card-scale" type="range" min="1" max="5" step="1" value="2">
-          <button id="scale-up" type="button" aria-label="Böyüt">+</button>
+    <div class="menu-sticky">
+      <div class="menu-top">
+        <div id="group-tabs" class="group-tabs"></div>
+        <div class="menu-tools">
+          <input id="order-search" type="search" placeholder="Ad və ya barkod..." maxlength="60">
+          <button id="search-focus" type="button" aria-label="Axtarış" title="Axtarış (/)">/</button>
+          <div class="size-scale">
+            <span>Ölçü</span>
+            <button id="scale-down" type="button" aria-label="Kiçilt">−</button>
+            <input id="order-card-scale" type="range" min="1" max="5" step="1" value="2">
+            <button id="scale-up" type="button" aria-label="Böyüt">+</button>
+          </div>
         </div>
       </div>
+      <div id="fav-row" class="fav-row hidden" aria-label="Favoritlər"></div>
     </div>
-    <div id="fav-row" class="fav-row hidden" aria-label="Favoritlər"></div>
-    <div id="product-grid" class="order-grid" data-scale="2"></div>
+    <div class="menu-scroll-host">
+      <button type="button" class="col-scroll-btn col-scroll-up" id="menu-scroll-up" aria-label="Menyu yuxarı" hidden>↑</button>
+      <div id="product-grid" class="order-grid" data-scale="2"></div>
+      <button type="button" class="col-scroll-btn col-scroll-down" id="menu-scroll-down" aria-label="Menyu aşağı" hidden>↓</button>
+    </div>
   </main>
 
   <aside class="check-col">
@@ -566,6 +577,6 @@
   <script src="orders-zones.js?v=1"></script>
   <script src="orders-shift.js?v=4"></script>
   <script src="orders-pay.js?v=4"></script>
-  <script src="orders-ui.js?v=37"></script>
+  <script src="orders-ui.js?v=38"></script>
 </body>
 </html>

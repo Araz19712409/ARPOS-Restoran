@@ -199,6 +199,60 @@
   overflow: auto;
 }
 
+.floor-scroll-host,
+.menu-scroll-host {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.floor-scroll-host .floor-scroll,
+.menu-scroll-host .order-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.col-scroll-btn {
+  position: absolute;
+  right: 6px;
+  z-index: 8;
+  width: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  height: 40px;
+  margin: 0;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid #c4a574;
+  background: #2c261f;
+  color: #f4eadc;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.col-scroll-btn:hover:not(:disabled) {
+  background: #221d17;
+  color: #e2b65a;
+}
+
+.col-scroll-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.col-scroll-up {
+  top: 6px;
+}
+
+.col-scroll-down {
+  bottom: 6px;
+}
+
 .floor-col #table-search {
   width: 100%;
   min-height: 36px;
@@ -262,6 +316,32 @@
 
 .hall-section {
   margin-bottom: 14px;
+}
+
+.hall-section h3.hall-toggle {
+  color: #e2b65a;
+  font-size: 0.82rem;
+  margin-bottom: 8px;
+  cursor: pointer;
+  user-select: none;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hall-section h3.hall-toggle::before {
+  content: '▾';
+  color: #c4a574;
+  font-size: 0.7rem;
+}
+
+.hall-section.collapsed h3.hall-toggle::before {
+  content: '▸';
+}
+
+.hall-section.collapsed .table-grid {
+  display: none;
 }
 
 .hall-section h3 {
@@ -539,25 +619,44 @@
   background: #3a2a18;
 }
 
+.menu-sticky {
+  flex: 0 0 auto;
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  background: #1a1612;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #3d3428;
+}
+
 .menu-top {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   flex: 0 0 auto;
 }
 
 .menu-top .group-tabs {
   flex: 1 1 auto;
   min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.menu-top .group-tabs button {
+  flex: 0 0 auto;
 }
 
 .fav-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 0 0 8px;
+  margin: 0 0 4px;
   flex: 0 0 auto;
   max-height: 76px;
   overflow: auto;

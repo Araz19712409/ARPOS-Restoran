@@ -2056,7 +2056,7 @@ test('katalog maya strip; void/endirim payments blok', function () {
   assert.ok(ui.indexOf("can('orders.void') && !(order.payments && order.payments.length)") >= 0);
   assert.ok(ui.indexOf("can('orders.discount') && !(order.payments && order.payments.length)") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=37') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=38') >= 0);
   const prodJs = fs.readFileSync(path.join(__dirname, 'public', 'products.js'), 'utf8');
   assert.ok(prodJs.indexOf('/api/catalog/manage') >= 0);
 });
@@ -2240,7 +2240,7 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(foot.indexOf('id="paid-receipts-btn"') >= 0);
   assert.ok(foot.indexOf('id="pay-open"') >= 0);
   assert.ok(foot.indexOf('id="accept-order"') >= 0);
-  assert.ok(html.indexOf('orders.css?v=29') >= 0);
+  assert.ok(html.indexOf('orders.css?v=30') >= 0);
   assert.ok(html.indexOf('id="paid-receipts-modal"') >= 0);
   assert.ok(html.indexOf('orders-pay.js?v=4') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
@@ -2269,8 +2269,28 @@ test('sifariş məhsul kartı: compact ad+qiymət', function () {
   const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
   assert.ok(ui.indexOf("Mal #' + item.id") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders.css?v=29') >= 0);
-  assert.ok(html.indexOf('orders-ui.js?v=37') >= 0);
+  assert.ok(html.indexOf('orders.css?v=30') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=38') >= 0);
+});
+
+test('sifariş 1.2.69: sticky fav, mənim masalarım, scroll oxları', function () {
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
+  assert.ok(html.indexOf('menu-sticky') >= 0);
+  assert.ok(html.indexOf('id="filter-mine"') >= 0);
+  assert.ok(html.indexOf('Mənim masalarım') >= 0);
+  assert.ok(html.indexOf('id="floor-scroll-up"') >= 0);
+  assert.ok(html.indexOf('id="menu-scroll-down"') >= 0);
+  assert.ok(html.indexOf('floor-scroll-host') >= 0);
+  const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
+  assert.ok(css.indexOf('.menu-sticky') >= 0);
+  assert.ok(css.indexOf('position: sticky') >= 0);
+  assert.ok(css.indexOf('.col-scroll-btn') >= 0);
+  assert.ok(css.indexOf('.hall-section.collapsed') >= 0);
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(ui.indexOf('arpos-hall-collapse') >= 0);
+  assert.ok(ui.indexOf('isMyOpenTable') >= 0);
+  assert.ok(ui.indexOf('bindColScroll') >= 0);
+  assert.ok(ui.indexOf('scrollBy') >= 0);
 });
 
 test('məhsul qrupa keçir: modal + PUT groupId', function () {
@@ -2428,7 +2448,7 @@ test('PWA ofisiant: manifest mode=waiter; waiter-mode hook', function () {
   assert.ok(html.indexOf('arpos-mode') >= 0);
   assert.ok(html.indexOf('waiter-mode') >= 0);
   assert.ok(html.indexOf('apple-mobile-web-app-capable') >= 0);
-  assert.ok(html.indexOf('orders-ui.js?v=37') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=38') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
   assert.ok(css.indexOf('.waiter-mode') >= 0);
   assert.ok(css.indexOf('.waiter-mode .order-zones') >= 0);
