@@ -13,7 +13,7 @@
   <title>Sifariş</title>
   <link rel="stylesheet" href="app.css?v=22">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css?v=32">
+  <link rel="stylesheet" href="orders.css?v=33">
   <link rel="stylesheet" href="dates.css">
 </head>
 <body class="order-page" data-zone="floor">
@@ -93,12 +93,12 @@
       </div>
     </div>
     <div class="floor-scroll-host">
-      <button type="button" class="col-scroll-btn col-scroll-up" id="floor-scroll-up" aria-label="Zal yuxarı" hidden>↑</button>
+      <button type="button" class="col-scroll-btn col-scroll-up" id="floor-scroll-up" aria-label="Zal yuxarı" hidden></button>
       <div class="floor-scroll" id="floor-scroll">
         <div id="service-board" class="table-grid"></div>
         <div id="table-board" class="table-board"></div>
       </div>
-      <button type="button" class="col-scroll-btn col-scroll-down" id="floor-scroll-down" aria-label="Zal aşağı" hidden>↓</button>
+      <button type="button" class="col-scroll-btn col-scroll-down" id="floor-scroll-down" aria-label="Zal aşağı" hidden></button>
     </div>
   </aside>
   <div id="floor-resizer" class="floor-resizer" title="Eni dartın"></div>
@@ -121,9 +121,9 @@
       <div id="fav-row" class="fav-row hidden" aria-label="Favoritlər"></div>
     </div>
     <div class="menu-scroll-host">
-      <button type="button" class="col-scroll-btn col-scroll-up" id="menu-scroll-up" aria-label="Menyu yuxarı" hidden>↑</button>
+      <button type="button" class="col-scroll-btn col-scroll-up" id="menu-scroll-up" aria-label="Menyu yuxarı" hidden></button>
       <div id="product-grid" class="order-grid" data-scale="2"></div>
-      <button type="button" class="col-scroll-btn col-scroll-down" id="menu-scroll-down" aria-label="Menyu aşağı" hidden>↓</button>
+      <button type="button" class="col-scroll-btn col-scroll-down" id="menu-scroll-down" aria-label="Menyu aşağı" hidden></button>
     </div>
   </main>
 
@@ -143,7 +143,11 @@
       </div>
       <p id="reserve-info" class="reserve-info"></p>
     </div>
-    <div id="check-list" class="check-list"></div>
+    <div class="check-scroll-host">
+      <button type="button" class="col-scroll-btn col-scroll-up" id="check-scroll-up" aria-label="Səbət yuxarı" hidden></button>
+      <div id="check-list" class="check-list"></div>
+      <button type="button" class="col-scroll-btn col-scroll-down" id="check-scroll-down" aria-label="Səbət aşağı" hidden></button>
+    </div>
     <div class="check-foot">
       <div class="check-sum-box">
         <div class="check-sum sub">
@@ -577,6 +581,6 @@
   <script src="orders-zones.js?v=1"></script>
   <script src="orders-shift.js?v=4"></script>
   <script src="orders-pay.js?v=4"></script>
-  <script src="orders-ui.js?v=39"></script>
+  <script src="orders-ui.js?v=40"></script>
 </body>
 </html>

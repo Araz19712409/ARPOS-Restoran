@@ -259,6 +259,14 @@
   bottom: 8px;
 }
 
+.col-scroll-up::before {
+  content: '\25B2';
+}
+
+.col-scroll-down::before {
+  content: '\25BC';
+}
+
 .floor-col #table-search {
   width: 100%;
   min-height: 36px;
@@ -451,6 +459,19 @@
   border: 1px solid #3d3428;
   border-radius: 10px;
   background: #1c1813;
+}
+
+.check-scroll-host {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.check-scroll-host .check-list {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .check-list {

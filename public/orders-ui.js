@@ -336,6 +336,11 @@
       document.getElementById('menu-scroll-up'),
       document.getElementById('menu-scroll-down')
     );
+    syncColScroll(
+      document.getElementById('check-list'),
+      document.getElementById('check-scroll-up'),
+      document.getElementById('check-scroll-down')
+    );
   }
 
   function busyAgeParts(order, nowMs) {
@@ -2169,6 +2174,7 @@
       tipRow.classList.add('hidden');
     }
     setText('check-total', parts.total.toFixed(2) + ' AZN');
+    window.setTimeout(refreshColScrolls, 0);
   }
 
   function render() {
@@ -3374,6 +3380,7 @@
   });
   bindColScroll('floor-scroll', 'floor-scroll-up', 'floor-scroll-down');
   bindColScroll('product-grid', 'menu-scroll-up', 'menu-scroll-down');
+  bindColScroll('check-list', 'check-scroll-up', 'check-scroll-down');
   window.addEventListener('pagehide', flushScale);
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') {
