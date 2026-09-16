@@ -2242,7 +2242,7 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(foot.indexOf('id="paid-receipts-btn"') >= 0);
   assert.ok(foot.indexOf('id="pay-open"') >= 0);
   assert.ok(foot.indexOf('id="accept-order"') >= 0);
-  assert.ok(html.indexOf('orders.css?v=31') >= 0);
+  assert.ok(html.indexOf('orders.css?v=32') >= 0);
   assert.ok(html.indexOf('id="paid-receipts-modal"') >= 0);
   assert.ok(html.indexOf('orders-pay.js?v=4') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
@@ -2271,7 +2271,7 @@ test('sifariş məhsul kartı: compact ad+qiymət', function () {
   const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
   assert.ok(ui.indexOf("Mal #' + item.id") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders.css?v=31') >= 0);
+  assert.ok(html.indexOf('orders.css?v=32') >= 0);
   assert.ok(html.indexOf('orders-ui.js?v=39') >= 0);
 });
 
@@ -2287,6 +2287,9 @@ test('sifariş 1.2.69: sticky fav, mənim masalarım, scroll oxları', function 
   assert.ok(css.indexOf('.menu-sticky') >= 0);
   assert.ok(css.indexOf('position: sticky') >= 0);
   assert.ok(css.indexOf('.col-scroll-btn') >= 0);
+  assert.ok(css.indexOf('background: #c4a574') >= 0);
+  assert.ok(css.indexOf('min-width: 44px') >= 0 || css.indexOf('width: 44px') >= 0);
+  assert.ok(css.indexOf('z-index: 15') >= 0);
   assert.ok(css.indexOf('.hall-section.collapsed') >= 0);
   const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
   assert.ok(ui.indexOf('arpos-hall-collapse') >= 0);
@@ -2309,7 +2312,7 @@ test('sağ çek premium: ad × miqdar + məbləğ', function () {
   assert.ok(css.indexOf('.line-amt') >= 0);
   assert.ok(css.indexOf('.stepper .step') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders.css?v=31') >= 0);
+  assert.ok(html.indexOf('orders.css?v=32') >= 0);
   assert.ok(html.indexOf('orders-ui.js?v=39') >= 0);
 });
 
