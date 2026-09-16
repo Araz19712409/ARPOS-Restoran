@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 
+- **1.2.84** — 2026-09-16 — Floor map Fit/Pan stabil (jitter hotfix)
 - **1.2.82** — 2026-09-16 — Zal: Admin Zal planı + Fit/Pan; X/Y slider təmizləndi
 - **1.2.81** — 2026-09-16 — Zal: çertyoj düzülüşü; viewport dartma; scroll yox
 - **1.2.80** — 2026-09-16 — Zal: slider + əl dartması (sağ/aşağı); son ölçü yadda

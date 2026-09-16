@@ -14,12 +14,15 @@
   var tableFilter = 'all';
   var payLock = false;
   var HALL_COLLAPSE_KEY = 'arpos-hall-collapse';
-  var FLOOR_ZOOM_KEY = 'arpos-floor-view-zoom';
-  var floorViewZoom = 1;
-  var floorPanX = 0;
-  var floorPanY = 0;
-  var floorFitScale = 1;
+  var FLOOR_VIEW_KEY = 'arpos-floor-view-v2';
+  var floorView = { scale: 1, tx: 0, ty: 0 };
+  var floorNatural = { w: 0, h: 0 };
+  var floorUserPanned = false;
+  var floorNeedsInitialFit = true;
+  var floorLastHost = { w: 0, h: 0 };
   var floorPanBound = false;
+  var floorResizeTimer = 0;
+  var floorInitialFitToken = 0;
 
   var M = window.PosMoney;
   var Dom = window.PosDom || {};
@@ -41,27 +44,175 @@
       window.matchMedia('(min-width: 901px)').matches;
   }
 
-  function clampFloorZoom(z) {
-    var n = Number(z);
-    if (!Number.isFinite(n)) {
-      return 1;
-    }
-    return Math.min(2.4, Math.max(0.55, Math.round(n * 100) / 100));
+  function floorHostSize() {
+    var host = el('floor-scroll');
+    return {
+      w: Math.max(0, (host && host.clientWidth) || 0),
+      h: Math.max(0, (host && host.clientHeight) || 0)
+    };
   }
 
-  function loadFloorMapPrefs() {
-    try {
-      var z = Number(window.localStorage.getItem(FLOOR_ZOOM_KEY));
-      if (Number.isFinite(z)) {
-        floorViewZoom = clampFloorZoom(z);
-      }
-    } catch (err) { /* ignore */ }
+  function floorHostReady(size) {
+    return size && size.w >= 120 && size.h >= 120;
+  }
+
+  function clampFloorScale(s) {
+    var n = Number(s);
+    if (!Number.isFinite(n) || n <= 0) {
+      return 1;
+    }
+    return Math.min(3, Math.max(0.2, Math.round(n * 1000) / 1000));
+  }
+
+  function clampFloorView() {
+    var host = floorHostSize();
+    if (!floorHostReady(host) || !floorNatural.w || !floorNatural.h) {
+      return;
+    }
+    var scaledW = floorNatural.w * floorView.scale;
+    var scaledH = floorNatural.h * floorView.scale;
+    if (scaledW <= host.w) {
+      floorView.tx = Math.round((host.w - scaledW) / 2);
+    } else {
+      floorView.tx = Math.min(0, Math.max(host.w - scaledW, floorView.tx));
+    }
+    if (scaledH <= host.h) {
+      floorView.ty = Math.round((host.h - scaledH) / 2);
+    } else {
+      floorView.ty = Math.min(0, Math.max(host.h - scaledH, floorView.ty));
+    }
+  }
+
+  function applyFloorTransform() {
+    var board = el('table-board');
+    var map = board && board.querySelector ? board.querySelector('.floor-map-canvas') : null;
+    if (!map || !floorNatural.w || !floorNatural.h) {
+      return;
+    }
+    clampFloorView();
+    map.style.transformOrigin = '0 0';
+    map.style.transform = 'translate3d(' + floorView.tx + 'px,' + floorView.ty + 'px,0) scale(' + floorView.scale + ')';
   }
 
   function persistFloorMapPrefs() {
     try {
-      window.localStorage.setItem(FLOOR_ZOOM_KEY, String(floorViewZoom));
+      window.localStorage.setItem(FLOOR_VIEW_KEY, JSON.stringify({
+        scale: floorView.scale,
+        tx: floorView.tx,
+        ty: floorView.ty,
+        nw: floorNatural.w,
+        nh: floorNatural.h,
+        panned: !!floorUserPanned
+      }));
     } catch (err) { /* ignore */ }
+  }
+
+  function loadFloorMapPrefs() {
+    try {
+      var raw = window.localStorage.getItem(FLOOR_VIEW_KEY);
+      if (!raw) {
+        return;
+      }
+      var data = JSON.parse(raw);
+      var scale = clampFloorScale(data && data.scale);
+      var tx = Number(data && data.tx);
+      var ty = Number(data && data.ty);
+      if (!Number.isFinite(tx) || !Number.isFinite(ty) || !Number.isFinite(scale)) {
+        floorNeedsInitialFit = true;
+        return;
+      }
+      if (Math.abs(tx) > 8000 || Math.abs(ty) > 8000 || scale < 0.2 || scale > 3) {
+        floorNeedsInitialFit = true;
+        return;
+      }
+      floorView.scale = scale;
+      floorView.tx = tx;
+      floorView.ty = ty;
+      floorUserPanned = !!data.panned;
+      floorNeedsInitialFit = !floorUserPanned;
+    } catch (err) {
+      floorNeedsInitialFit = true;
+    }
+  }
+
+  function computeFitScale() {
+    var host = floorHostSize();
+    if (!floorHostReady(host) || !floorNatural.w || !floorNatural.h) {
+      return 0;
+    }
+    var pad = 12;
+    var s = Math.min((host.w - pad) / floorNatural.w, (host.h - pad) / floorNatural.h);
+    if (!Number.isFinite(s) || s <= 0) {
+      return 0;
+    }
+    return clampFloorScale(s);
+  }
+
+  function floorFitToScreen() {
+    var s = computeFitScale();
+    if (!s) {
+      return false;
+    }
+    var host = floorHostSize();
+    floorView.scale = s;
+    floorView.tx = Math.round((host.w - floorNatural.w * s) / 2);
+    floorView.ty = Math.round((host.h - floorNatural.h * s) / 2);
+    floorUserPanned = false;
+    floorNeedsInitialFit = false;
+    floorLastHost.w = host.w;
+    floorLastHost.h = host.h;
+    applyFloorTransform();
+    persistFloorMapPrefs();
+    return true;
+  }
+
+  function scheduleInitialFloorFit() {
+    var token = ++floorInitialFitToken;
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(function () {
+        if (token !== floorInitialFitToken) {
+          return;
+        }
+        if (!(waiter && useFloorMap())) {
+          return;
+        }
+        if (!floorNeedsInitialFit && floorUserPanned) {
+          applyFloorTransform();
+          return;
+        }
+        if (!floorFitToScreen()) {
+          window.setTimeout(function () {
+            if (token !== floorInitialFitToken) {
+              return;
+            }
+            floorFitToScreen();
+          }, 80);
+        }
+      });
+    });
+  }
+
+  function floorZoomBy(delta) {
+    if (!floorNatural.w) {
+      return;
+    }
+    var host = floorHostSize();
+    var prev = floorView.scale;
+    var next = clampFloorScale(prev * (delta > 0 ? 1.12 : 1 / 1.12));
+    if (next === prev) {
+      return;
+    }
+    var cx = host.w / 2;
+    var cy = host.h / 2;
+    var wx = (cx - floorView.tx) / prev;
+    var wy = (cy - floorView.ty) / prev;
+    floorView.scale = next;
+    floorView.tx = cx - wx * next;
+    floorView.ty = cy - wy * next;
+    floorUserPanned = true;
+    floorNeedsInitialFit = false;
+    applyFloorTransform();
+    persistFloorMapPrefs();
   }
 
   function syncFloorMapControls() {
@@ -70,6 +221,32 @@
       return;
     }
     box.hidden = !useFloorMap();
+  }
+
+  function onFloorViewportMaybeChanged() {
+    if (!(waiter && useFloorMap() && floorNatural.w)) {
+      return;
+    }
+    var host = floorHostSize();
+    if (!floorHostReady(host)) {
+      return;
+    }
+    if (host.w === floorLastHost.w && host.h === floorLastHost.h) {
+      return;
+    }
+    floorLastHost.w = host.w;
+    floorLastHost.h = host.h;
+    floorFitToScreen();
+  }
+
+  function scheduleFloorViewportCheck() {
+    if (floorResizeTimer) {
+      window.clearTimeout(floorResizeTimer);
+    }
+    floorResizeTimer = window.setTimeout(function () {
+      floorResizeTimer = 0;
+      onFloorViewportMaybeChanged();
+    }, 120);
   }
 
   function setText(id, text) {
@@ -1291,89 +1468,6 @@
     return { mapW: mapW, mapH: mapH };
   }
 
-  function clampFloorPan(viewW, viewH, scaledW, scaledH) {
-    if (scaledW <= viewW) {
-      floorPanX = Math.round((viewW - scaledW) / 2);
-    } else {
-      floorPanX = Math.min(0, Math.max(viewW - scaledW, floorPanX));
-    }
-    if (scaledH <= viewH) {
-      floorPanY = Math.round((viewH - scaledH) / 2);
-    } else {
-      floorPanY = Math.min(0, Math.max(viewH - scaledH, floorPanY));
-    }
-  }
-
-  function fitFloorMap(board, map, naturalW, naturalH) {
-    var host = el('floor-scroll') || board.parentElement;
-    var wrap = el('floor-scroll-host');
-    var viewW = Math.max(120, (host && host.clientWidth) || board.clientWidth || 800);
-    var viewH = Math.max(120, (host && host.clientHeight) || 480);
-    var pad = 12;
-    floorFitScale = Math.min((viewW - pad) / Math.max(1, naturalW), (viewH - pad) / Math.max(1, naturalH));
-    if (!Number.isFinite(floorFitScale) || floorFitScale <= 0) {
-      floorFitScale = 1;
-    }
-    floorViewZoom = clampFloorZoom(floorViewZoom);
-    var scale = floorFitScale * floorViewZoom;
-    var scaledW = naturalW * scale;
-    var scaledH = naturalH * scale;
-    clampFloorPan(viewW, viewH, scaledW, scaledH);
-    map.setAttribute('data-nw', String(naturalW));
-    map.setAttribute('data-nh', String(naturalH));
-    map.setAttribute('data-scale', String(scale));
-    map.style.width = naturalW + 'px';
-    map.style.height = naturalH + 'px';
-    map.style.transformOrigin = '0 0';
-    map.style.transform = 'translate(' + floorPanX + 'px,' + floorPanY + 'px) scale(' + scale + ')';
-    board.style.position = 'relative';
-    board.style.width = viewW + 'px';
-    board.style.height = viewH + 'px';
-    board.style.maxWidth = '100%';
-    board.style.overflow = 'hidden';
-    board.classList.add('floor-map-viewport');
-    if (host) {
-      host.scrollLeft = 0;
-      host.scrollTop = 0;
-      host.style.overflow = 'hidden';
-    }
-    if (wrap) {
-      wrap.classList.add('floor-map-host');
-    }
-    return scale;
-  }
-
-  function refitFloorMapIfReady() {
-    if (!(waiter && useFloorMap())) {
-      return;
-    }
-    var board = el('table-board');
-    var map = board && board.querySelector ? board.querySelector('.floor-map-canvas') : null;
-    if (!board || !map) {
-      return;
-    }
-    var nw = Number(map.getAttribute('data-nw'));
-    var nh = Number(map.getAttribute('data-nh'));
-    if (!Number.isFinite(nw) || !Number.isFinite(nh) || nw <= 0 || nh <= 0) {
-      return;
-    }
-    fitFloorMap(board, map, nw, nh);
-  }
-
-  function floorFitToScreen() {
-    floorViewZoom = 1;
-    floorPanX = 0;
-    floorPanY = 0;
-    persistFloorMapPrefs();
-    refitFloorMapIfReady();
-  }
-
-  function floorZoomBy(delta) {
-    floorViewZoom = clampFloorZoom(floorViewZoom + delta);
-    persistFloorMapPrefs();
-    refitFloorMapIfReady();
-  }
-
   function bindFloorPanZoom() {
     if (floorPanBound) {
       return;
@@ -1394,15 +1488,14 @@
       if (event.target.closest && event.target.closest('.floor-map-tile')) {
         return;
       }
-      var map = board.querySelector('.floor-map-canvas');
-      if (!map) {
+      if (!board.querySelector('.floor-map-canvas')) {
         return;
       }
       event.preventDefault();
       var startX = event.clientX;
       var startY = event.clientY;
-      var originX = floorPanX;
-      var originY = floorPanY;
+      var originX = floorView.tx;
+      var originY = floorView.ty;
       var ptrId = event.pointerId;
       try {
         board.setPointerCapture(ptrId);
@@ -1413,9 +1506,11 @@
         if (ev.pointerId !== ptrId) {
           return;
         }
-        floorPanX = originX + (ev.clientX - startX);
-        floorPanY = originY + (ev.clientY - startY);
-        refitFloorMapIfReady();
+        floorView.tx = originX + (ev.clientX - startX);
+        floorView.ty = originY + (ev.clientY - startY);
+        floorUserPanned = true;
+        floorNeedsInitialFit = false;
+        applyFloorTransform();
       }
       function onUp(ev) {
         if (ev.pointerId !== ptrId) {
@@ -1428,6 +1523,7 @@
         try {
           board.releasePointerCapture(ptrId);
         } catch (err2) { /* ignore */ }
+        persistFloorMapPrefs();
       }
       board.addEventListener('pointermove', onMove);
       board.addEventListener('pointerup', onUp);
@@ -1443,8 +1539,23 @@
           return;
         }
         event.preventDefault();
-        floorZoomBy(event.deltaY > 0 ? -0.1 : 0.1);
+        floorZoomBy(event.deltaY > 0 ? -1 : 1);
       }, { passive: false });
+    }
+  }
+
+  function prepareFloorMapCanvas(map, naturalW, naturalH) {
+    var sizeChanged = floorNatural.w !== naturalW || floorNatural.h !== naturalH;
+    floorNatural.w = naturalW;
+    floorNatural.h = naturalH;
+    map.setAttribute('data-nw', String(naturalW));
+    map.setAttribute('data-nh', String(naturalH));
+    map.style.width = naturalW + 'px';
+    map.style.height = naturalH + 'px';
+    map.style.transformOrigin = '0 0';
+    map.style.willChange = 'transform';
+    if (sizeChanged && !floorUserPanned) {
+      floorNeedsInitialFit = true;
     }
   }
 
@@ -1497,9 +1608,12 @@
       btn.className = floor.id === floorId ? 'active' : '';
       btn.textContent = floor.name;
       btn.addEventListener('click', function () {
+        if (floorId === floor.id) {
+          return;
+        }
         floorId = floor.id;
-        floorPanX = 0;
-        floorPanY = 0;
+        floorUserPanned = false;
+        floorNeedsInitialFit = true;
         renderFloor();
       });
       tabs.appendChild(btn);
@@ -1514,7 +1628,7 @@
       if (wrap) {
         wrap.classList.add('floor-map-host');
       }
-      board.className = 'table-board floor-map';
+      board.className = 'table-board floor-map floor-map-viewport';
       var map = document.createElement('div');
       map.className = 'floor-map-canvas';
       var boxes = collectFloorRoomBoxes(list, q);
@@ -1545,12 +1659,15 @@
         map.appendChild(article);
       });
       board.appendChild(map);
+      prepareFloorMapCanvas(map, size.mapW, size.mapH);
       renderUnplaced(list, q, nowMs);
-      window.setTimeout(function () {
-        fitFloorMap(board, map, size.mapW, size.mapH);
-        bindFloorPanZoom();
-        refreshColScrolls();
-      }, 0);
+      bindFloorPanZoom();
+      if (floorNeedsInitialFit) {
+        scheduleInitialFloorFit();
+      } else {
+        applyFloorTransform();
+      }
+      window.setTimeout(refreshColScrolls, 0);
     } else {
       if (wrap) {
         wrap.classList.remove('floor-map-host');
@@ -3823,33 +3940,37 @@
   var floorZoomIn = el('floor-zoom-in');
   var floorFitBtn = el('floor-fit');
   if (floorZoomOut) {
-    floorZoomOut.addEventListener('click', function () { floorZoomBy(-0.15); });
+    floorZoomOut.addEventListener('click', function () { floorZoomBy(-1); });
   }
   if (floorZoomIn) {
-    floorZoomIn.addEventListener('click', function () { floorZoomBy(0.15); });
+    floorZoomIn.addEventListener('click', function () { floorZoomBy(1); });
   }
   if (floorFitBtn) {
-    floorFitBtn.addEventListener('click', function () { floorFitToScreen(); });
+    floorFitBtn.addEventListener('click', function () {
+      floorNeedsInitialFit = true;
+      floorUserPanned = false;
+      floorFitToScreen();
+    });
   }
+  ctx.onOrderZone = function (zone) {
+    if (zone === 'floor' && waiter && useFloorMap()) {
+      if (floorNeedsInitialFit || !floorUserPanned) {
+        scheduleInitialFloorFit();
+      } else {
+        applyFloorTransform();
+      }
+    }
+  };
   bindColScroll('floor-scroll', 'floor-scroll-up', 'floor-scroll-down');
   bindColScroll('product-grid', 'menu-scroll-up', 'menu-scroll-down');
   bindColScroll('check-list', 'check-scroll-up', 'check-scroll-down');
   var floorMapMq = window.matchMedia ? window.matchMedia('(min-width: 901px)') : null;
-  var floorFitTimer = 0;
-  function scheduleFloorFit() {
-    if (floorFitTimer) {
-      window.clearTimeout(floorFitTimer);
-    }
-    floorFitTimer = window.setTimeout(function () {
-      floorFitTimer = 0;
-      if (isOrderWizard() && waiter && useFloorMap()) {
-        renderFloor();
-      }
-    }, 120);
-  }
   if (floorMapMq) {
     var onFloorMapMq = function () {
-      scheduleFloorFit();
+      if (useFloorMap()) {
+        floorNeedsInitialFit = true;
+        scheduleInitialFloorFit();
+      }
     };
     if (floorMapMq.addEventListener) {
       floorMapMq.addEventListener('change', onFloorMapMq);
@@ -3857,7 +3978,14 @@
       floorMapMq.addListener(onFloorMapMq);
     }
   }
-  window.addEventListener('resize', scheduleFloorFit);
+  window.addEventListener('resize', scheduleFloorViewportCheck);
+  var floorScrollHost = el('floor-scroll-host') || el('floor-scroll');
+  if (floorScrollHost && typeof ResizeObserver !== 'undefined') {
+    var floorRo = new ResizeObserver(function () {
+      scheduleFloorViewportCheck();
+    });
+    floorRo.observe(floorScrollHost);
+  }
   window.addEventListener('pagehide', flushScale);
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') {
