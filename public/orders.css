@@ -1720,6 +1720,28 @@
   margin: 0;
 }
 
+#shift-z-modal .shift-z-remove {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 4px;
+  color: #f4eadc;
+  font-weight: 600;
+}
+
+#shift-z-modal .shift-z-remove input {
+  width: auto;
+  margin: 0;
+  accent-color: #c4a574;
+}
+
+#shift-z-modal .shift-z-remove-hint {
+  margin: 0 0 10px;
+  color: #c4a574;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
 .receipt-paper {
   background: #fff8ee;
   color: #1b140c;

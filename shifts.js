@@ -143,6 +143,9 @@ function withExpected(row, orderList, book) {
     prepayCash += Number(res.prepay.cashAmount) || 0;
   });
   const dropSum = (row.drops || []).reduce(function (sum, item) {
+    if (item && item.fromZ) {
+      return sum;
+    }
     return sum + (Number(item.amount) || 0);
   }, 0);
   const expectedCash = money(
@@ -187,10 +190,13 @@ function lastClosedFor(store, terminalId) {
 
 function nextStartingCash(store, terminalId, shiftCfg) {
   const fallback = money(shiftCfg && shiftCfg.defaultStartingCash);
+  const last = lastClosedFor(store, terminalId);
+  if (last && last.removeCash === true) {
+    return fallback;
+  }
   if (shiftCfg && shiftCfg.carryCountedCash === false) {
     return fallback;
   }
-  const last = lastClosedFor(store, terminalId);
   if (!last || last.countedCash == null || last.countedCash === '') {
     return fallback;
   }

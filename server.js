@@ -5383,6 +5383,8 @@ app.post('/api/shifts/close', function (req, res) {
     row.closedByName = req.staff.user.name;
     row.countedCash = shifts.money(countedCash);
     row.note = sanitize(body.note, 80);
+    const removeCash = body.removeCash === true;
+    row.removeCash = removeCash;
     const packed = shifts.withExpected(row, orders.readOrders().orders, reservations.readReservations());
     row.snapshot = {
       totals: packed.totals,
@@ -5390,6 +5392,22 @@ app.post('/api/shifts/close', function (req, res) {
       difference: packed.difference,
       drops: (packed.drops || row.drops || []).slice()
     };
+    if (removeCash && row.countedCash > 0) {
+      if (!row.drops) {
+        row.drops = [];
+      }
+      const drop = {
+        amount: row.countedCash,
+        note: 'Z: kassadan çıxarış',
+        at: row.closedAt,
+        userId: req.staff.user.id,
+        userName: String(req.staff.user.name || '').slice(0, 40),
+        fromZ: true
+      };
+      row.drops.push(drop);
+      row.snapshot.drops = (row.snapshot.drops || []).concat([drop]);
+      packed.drops = row.snapshot.drops.slice();
+    }
     shifts.writeStore(store);
     return { terminalName: terminal.name, packed: packed };
   }).then(function (result) {

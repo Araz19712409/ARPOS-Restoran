@@ -43,6 +43,13 @@
     setText('z-sum-expected', money(packed && packed.expectedCash) + ' AZN');
     setText('z-sum-counted', money(row.countedCash) + ' AZN');
     setText('z-sum-diff', money(packed && packed.difference) + ' AZN');
+    var drops = (packed && packed.drops) || [];
+    var dropTxt = drops.length
+      ? drops.map(function (d) {
+        return money(d.amount) + (d.note ? (' — ' + d.note) : '');
+      }).join('; ')
+      : '—';
+    setText('z-sum-drops', dropTxt);
   }
 
   function show(packed, opts) {

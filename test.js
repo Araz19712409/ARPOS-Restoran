@@ -2240,7 +2240,7 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(foot.indexOf('id="paid-receipts-btn"') >= 0);
   assert.ok(foot.indexOf('id="pay-open"') >= 0);
   assert.ok(foot.indexOf('id="accept-order"') >= 0);
-  assert.ok(html.indexOf('orders.css?v=27') >= 0);
+  assert.ok(html.indexOf('orders.css?v=28') >= 0);
   assert.ok(html.indexOf('id="paid-receipts-modal"') >= 0);
   assert.ok(html.indexOf('orders-pay.js?v=4') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
@@ -2326,6 +2326,26 @@ test('kassa qalığı ayar; Z counted növbəti startingCash', function () {
   });
   assert.ok(second.created);
   assert.strictEqual(second.shift.startingCash, 150);
+  const storeRemove = {
+    nextId: 2,
+    shifts: [{
+      id: 1, terminalId: 1, status: 'closed', closedAt: '2026-09-14T22:00:00',
+      countedCash: 150, removeCash: true,
+      drops: [{ amount: 150, note: 'Z: kassadan çıxarış', fromZ: true }]
+    }]
+  };
+  const afterRemove = shifts.maybeAutoOpen(storeRemove, term, user, {
+    autoOpenOnSale: true, defaultStartingCash: 40, carryCountedCash: true
+  });
+  assert.strictEqual(afterRemove.shift.startingCash, 40);
+  const openRow = {
+    id: 9, terminalId: 1, status: 'open', openedAt: '2026-09-14T10:00:00',
+    startingCash: 0, countedCash: 100,
+    drops: [{ amount: 100, note: 'Z: kassadan çıxarış', fromZ: true }]
+  };
+  const packedZ = shifts.withExpected(openRow, [], { reservations: [] });
+  assert.strictEqual(packedZ.expectedCash, 0);
+  assert.strictEqual(packedZ.difference, 100);
   const store2 = {
     nextId: 2,
     shifts: [{
@@ -2338,10 +2358,19 @@ test('kassa qalığı ayar; Z counted növbəti startingCash', function () {
   assert.strictEqual(noCarry.shift.startingCash, 40);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
   assert.ok(html.indexOf('id="shift-cash"') >= 0);
-  assert.ok(html.indexOf('orders-shift.js?v=3') >= 0);
+  assert.ok(html.indexOf('orders-shift.js?v=4') >= 0);
+  assert.ok(html.indexOf('id="shift-z-remove-cash"') >= 0);
+  assert.ok(html.indexOf('Kassadan pulu çıxart') >= 0);
+  assert.ok(html.indexOf('id="z-sum-drops"') >= 0);
   const shiftJs = fs.readFileSync(path.join(__dirname, 'public', 'orders-shift.js'), 'utf8');
   assert.ok(shiftJs.indexOf('showCashOnOrders') >= 0);
   assert.ok(shiftJs.indexOf('expectedCash') >= 0);
+  assert.ok(shiftJs.indexOf('removeCash') >= 0);
+  assert.ok(shiftJs.indexOf('shift-z-remove-cash') >= 0);
+  const serverClose = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  assert.ok(serverClose.indexOf("body.removeCash === true") >= 0);
+  assert.ok(serverClose.indexOf('Z: kassadan çıxarış') >= 0);
+  assert.ok(serverClose.indexOf('fromZ: true') >= 0);
   const setHtml = fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8');
   assert.ok(setHtml.indexOf('id="shift-show-cash"') >= 0);
   assert.ok(setHtml.indexOf('id="shift-carry-counted"') >= 0);

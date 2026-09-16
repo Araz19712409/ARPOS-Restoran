@@ -72,6 +72,10 @@
       if (counted && document.activeElement !== counted) {
         setVal('shift-z-counted', cur ? ctx.money(cur.expectedCash) : '');
       }
+      var removeCash = el('shift-z-remove-cash');
+      if (removeCash) {
+        removeCash.checked = true;
+      }
       var closeBtn = el('shift-z-close');
       if (closeBtn) {
         closeBtn.disabled = !cur || openList.length > 0 || !ctx.can('payments.take');
@@ -122,7 +126,9 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             terminalId: terminal.id,
-            countedCash: dec(document.getElementById('shift-z-counted').value)
+            countedCash: dec(document.getElementById('shift-z-counted').value),
+            removeCash: !!(document.getElementById('shift-z-remove-cash') &&
+              document.getElementById('shift-z-remove-cash').checked)
           })
         }).then(function (body) {
           var msg = 'Növbə bağlandı';

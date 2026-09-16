@@ -13,7 +13,7 @@
   <title>Sifariş</title>
   <link rel="stylesheet" href="app.css?v=21">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css?v=27">
+  <link rel="stylesheet" href="orders.css?v=28">
   <link rel="stylesheet" href="dates.css">
 </head>
 <body class="order-page" data-zone="floor">
@@ -488,6 +488,11 @@
       <label>Sayılan nağd
         <input id="shift-z-counted" type="text" inputmode="decimal" autocomplete="off" required>
       </label>
+      <label class="shift-z-remove" for="shift-z-remove-cash">
+        <input id="shift-z-remove-cash" type="checkbox" checked>
+        Kassadan pulu çıxart
+      </label>
+      <p class="hint shift-z-remove-hint">İşarəli: sayılmış nağd çıxarış yazılır, növbəti növbə daşınmadan başlayır. İşarəsiz: pul kassada qala bilər (carry).</p>
       <div class="modal-actions">
         <button id="shift-z-cancel" type="button">Bağla</button>
         <button id="shift-z-close" class="gold" type="submit">Növbəni bağla</button>
@@ -513,6 +518,7 @@
         <p class="hint">Gözlənilən: <strong id="z-sum-expected">0.00 AZN</strong></p>
         <p class="hint">Sayılan: <strong id="z-sum-counted">0.00 AZN</strong></p>
         <p class="hint">Fərq: <strong id="z-sum-diff">0.00 AZN</strong></p>
+        <p class="hint">Çıxarış: <strong id="z-sum-drops">—</strong></p>
       </div>
       <div class="modal-actions">
         <button id="z-sum-close" type="button">Bağla</button>
@@ -553,12 +559,12 @@
   <script src="dom.js?v=22"></script>
   <script src="nav.js?v=1"></script>
   <script src="receipt-view.js?v=2"></script>
-  <script src="shift-z-view.js?v=5"></script>
+  <script src="shift-z-view.js?v=6"></script>
   <script src="dates.js"></script>
   <script src="group-icons.js?v=3"></script>
   <script src="money.js?v=1"></script>
   <script src="orders-zones.js?v=1"></script>
-  <script src="orders-shift.js?v=3"></script>
+  <script src="orders-shift.js?v=4"></script>
   <script src="orders-pay.js?v=4"></script>
   <script src="orders-ui.js?v=36"></script>
 </body>

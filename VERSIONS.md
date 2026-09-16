@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 
+- **1.2.65** — 2026-09-16 — Z: Kassadan pulu çıxart (default on)
 - **1.2.64** — 2026-09-16 — Qəbul et: stol dərhal busy (renderFloor)
 - **1.2.63** — 2026-09-15 — Ödənişdə avto kassa çapı; dürüst çap toast (printed)
 - **1.2.62** — 2026-09-15 — Satış çeki 1|2 nüsxə; Son çek + Çeklər drawer
