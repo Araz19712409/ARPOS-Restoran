@@ -79,7 +79,13 @@ function load() {
     Object.keys(rows).forEach(function (token) {
       const row = rows[token];
       if (row && row.userId && row.at) {
-        sessions[token] = { userId: Number(row.userId), at: Number(row.at) };
+        sessions[token] = {
+          userId: Number(row.userId),
+          at: Number(row.at),
+          payUnlockUntil: Number(row.payUnlockUntil) || 0,
+          payUnlockName: String(row.payUnlockName || ''),
+          payUnlockId: Number(row.payUnlockId) || 0
+        };
       }
     });
   } catch (error) {
@@ -181,6 +187,30 @@ function dropOthers(keepIds) {
   }
 }
 
+function grantPayUnlock(token, admin, until) {
+  const row = get(token);
+  if (!row || !admin) {
+    return false;
+  }
+  row.payUnlockUntil = Number(until) || (Date.now() + 15 * 60 * 1000);
+  row.payUnlockName = String(admin.name || '');
+  row.payUnlockId = Number(admin.id) || 0;
+  dirty = true;
+  save(true);
+  return true;
+}
+
+function payUnlock(token) {
+  const row = get(token);
+  if (!row || !row.payUnlockUntil || Date.now() > Number(row.payUnlockUntil)) {
+    return null;
+  }
+  return {
+    id: Number(row.payUnlockId) || 0,
+    name: String(row.payUnlockName || '')
+  };
+}
+
 load();
 
 module.exports = {
@@ -188,5 +218,7 @@ module.exports = {
   get: get,
   drop: drop,
   dropUser: dropUser,
-  dropOthers: dropOthers
+  dropOthers: dropOthers,
+  grantPayUnlock: grantPayUnlock,
+  payUnlock: payUnlock
 };

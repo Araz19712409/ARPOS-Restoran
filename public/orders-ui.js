@@ -220,6 +220,8 @@
   var switching = false;
   var adminUnlock = false;
   var afterAdminUnlock = null;
+  var adminApprovedUntil = 0;
+  var adminApprovedBy = '';
   var resumeAfterAdmin = null;
   var adminUnlockWaiterUi = false;
   function storedScale() {
@@ -621,6 +623,9 @@
   }
 
   function can(key) {
+    if (key === 'payments.take' && adminApprovedUntil && Date.now() < adminApprovedUntil) {
+      return true;
+    }
     return waiter && waiter.permissions && waiter.permissions.indexOf(key) !== -1;
   }
 
@@ -793,6 +798,41 @@
     }
     switching = false;
     adminUnlock = false;
+  }
+
+  function tryAdminUnlock(clearOnFail) {
+    if (pinBuffer.length < 4) {
+      return;
+    }
+    api('/api/admin-unlock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: pinBuffer })
+    }).then(function (body) {
+      var data = (body && body.data) || {};
+      adminApprovedUntil = Number(data.until) || (Date.now() + 15 * 60 * 1000);
+      adminApprovedBy = data.approvedBy || '';
+      var after = afterAdminUnlock;
+      afterAdminUnlock = null;
+      finishSwitch();
+      pinBuffer = '';
+      drawPin();
+      hideLock();
+      drawWaiterLine();
+      renderCheck();
+      if (typeof after === 'function') {
+        after();
+      }
+    }).catch(function (error) {
+      var box = document.getElementById('pin-error');
+      if (box) {
+        box.textContent = error.message || 'PIN səhvdir.';
+      }
+      if (clearOnFail || pinBuffer.length >= 8) {
+        pinBuffer = '';
+        drawPin();
+      }
+    });
   }
 
   function requestAdminUnlock(done) {
@@ -3106,6 +3146,10 @@
     if (pinBuffer.length < 4) {
       return;
     }
+    if (adminUnlock) {
+      tryAdminUnlock(clearOnFail);
+      return;
+    }
     api('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3118,22 +3162,7 @@
         return;
       }
       var perms = (body.data && body.data.permissions) || [];
-      if (adminUnlock) {
-        var roleId = body.data && body.data.user && Number(body.data.user.roleId);
-        if (roleId !== 1) {
-          document.getElementById('pin-error').textContent = 'Yalnız admin PIN.';
-          if (body.data && body.data.token) {
-            fetch('/api/logout', {
-              method: 'POST',
-              headers: { 'X-Session': body.data.token }
-            }).catch(function () {});
-          }
-          pinBuffer = '';
-          drawPin();
-          return;
-        }
-      }
-      if (switching && !adminUnlock && perms.indexOf('orders.create') === -1) {
+      if (switching && perms.indexOf('orders.create') === -1) {
         document.getElementById('pin-error').textContent = 'Bu PIN ilə sifarişə girilməz.';
         pinBuffer = '';
         drawPin();
@@ -3144,7 +3173,6 @@
       }
       document.getElementById('pin-error').textContent = '';
       body.data.fromLogin = true;
-      var after = afterAdminUnlock;
       afterAdminUnlock = null;
       setWaiter(body.data);
       finishSwitch();
@@ -3152,10 +3180,6 @@
       drawPin();
       return load().then(function () {
         return restoreAdminSeat();
-      }).then(function () {
-        if (typeof after === 'function') {
-          after();
-        }
       });
     }).catch(function (error) {
       document.getElementById('pin-error').textContent = error.message;

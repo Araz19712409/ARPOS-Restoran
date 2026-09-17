@@ -867,6 +867,7 @@
       if (!can('payments.take') && typeof ctx.requestAdminUnlock === 'function') {
         ctx.requestAdminUnlock(function () {
           sendPrebill(order, pending);
+          openPay();
         });
         return;
       }
@@ -1100,6 +1101,12 @@
         return;
       }
       if (!can('payments.take')) {
+        if (typeof ctx.requestAdminUnlock === 'function') {
+          ctx.requestAdminUnlock(function () {
+            openPay();
+          });
+          return;
+        }
         payFail('Ödənişə icazəniz yoxdur.');
         return;
       }

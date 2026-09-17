@@ -2442,6 +2442,54 @@ app.post('/api/login/totp', function (req, res) {
   }
 });
 
+app.post('/api/admin-unlock', function (req, res) {
+  try {
+    if (!req.staff) {
+      res.status(401).json({ success: false, message: 'PIN ilə daxil olun.' });
+      return;
+    }
+    const ip = req.ip || (req.socket && req.socket.remoteAddress) || 'local';
+    const pinText = req.body && req.body.pin;
+    const wait = users.pinWait(ip, pinText);
+    if (wait > 0) {
+      res.status(429).json({ success: false, message: '5 səhv. ' + wait + ' saniyə gözləyin.' });
+      return;
+    }
+    const admin = users.verifyPin(pinText);
+    if (!admin) {
+      const locked = users.failPin(ip, pinText);
+      res.status(401).json({
+        success: false,
+        message: locked > 0 ? ('5 səhv. ' + locked + ' saniyə gözləyin.') : 'PIN səhvdir.'
+      });
+      return;
+    }
+    if (!users.isAdminUser(admin)) {
+      users.failPin(ip, pinText);
+      res.status(403).json({ success: false, message: 'Yalnız admin PIN.' });
+      return;
+    }
+    users.clearPinFail(ip, pinText);
+    if (admin.totpEnabled && admin.totpSecret) {
+      res.status(403).json({ success: false, message: 'Bu admin üçün əlavə kod lazımdır.' });
+      return;
+    }
+    const until = Date.now() + 15 * 60 * 1000;
+    const token = req.get('X-Session') || '';
+    if (!sessions.grantPayUnlock(token, admin, until)) {
+      res.status(401).json({ success: false, message: 'PIN ilə daxil olun.' });
+      return;
+    }
+    audit(req, 'admin-unlock', (req.staff.user.name || '') + ' ← ' + admin.name);
+    res.json({
+      success: true,
+      data: { approvedBy: admin.name, until: until }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
 app.post('/api/pin', function (req, res) {
   try {
     if (!req.staff) {
@@ -3719,9 +3767,15 @@ app.post('/api/orders/handoff', function (req, res) {
 app.post('/api/orders/pay', function (req, res) {
   lock.withLock('write', function () {
     const body = req.body || {};
-    const staff = users.canUser(Number(body.waiterId), 'payments.take');
+    const token = req.get('X-Session') || '';
+    let staff = users.canUser(Number(body.waiterId), 'payments.take');
+    const unlock = sessions.payUnlock(token);
     if (!staff || !staff.ok) {
-      reject(403, staff ? 'Satışa icazəniz yoxdur.' : 'PIN ilə daxil olun.');
+      const ident = users.canUser(Number(body.waiterId));
+      if (!ident || !unlock) {
+        reject(403, staff ? 'Satışa icazəniz yoxdur.' : 'PIN ilə daxil olun.');
+      }
+      staff = ident;
     }
     const terminal = needTerminal(body);
     const store = orders.readOrders();
@@ -3901,6 +3955,9 @@ app.post('/api/orders/pay', function (req, res) {
       waiterId: staff.user.id,
       waiterName: staff.user.name
     };
+    if (unlock && unlock.name) {
+      shareRow.approvedBy = unlock.name;
+    }
     if (!order.payments) {
       order.payments = [];
     }

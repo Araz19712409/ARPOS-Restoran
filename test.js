@@ -3139,7 +3139,7 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   assert.ok(ui.indexOf('waiter && useFloorMap()') < 0);
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '2.0.2');
+  assert.strictEqual(require('./package.json').version, '2.0.3');
 });
 
 test('launcher: port açıqdırsa ikinci tam ekran yox, mövcud URL', function () {
@@ -3175,7 +3175,7 @@ test('sprint E: plan ölçü toast + pending ± hüquq', function () {
   assert.ok(ui.indexOf('Yalnız admin azalda bilər') >= 0);
   assert.ok(ui.indexOf("can('orders.create')") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=73') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=74') >= 0);
 });
 
 test('admin sent qty cut + mətbəx AZALDILDI', function () {
@@ -3223,7 +3223,7 @@ test('admin sent qty cut + mətbəx AZALDILDI', function () {
   assert.ok(ui.indexOf('stopPropagation') >= 0);
   assert.ok(ui.indexOf('Miqdar azaldıldı.') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=73') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=74') >= 0);
 });
 
 test('Qəbul et: double-click kilidi busy+disabled', function () {
@@ -3237,6 +3237,27 @@ test('Qəbul et: double-click kilidi busy+disabled', function () {
   assert.ok(click.indexOf('if (busy)') >= 0);
   assert.ok(click.indexOf('lockAccept()') >= 0);
   assert.ok(click.indexOf('lockAccept()') < click.indexOf("askYes('Qəbul'"));
+});
+
+test('admin PIN unlock: sessiya ofisiant qalır', function () {
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(ui.indexOf('function tryAdminUnlock') >= 0);
+  assert.ok(ui.indexOf('/api/admin-unlock') >= 0);
+  const unlockFn = ui.slice(ui.indexOf('function tryAdminUnlock'), ui.indexOf('function requestAdminUnlock'));
+  assert.ok(unlockFn.indexOf('setWaiter') < 0);
+  assert.ok(unlockFn.indexOf('PosNav.forget') < 0);
+  assert.ok(ui.indexOf('adminApprovedUntil') >= 0);
+  const pay = fs.readFileSync(path.join(__dirname, 'public', 'orders-pay.js'), 'utf8');
+  assert.ok(pay.indexOf('requestAdminUnlock') >= 0);
+  const srv = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  assert.ok(srv.indexOf("app.post('/api/admin-unlock'") >= 0);
+  assert.ok(srv.indexOf('grantPayUnlock') >= 0);
+  assert.ok(srv.indexOf('approvedBy') >= 0);
+  const sess = fs.readFileSync(path.join(__dirname, 'sessions.js'), 'utf8');
+  assert.ok(sess.indexOf('function grantPayUnlock') >= 0);
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
+  assert.ok(html.indexOf('orders-ui.js?v=74') >= 0);
+  assert.ok(html.indexOf('orders-pay.js?v=13') >= 0);
 });
 
 console.log('Bütün testlər keçdi.');

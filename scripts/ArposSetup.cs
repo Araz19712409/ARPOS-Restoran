@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -293,9 +294,92 @@ internal sealed class ArposSetup : Form
     {
         var root = dest.TrimEnd('\\', '/') + Path.DirectorySeparatorChar;
         KillByNames(root, new[] { "ArposRestoran", "node" });
+        KillPort(3004);
+        KillPort(3443);
         Thread.Sleep(1200);
         KillByNames(root, new[] { "ArposRestoran", "node" });
+        KillPort(3004);
+        KillPort(3443);
         Thread.Sleep(600);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MibTcpRowOwnerPid
+    {
+        public uint state;
+        public uint localAddr;
+        public uint localPort;
+        public uint remoteAddr;
+        public uint remotePort;
+        public uint owningPid;
+    }
+
+    [DllImport("iphlpapi.dll", SetLastError = true)]
+    private static extern uint GetExtendedTcpTable(IntPtr table, ref int size, bool sort, int ipVersion, int tableClass, int reserved);
+
+    private static void KillPort(int port)
+    {
+        var pids = ListenPids(port);
+        for (var i = 0; i < pids.Count; i++)
+        {
+            try
+            {
+                var p = Process.GetProcessById(pids[i]);
+                try
+                {
+                    p.Kill();
+                    p.WaitForExit(4000);
+                }
+                finally
+                {
+                    try { p.Dispose(); } catch { }
+                }
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private static List<int> ListenPids(int port)
+    {
+        var pids = new List<int>();
+        var size = 0;
+        GetExtendedTcpTable(IntPtr.Zero, ref size, true, 2, 5, 0);
+        if (size <= 0)
+        {
+            return pids;
+        }
+        var buf = Marshal.AllocHGlobal(size);
+        try
+        {
+            if (GetExtendedTcpTable(buf, ref size, true, 2, 5, 0) != 0)
+            {
+                return pids;
+            }
+            var count = Marshal.ReadInt32(buf);
+            var row = IntPtr.Add(buf, 4);
+            var rowSize = Marshal.SizeOf(typeof(MibTcpRowOwnerPid));
+            for (var i = 0; i < count; i++)
+            {
+                var r = (MibTcpRowOwnerPid)Marshal.PtrToStructure(row, typeof(MibTcpRowOwnerPid));
+                var local = (int)(((r.localPort >> 8) & 0xFF) | ((r.localPort & 0xFF) << 8));
+                if (local == port && r.owningPid != 0)
+                {
+                    var pid = (int)r.owningPid;
+                    if (!pids.Contains(pid))
+                    {
+                        pids.Add(pid);
+                    }
+                }
+                row = IntPtr.Add(row, rowSize);
+            }
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buf);
+        }
+        return pids;
     }
 
     private static void KillByNames(string root, string[] names)
@@ -317,19 +401,20 @@ internal sealed class ArposSetup : Form
                 {
                     string path = null;
                     try { path = p.MainModule != null ? p.MainModule.FileName : null; } catch { }
-                    if (string.IsNullOrEmpty(path))
-                    {
-                        continue;
-                    }
-                    var full = Path.GetFullPath(path);
                     var procName = "";
                     try { procName = p.ProcessName; } catch { }
                     if (procName.IndexOf("Setup", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         continue;
                     }
+                    if (string.IsNullOrEmpty(path))
+                    {
+                        continue;
+                    }
+                    var full = Path.GetFullPath(path);
+                    var runtimeNode = Path.Combine(root.TrimEnd('\\'), "runtime", "node.exe");
                     if (full.StartsWith(root, StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(full, Path.Combine(root.TrimEnd('\\'), "runtime", "node.exe"), StringComparison.OrdinalIgnoreCase))
+                        string.Equals(full, runtimeNode, StringComparison.OrdinalIgnoreCase))
                     {
                         p.Kill();
                         p.WaitForExit(4000);
