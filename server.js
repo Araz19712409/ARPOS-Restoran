@@ -3335,13 +3335,41 @@ app.post('/api/orders/void', async function (req, res) {
       if (!line || line.voided) {
         reject(400, 'Sətir ləğv oluna bilməz.');
       }
-      const haveQty = Math.max(0, Number(line.qty) || 0);
-      const reduceBy = Math.max(0, Math.floor(Number(body.reduceBy) || 0));
-      const partial = reduceBy > 0 && reduceBy < haveQty;
-      if (partial && !users.isAdminUser(staff.user)) {
-        reject(403, 'Miqdarı yalnız admin azalda bilər.');
+      const haveQty = Math.max(0, Math.floor(Number(line.qty) || 0));
+      const hasReduce = Object.prototype.hasOwnProperty.call(body, 'reduceBy');
+      if (hasReduce) {
+        const reduceBy = Math.floor(Number(body.reduceBy));
+        if (!Number.isFinite(reduceBy) || reduceBy < 1) {
+          reject(400, 'reduceBy lazımdır');
+        }
+        if (!users.isAdminUser(staff.user)) {
+          reject(403, 'Miqdarı yalnız admin azalda bilər.');
+        }
+        if (reduceBy >= haveQty) {
+          reject(400, 'Yalnız 1 ədəd azaldın.');
+        }
+        const cut = orders.applyQtyCut(line, reduceBy, staff.user.name);
+        if (!cut.ok || cut.full) {
+          reject(400, 'Miqdar azalmadı.');
+        }
+        order.updatedAt = new Date().toISOString();
+        orders.writeOrders(store);
+        const ticketItems = [cut.slice];
+        if (line.sent && settings.isStockMode()) {
+          stock.restockLines(catalog.readCatalog(), ticketItems, { orderId: order.id });
+        }
+        return {
+          order: order,
+          line: line,
+          extra: [],
+          staff: staff,
+          skipTicket: false,
+          ticketItems: ticketItems,
+          ticketTitle: 'AZALDILDI',
+          partial: true
+        };
       }
-      const cut = orders.applyQtyCut(line, partial ? reduceBy : 0, staff.user.name);
+      const cut = orders.voidLine(line, staff.user.name);
       const extra = [];
       if (cut.full) {
         (order.items || []).filter(function (row) {
@@ -3355,9 +3383,7 @@ app.post('/api/orders/void', async function (req, res) {
       }
       order.updatedAt = new Date().toISOString();
       orders.writeOrders(store);
-      const ticketItems = cut.full
-        ? [line].concat(extra)
-        : [cut.slice];
+      const ticketItems = [line].concat(extra);
       const restock = ticketItems.filter(function (row) { return row.sent || line.sent; });
       if (restock.length && settings.isStockMode()) {
         stock.restockLines(catalog.readCatalog(), restock, { orderId: order.id });
@@ -3369,8 +3395,8 @@ app.post('/api/orders/void', async function (req, res) {
         staff: staff,
         skipTicket: false,
         ticketItems: ticketItems,
-        ticketTitle: cut.full ? 'LEGV OLUNDU' : 'AZALDILDI',
-        partial: !cut.full
+        ticketTitle: 'LEGV OLUNDU',
+        partial: false
       };
     });
   } catch (error) {

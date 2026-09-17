@@ -3139,7 +3139,7 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   assert.ok(ui.indexOf('waiter && useFloorMap()') < 0);
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '2.0.1');
+  assert.strictEqual(require('./package.json').version, '2.0.2');
 });
 
 test('launcher: port açıqdırsa ikinci tam ekran yox, mövcud URL', function () {
@@ -3175,24 +3175,30 @@ test('sprint E: plan ölçü toast + pending ± hüquq', function () {
   assert.ok(ui.indexOf('Yalnız admin azalda bilər') >= 0);
   assert.ok(ui.indexOf("can('orders.create')") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=72') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=73') >= 0);
 });
 
 test('admin sent qty cut + mətbəx AZALDILDI', function () {
   const line = { id: 1, name: 'NƏ25', qty: 5, stationId: 1, sent: true, voided: false };
-  const part = orders.applyQtyCut(line, 2, 'Admin');
+  const part = orders.applyQtyCut(line, 1, 'Admin');
   assert.ok(part.ok && !part.full);
-  assert.strictEqual(line.qty, 3);
-  assert.strictEqual(part.ticketQty, 2);
-  assert.strictEqual(part.slice.qty, 2);
-  assert.strictEqual(part.slice.name, 'NƏ25');
+  assert.strictEqual(line.qty, 4);
+  assert.strictEqual(part.ticketQty, 1);
+  assert.strictEqual(part.slice.qty, 1);
+  assert.ok(!line.voided);
+  const tooBig = orders.applyQtyCut(line, 4, 'Admin');
+  assert.ok(!tooBig.ok);
+  assert.strictEqual(line.qty, 4);
   const gone = { id: 2, name: 'X', qty: 1, stationId: 1, sent: true, voided: false };
-  const full = orders.applyQtyCut(gone, 1, 'Admin');
+  assert.ok(!orders.applyQtyCut(gone, 1, 'Admin').ok);
+  assert.strictEqual(gone.voided, false);
+  const full = orders.voidLine(gone, 'Admin');
   assert.ok(full.ok && full.full);
   assert.strictEqual(gone.voided, true);
   const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
   const voidFn = src.slice(src.indexOf("app.post('/api/orders/void'"), src.indexOf("app.post('/api/orders/reprint'"));
-  assert.ok(voidFn.indexOf('reduceBy') >= 0);
+  assert.ok(voidFn.indexOf('reduceBy lazımdır') >= 0);
+  assert.ok(voidFn.indexOf('voidLine') >= 0);
   assert.ok(voidFn.indexOf('AZALDILDI') >= 0);
   assert.ok(voidFn.indexOf('isAdminUser') >= 0);
   assert.ok(voidFn.indexOf('ticketItems') >= 0);
@@ -3213,9 +3219,11 @@ test('admin sent qty cut + mətbəx AZALDILDI', function () {
   const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
   assert.ok(ui.indexOf('reduceBy: 1') >= 0);
   assert.ok(ui.indexOf('sentCanCut') >= 0);
+  assert.ok(ui.indexOf('!sentCanCut') >= 0);
+  assert.ok(ui.indexOf('stopPropagation') >= 0);
   assert.ok(ui.indexOf('Miqdar azaldıldı.') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=72') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=73') >= 0);
 });
 
 test('Qəbul et: double-click kilidi busy+disabled', function () {

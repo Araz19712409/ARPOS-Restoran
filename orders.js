@@ -378,17 +378,25 @@ function ticketSlice(line, qty) {
   };
 }
 
-/** reduceBy > 0 və < qty → qismən kəs; əks halda tam void. */
+/** reduceBy >= 1 və < qty → qismən kəs; tam void yox. */
 function applyQtyCut(line, reduceBy, staffName) {
   if (!line || line.voided) {
     return { ok: false, full: false, ticketQty: 0 };
   }
-  const have = Math.max(0, Number(line.qty) || 0);
-  const cut = Math.max(0, Math.floor(Number(reduceBy) || 0));
-  if (cut > 0 && cut < have) {
-    line.qty = have - cut;
-    return { ok: true, full: false, ticketQty: cut, slice: ticketSlice(line, cut) };
+  const have = Math.max(0, Math.floor(Number(line.qty) || 0));
+  const cut = Math.floor(Number(reduceBy) || 0);
+  if (!(cut >= 1 && cut < have)) {
+    return { ok: false, full: false, ticketQty: 0 };
   }
+  line.qty = have - cut;
+  return { ok: true, full: false, ticketQty: cut, slice: ticketSlice(line, cut), staffName: staffName };
+}
+
+function voidLine(line, staffName) {
+  if (!line || line.voided) {
+    return { ok: false, full: false, ticketQty: 0 };
+  }
+  const have = Math.max(0, Math.floor(Number(line.qty) || 0));
   line.voided = true;
   line.voidedAt = new Date().toISOString();
   line.voidedBy = staffName || '';
@@ -416,6 +424,7 @@ module.exports = {
   lastPaidOrder: lastPaidOrder,
   paidTotal: paidTotal,
   applyQtyCut: applyQtyCut,
+  voidLine: voidLine,
   ticketSlice: ticketSlice,
   hasProductSales: hasProductSales,
   soldProductIds: soldProductIds

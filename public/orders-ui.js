@@ -2709,12 +2709,15 @@
         sentPlus.textContent = '+';
         sentPlus.disabled = true;
         sentPlus.title = 'Göndərilmiş sətirdə artırma yoxdur';
-        sentMinus.addEventListener('click', function () {
+        sentMinus.addEventListener('click', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
           if (!isAdminUser() || foreignLocked()) {
             say('Yalnız admin azalda bilər.', 'err');
             return;
           }
-          if (Number(item.qty) <= 1) {
+          var q = Math.max(0, Math.floor(Number(item.qty) || 0));
+          if (q <= 1) {
             runAction('/api/orders/void', { orderId: order.id, itemId: item.id },
               '"' + item.name + '" ləğv edilsin və stansiyaya getsin?');
             return;
@@ -2736,7 +2739,7 @@
       amt.textContent = lineSumText(item);
       amtCell.appendChild(amt);
 
-      if (!item.voided && !item.settled && can('orders.void') && !foreignLocked() &&
+      if (!sentCanCut && !item.voided && !item.settled && can('orders.void') && !foreignLocked() &&
           order && !(order.payments && order.payments.length)) {
         var sentRemove = document.createElement('button');
         sentRemove.type = 'button';
