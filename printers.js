@@ -724,8 +724,10 @@ function buildOrderTicket(printer, payload) {
   if (payload.title) {
     lines.splice(1, 0, toPrinterText(payload.title));
   }
-  (payload.items || []).forEach(function (item) {
-    lines.push(toPrinterText(item.qty + 'x  ' + item.name));
+  const voidTicket = /LEGV|LAGV|VOID|AZALD/i.test(String(payload.title || ''));
+  (mergeSameReceiptItems(payload.items)).forEach(function (item) {
+    const prefix = voidTicket ? 'LEGV  ' : '';
+    lines.push(toPrinterText(prefix + item.qty + 'x  ' + item.name));
     const marks = (item.modifiers || []).map(function (row) { return row.name; });
     if (item.note) {
       marks.push(item.note);
@@ -735,7 +737,7 @@ function buildOrderTicket(printer, payload) {
     }
   });
   lines.push(dash(width));
-  lines.push(toPrinterText('Sifaris qebul olundu'));
+  lines.push(toPrinterText(voidTicket ? 'Mehsul legv olundu' : 'Sifaris qebul olundu'));
   lines.push(eq(width));
   lines.push('');
   lines.push('');
@@ -941,9 +943,11 @@ async function deliverReceipt(order) {
     copies = 1;
   }
   const out = await tryPrinters(list, function (printer) {
-    const cash = Number((order.payment && order.payment.cashAmount) || 0);
+    const cash = order && order.prebill
+      ? 0
+      : Number((order.payment && order.payment.cashAmount) || 0);
     return buildReceiptTicket(Object.assign({}, printer, { openDrawer: cash > 0 }), order);
-  }, 'Çek çapı', copies, true);
+  }, order && order.prebill ? 'Hesab capi' : 'Çek çapı', copies, true);
   out.copies = copies;
   return out;
 }
@@ -1217,6 +1221,41 @@ async function flushQueue() {
   return listQueue();
 }
 
+function receiptLineKey(item) {
+  const mods = (item.modifiers || []).map(function (row) {
+    return String(row.name || '').trim();
+  }).filter(Boolean).sort().join('\t');
+  const price = Number(item.salePrice);
+  return [
+    String(Number(item.productId) || 0),
+    String(item.name || '').trim(),
+    Number.isFinite(price) ? price.toFixed(2) : '0.00',
+    String(item.note || '').trim(),
+    item.complimentary ? '1' : '0',
+    mods
+  ].join('|');
+}
+
+function mergeSameReceiptItems(items) {
+  const out = [];
+  const map = Object.create(null);
+  (items || []).forEach(function (item) {
+    if (!item || item.voided) {
+      return;
+    }
+    const key = receiptLineKey(item);
+    const prev = map[key];
+    if (prev) {
+      prev.qty = Number(prev.qty) + Number(item.qty || 0);
+      return;
+    }
+    const copy = Object.assign({}, item, { qty: Number(item.qty || 0) });
+    map[key] = copy;
+    out.push(copy);
+  });
+  return out;
+}
+
 // Qonaq çekini hazırlayırıq
 function buildReceiptTicket(printer, order) {
   const width = contentWidth(printer);
@@ -1258,7 +1297,12 @@ function buildReceiptTicket(printer, order) {
       lines.push(toPrinterText(row));
     }
   });
-  lines.push(toPrinterText('CEK #' + order.id));
+  if (order.prebill) {
+    lines.push(toPrinterText('HESAB #' + order.id));
+    lines.push(toPrinterText('ODENILMEYIB'));
+  } else {
+    lines.push(toPrinterText('CEK #' + order.id));
+  }
   lines.push(eq(width));
   lines.push(line(width, 'Masa', order.tableName || '-'));
   lines.push(line(width, 'Ofisiant', pay.waiterName || order.waiterName || '-'));
@@ -1270,10 +1314,7 @@ function buildReceiptTicket(printer, order) {
   }
   lines.push(line(width, 'Vaxt', dateText));
   lines.push(dash(width));
-  (order.items || []).forEach(function (item) {
-    if (item.voided) {
-      return;
-    }
+  mergeSameReceiptItems(order.items).forEach(function (item) {
     const sum = Number((Number(item.salePrice) * Number(item.qty)).toFixed(2));
     lines.push(toPrinterText(item.qty + 'x  ' + item.name));
     const marks = (item.modifiers || []).map(function (row) { return row.name; });
@@ -1300,10 +1341,14 @@ function buildReceiptTicket(printer, order) {
     lines.push(line(width, 'Ilkin', Number(pay.prepaid).toFixed(2)));
     lines.push(line(width, 'Qaliq', Number(pay.due || 0).toFixed(2)));
   }
-  lines.push(line(width, 'Nagd', Number(pay.cashAmount || 0).toFixed(2)));
-  lines.push(line(width, 'Kart', Number(pay.cardAmount || 0).toFixed(2)));
-  if (pay.change) {
-    lines.push(line(width, 'Qaytarilan', Number(pay.change).toFixed(2)));
+  if (order.prebill) {
+    lines.push(toPrinterText('Elave sifaris ola biler'));
+  } else {
+    lines.push(line(width, 'Nagd', Number(pay.cashAmount || 0).toFixed(2)));
+    lines.push(line(width, 'Kart', Number(pay.cardAmount || 0).toFixed(2)));
+    if (pay.change) {
+      lines.push(line(width, 'Qaytarilan', Number(pay.change).toFixed(2)));
+    }
   }
   lines.push(eq(width));
   const footers = Array.isArray(receipt.footerLines) ? receipt.footerLines.filter(Boolean) : [];
@@ -1331,6 +1376,7 @@ module.exports = {
   sendZTickets: sendZTickets,
   buildZTicket: buildZTicket,
   buildReceiptTicket: buildReceiptTicket,
+  mergeSameReceiptItems: mergeSameReceiptItems,
   toPrinterText: toPrinterText,
   printerPath: printerPath,
   deliverBytes: deliverBytes,

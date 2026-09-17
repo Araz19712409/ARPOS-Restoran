@@ -48,6 +48,45 @@
     return url;
   }
 
+  function receiptLineKey(item) {
+    var mods = (item.modifiers || []).map(function (mod) {
+      return String(mod.name || '').trim();
+    }).filter(Boolean).sort().join('\t');
+    var price = Number(item.salePrice);
+    return [
+      String(Number(item.productId) || 0),
+      String(item.name || '').trim(),
+      Number.isFinite(price) ? price.toFixed(2) : '0.00',
+      String(item.note || '').trim(),
+      item.complimentary ? '1' : '0',
+      mods
+    ].join('|');
+  }
+
+  function mergeSameReceiptItems(items) {
+    var out = [];
+    var map = Object.create(null);
+    (items || []).forEach(function (item) {
+      if (!item || item.voided) {
+        return;
+      }
+      var key = receiptLineKey(item);
+      var prev = map[key];
+      if (prev) {
+        prev.qty = Number(prev.qty) + Number(item.qty || 0);
+        return;
+      }
+      var copy = {};
+      Object.keys(item).forEach(function (k) {
+        copy[k] = item[k];
+      });
+      copy.qty = Number(item.qty || 0);
+      map[key] = copy;
+      out.push(copy);
+    });
+    return out;
+  }
+
   function fill(root, order) {
     if (!root || !order) {
       return;
@@ -55,10 +94,8 @@
     var pay = order.payment || {};
     var receipt = order.receipt || {};
     var items = 0;
-    (order.items || []).forEach(function (item) {
-      if (item.voided) {
-        return;
-      }
+    var shown = mergeSameReceiptItems(order.items);
+    shown.forEach(function (item) {
       items += Number(item.salePrice) * Number(item.qty);
     });
     var service = Number(pay.serviceCharge) || 0;
@@ -112,10 +149,7 @@
     var box = document.createElement('div');
     box.className = 'rc-lines';
     root.appendChild(box);
-    (order.items || []).forEach(function (item) {
-      if (item.voided) {
-        return;
-      }
+    shown.forEach(function (item) {
       var row = document.createElement('div');
       row.className = 'rc-row';
       var left = document.createElement('span');

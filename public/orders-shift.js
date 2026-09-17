@@ -78,7 +78,7 @@
       }
       var closeBtn = el('shift-z-close');
       if (closeBtn) {
-        closeBtn.disabled = !cur || openList.length > 0 || !ctx.can('payments.take');
+        closeBtn.disabled = false;
       }
     }
 
@@ -114,6 +114,12 @@
         event.preventDefault();
         var terminal = ctx.terminal;
         if (!ctx.can('payments.take') || !terminal) {
+          say('Növbəni bağlamaq üçün ödəniş icazəsi və terminal lazımdır.', 'err');
+          return;
+        }
+        var cur = ctx.shiftPack && ctx.shiftPack.current;
+        if (!cur) {
+          say('Açıq növbə yoxdur.', 'err');
           return;
         }
         var openList = (ctx.shiftPack && ctx.shiftPack.openTables) || [];
@@ -121,12 +127,22 @@
           say('Açıq masa var: ' + openList.join(', ') + '.', 'err');
           return;
         }
+        var countedEl = document.getElementById('shift-z-counted');
+        var countedCash = dec(countedEl && countedEl.value);
+        if (!Number.isFinite(countedCash) || countedCash < 0) {
+          say('Sayılan nağd düzgün deyil.', 'err');
+          return;
+        }
+        var closeBtn = document.getElementById('shift-z-close');
+        if (closeBtn) {
+          closeBtn.disabled = true;
+        }
         api('/api/shifts/close', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             terminalId: terminal.id,
-            countedCash: dec(document.getElementById('shift-z-counted').value),
+            countedCash: countedCash,
             removeCash: !!(document.getElementById('shift-z-remove-cash') &&
               document.getElementById('shift-z-remove-cash').checked)
           })
@@ -147,6 +163,10 @@
           return refreshShiftBadge();
         }).catch(function (error) {
           say(error.message, 'err');
+        }).then(function () {
+          if (closeBtn) {
+            closeBtn.disabled = false;
+          }
         });
       });
     }

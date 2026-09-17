@@ -1126,12 +1126,56 @@
     });
   }
 
+  function attemptEnterFs() {
+    try {
+      var p = enterFs();
+      if (p && typeof p.then === 'function') {
+        p.catch(function () {});
+      }
+    } catch (e) {}
+  }
+
+  function bindFirstGestureFs() {
+    if (document.documentElement.getAttribute('data-fs-gesture') === '1') {
+      return;
+    }
+    document.documentElement.setAttribute('data-fs-gesture', '1');
+    function once() {
+      document.removeEventListener('pointerdown', once, true);
+      document.removeEventListener('keydown', once, true);
+      if (isWaiterUi() || isFs()) {
+        return;
+      }
+      attemptEnterFs();
+    }
+    document.addEventListener('pointerdown', once, true);
+    document.addEventListener('keydown', once, true);
+  }
+
+  function tryAutoFullscreen() {
+    if (isWaiterUi()) {
+      return;
+    }
+    var path = '';
+    try {
+      path = String(location.pathname || '');
+    } catch (e) {
+      return;
+    }
+    if (path.indexOf('orders.html') < 0) {
+      return;
+    }
+    attemptEnterFs();
+    bindFirstGestureFs();
+  }
+
   function boot() {
     checkLicense(function () {
       guard();
       bindKeyboard();
       bindMoreNav();
       bindFullscreenBtn();
+      tryAutoFullscreen();
       refreshPrintQueue = watchPrintQueue('print-queue-box') || null;
     });
   }

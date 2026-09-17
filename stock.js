@@ -453,7 +453,7 @@ function activeWarehouseCount(box) {
 }
 
 function defaults() {
-  return {
+    return {
     nextItemId: 1,
     nextMoveId: 1,
     nextPurchaseId: 1,
@@ -475,9 +475,9 @@ function defaults() {
 function packStock(raw) {
   const warehouses = packWarehouses(raw);
   const packed = {
-    nextItemId: Number(raw.nextItemId) || 1,
-    nextMoveId: Number(raw.nextMoveId) || 1,
-    nextPurchaseId: Number(raw.nextPurchaseId) || 1,
+      nextItemId: Number(raw.nextItemId) || 1,
+      nextMoveId: Number(raw.nextMoveId) || 1,
+      nextPurchaseId: Number(raw.nextPurchaseId) || 1,
     nextInventoryId: Number(raw.nextInventoryId) || 1,
     nextProductionId: Number(raw.nextProductionId) || 1,
     nextWarehouseId: Math.max(Number(raw.nextWarehouseId) || 1, maxWarehouseId(warehouses) + 1),
@@ -486,8 +486,8 @@ function packStock(raw) {
     items: (Array.isArray(raw.items) ? raw.items : []).map(function (item) {
       return ensureLots(item);
     }),
-    moves: Array.isArray(raw.moves) ? raw.moves : [],
-    purchases: Array.isArray(raw.purchases) ? raw.purchases : [],
+      moves: Array.isArray(raw.moves) ? raw.moves : [],
+      purchases: Array.isArray(raw.purchases) ? raw.purchases : [],
     inventories: Array.isArray(raw.inventories) ? raw.inventories : [],
     productions: Array.isArray(raw.productions) ? raw.productions : [],
     transfers: Array.isArray(raw.transfers) ? raw.transfers : [],
@@ -830,9 +830,9 @@ function cleanSuppliers(list) {
   const seen = {};
   (Array.isArray(list) ? list : []).forEach(function (row) {
     const n = supplierNameOf(row);
-    if (!n) {
-      return;
-    }
+  if (!n) {
+    return;
+  }
     const key = n.toLowerCase();
     if (seen[key]) {
       return;

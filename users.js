@@ -258,8 +258,8 @@ function defaultRoles() {
       return key !== 'users.delete' && key !== 'cost.edit' && key !== 'stock.delete';
     }) },
     { id: 3, name: 'Ofisiant', system: true, permissions: [
-      'layout.view', 'products.view', 'orders.create', 'orders.void',
-      'orders.move', 'payments.take', 'kitchen.view'
+      'layout.view', 'products.view', 'orders.create',
+      'orders.move', 'kitchen.view'
     ] },
     { id: 4, name: 'Kassir', system: true, permissions: [
       'layout.view', 'products.view', 'orders.create', 'orders.void',
@@ -292,7 +292,9 @@ function readStore() {
     nextUserId: Number(raw.nextUserId) || 1,
     nextRoleId: Number(raw.nextRoleId) || 1,
     roles: Array.isArray(raw.roles) ? raw.roles : [],
-    users: Array.isArray(raw.users) ? raw.users : []
+    users: Array.isArray(raw.users) ? raw.users : [],
+    waiterVoidOptIn: !!raw.waiterVoidOptIn,
+    waiterPayOptIn: !!raw.waiterPayOptIn
   };
   if (!store.roles.length) {
     store.roles = defaultRoles();
@@ -304,12 +306,30 @@ function readStore() {
   var changed = false;
   const waiter = store.roles.find(function (item) { return item.id === 3; });
   if (waiter) {
-    ['orders.void', 'payments.take', 'orders.move'].forEach(function (key) {
-      if (waiter.permissions.indexOf(key) === -1) {
-        waiter.permissions.push(key);
+    // Ofisiant default: sətir silmə (Ləğv) yoxdur. Əvvəl avtomatik əlavə olunurdu — götürülür.
+    if (!store.waiterVoidOptIn) {
+      var withoutVoid = waiter.permissions.filter(function (key) {
+        return key !== 'orders.void';
+      });
+      if (withoutVoid.length !== waiter.permissions.length) {
+        waiter.permissions = withoutVoid;
         changed = true;
       }
-    });
+      store.waiterVoidOptIn = true;
+      changed = true;
+    }
+    // Ofisiant default: ödəniş/satış yoxdur. Əvvəl avtomatik «Ödəniş → Qəbul» yazılırdı.
+    if (!store.waiterPayOptIn) {
+      var withoutPay = waiter.permissions.filter(function (key) {
+        return key !== 'payments.take';
+      });
+      if (withoutPay.length !== waiter.permissions.length) {
+        waiter.permissions = withoutPay;
+        changed = true;
+      }
+      store.waiterPayOptIn = true;
+      changed = true;
+    }
   }
   store.roles.forEach(function (role) {
     if ((role.id === 1 || role.id === 2 || role.id === 4) &&

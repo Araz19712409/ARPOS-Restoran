@@ -20,6 +20,15 @@
       var show = isWizard() && zone && zone !== 'floor';
       back.classList.toggle('hidden', !show);
       back.hidden = !show;
+      if (show) {
+        if (zone === 'menu') {
+          back.textContent = 'Geri · Qruplar';
+        } else if (zone === 'groups' || zone === 'check') {
+          back.textContent = 'Geri · Masalar';
+        } else {
+          back.textContent = 'Geri';
+        }
+      }
     }
 
     function setOrderZone(zone) {

@@ -44,6 +44,15 @@
   min-height: 168px;
 }
 
+.kitchen-card.is-void {
+  border-color: #e2a08a;
+  background: #2a1f1a;
+}
+
+.kitchen-card.is-void h3 {
+  color: #e2a08a;
+}
+
 .kitchen-card.age-wait {
   border-color: #c9842a;
 }

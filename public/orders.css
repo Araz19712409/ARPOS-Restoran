@@ -185,6 +185,61 @@
   flex-direction: column;
 }
 
+/* Kassa: masalar sütun boyu, səliqəli grid (çertyoj deyil) */
+.order-page:not(.order-wizard) .floor-col {
+  height: 100%;
+  min-height: 0;
+  padding: 10px 10px 8px;
+}
+
+.order-page:not(.order-wizard) .floor-bar {
+  margin-bottom: 4px;
+}
+
+.order-page:not(.order-wizard) .floor-tools {
+  margin-bottom: 6px;
+  gap: 4px;
+}
+
+.order-page:not(.order-wizard) .floor-scroll-host {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.order-page:not(.order-wizard) .floor-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.order-page:not(.order-wizard) .floor-scroll .table-board {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.order-page:not(.order-wizard) .hall-section {
+  margin-bottom: 12px;
+}
+
+.order-page:not(.order-wizard) .hall-section .table-grid {
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+}
+
+.order-page:not(.order-wizard) .table-tile {
+  min-height: 84px;
+  min-width: 0;
+  font-size: 0.98rem;
+  border-radius: 12px;
+  padding: 8px 6px;
+}
+
+.order-page:not(.order-wizard) .floor-map-controls,
+.order-page:not(.order-wizard) .floor-map-handle {
+  display: none !important;
+}
+
 .floor-resizer {
   cursor: col-resize;
   background: #3d3428;
@@ -479,6 +534,21 @@
 
 .check-head {
   flex: 0 0 auto;
+  margin-bottom: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+/* Səbət üçün yer: Masa / Qonaq yazıları gizlədilir */
+.check-head > .eyebrow,
+.check-head > .table-title,
+.check-head > .guest-line {
+  display: none !important;
+}
+
+.check-head .service-guest:not(.hidden),
+.check-head #reserve-info:not(:empty) {
   margin-bottom: 8px;
   padding: 10px;
   border: 1px solid #3d3428;
@@ -1083,6 +1153,11 @@
   line-height: 1;
 }
 
+.stepper .step:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .stepper .q {
   min-width: 1.2rem;
   text-align: center;
@@ -1109,6 +1184,29 @@
   color: #c4a574;
   font-weight: 800;
   line-height: 1;
+}
+
+.check-remove {
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid #5a4c3a;
+  background: #2a1f1a;
+  color: #e2a08a;
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.check-remove:hover {
+  background: #3a2820;
+  border-color: #e2a08a;
 }
 
 .check-menu {
@@ -1267,7 +1365,7 @@
 
 .receipt-quick-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 6px;
   margin: 0 0 10px;
 }
@@ -1288,6 +1386,32 @@
   border-color: #3d3428;
   color: #cbbba8;
   cursor: not-allowed;
+}
+
+#prebill-btn:not(:disabled) {
+  background: #3d2e1c;
+  color: #f6efe4;
+  border-color: #c9a56a;
+  font-weight: 800;
+}
+
+.receipt-quick-actions button,
+.check-foot button,
+.main-actions button,
+.sec-actions button {
+  -webkit-tap-highlight-color: rgba(196, 165, 116, 0.35);
+  touch-action: manipulation;
+}
+
+.receipt-quick-actions button:active,
+.check-foot button:active,
+.main-actions button:active,
+.sec-actions button:active,
+#prebill-btn.is-busy {
+  background: #c4a574 !important;
+  color: #221d17 !important;
+  border-color: #e2b65a !important;
+  filter: none;
 }
 
 .receipt-copies-hint {
@@ -2060,7 +2184,24 @@
   margin: 0;
 }
 
-#shift-z-modal .shift-z-remove {
+#shift-z-modal {
+  z-index: 70;
+  pointer-events: auto;
+}
+
+#shift-z-modal .modal-card {
+  max-height: min(72vh, 560px);
+  overflow: auto;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+#shift-z-modal .modal-actions {
+  position: sticky;
+  bottom: 0;
+  background: #241e18;
+  padding-top: 8px;
+}
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2177,7 +2318,9 @@
 html.waiter-mode .more-nav,
 .waiter-mode #switch-terminal,
 .waiter-mode #shift-z-open,
-.waiter-mode #shift-cash {
+.waiter-mode #shift-cash,
+.waiter-mode #pay-open,
+.waiter-mode #prepay-open {
   display: none !important;
 }
 
@@ -2240,6 +2383,37 @@ html.waiter-mode .more-nav,
 
 .order-wizard[data-zone="floor"] .floor-col {
   padding-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.order-wizard[data-zone="floor"] .floor-scroll-host {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.order-wizard[data-zone="floor"] .floor-scroll {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.order-wizard[data-zone="floor"] .hall-section .table-grid {
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 12px;
+}
+
+.order-wizard[data-zone="floor"] .table-tile {
+  min-height: 92px;
+  font-size: 1.05rem;
+  border-radius: 12px;
+}
+
+.order-wizard[data-zone="floor"] .floor-map-controls,
+.order-wizard[data-zone="floor"] .floor-map-handle {
+  display: none !important;
 }
 
 .order-wizard[data-zone="groups"] .menu-col,
@@ -2256,18 +2430,25 @@ html.waiter-mode .more-nav,
 .order-wizard[data-zone="menu"] .check-col {
   display: flex;
   flex-direction: column;
-  pointer-events: auto;
+  height: auto;
+  max-height: min(42vh, 320px);
+  pointer-events: none;
   position: fixed;
   left: 0;
   right: 0;
   bottom: env(safe-area-inset-bottom, 0px);
   z-index: 25;
   margin: 0;
-  max-height: min(42vh, 320px);
   background: #221d17;
   border-top: 1px solid #3d3428;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
   padding: 0;
+  overflow: visible;
+}
+
+.order-wizard[data-zone="groups"] .check-col > *,
+.order-wizard[data-zone="menu"] .check-col > * {
+  pointer-events: auto;
 }
 
 .order-wizard[data-zone="floor"] .check-head,
@@ -2280,12 +2461,10 @@ html.waiter-mode .more-nav,
 .order-wizard[data-zone="groups"] .check-head,
 .order-wizard[data-zone="groups"] .check-foot-notes,
 .order-wizard[data-zone="groups"] .sec-actions,
-.order-wizard[data-zone="groups"] .receipt-quick-actions,
 .order-wizard[data-zone="groups"] .check-more,
 .order-wizard[data-zone="menu"] .check-head,
 .order-wizard[data-zone="menu"] .check-foot-notes,
 .order-wizard[data-zone="menu"] .sec-actions,
-.order-wizard[data-zone="menu"] .receipt-quick-actions,
 .order-wizard[data-zone="menu"] .check-more {
   display: none;
 }
@@ -2393,16 +2572,49 @@ html.waiter-mode .more-nav,
 }
 
 .order-wizard[data-zone="groups"] .check-row .note,
-.order-wizard[data-zone="menu"] .check-row .note,
+.order-wizard[data-zone="menu"] .check-row .note {
+  display: none;
+}
+
+.order-wizard[data-zone="groups"] .check-row .check-more-wrap,
+.order-wizard[data-zone="menu"] .check-row .check-more-wrap {
+  position: relative;
+  z-index: 30;
+  pointer-events: auto;
+}
+
+.order-wizard[data-zone="groups"] .check-row .check-ellipsis,
+.order-wizard[data-zone="menu"] .check-row .check-ellipsis {
+  pointer-events: auto;
+  cursor: pointer;
+  position: relative;
+  z-index: 31;
+}
+
 .order-wizard[data-zone="groups"] .check-row .check-menu,
 .order-wizard[data-zone="menu"] .check-row .check-menu {
-  display: none;
+  top: auto;
+  bottom: calc(100% + 4px);
+  z-index: 60;
+  pointer-events: auto;
+}
+
+.order-wizard[data-zone="groups"] .check-row .check-menu.open,
+.order-wizard[data-zone="menu"] .check-row .check-menu.open {
+  display: flex !important;
+}
+
+.order-wizard[data-zone="groups"] .check-list,
+.order-wizard[data-zone="menu"] .check-list {
+  overflow: auto;
 }
 
 .order-wizard[data-zone="groups"] .check-row,
 .order-wizard[data-zone="menu"] .check-row {
   padding: 6px 4px;
   min-height: 40px;
+  overflow: visible;
+  position: relative;
 }
 
 .waiter-basket-badge {
@@ -2530,18 +2742,27 @@ html.waiter-mode .more-nav,
     right: auto;
     bottom: auto;
     max-height: none;
-    height: 100%;
+    height: auto;
+    align-self: stretch;
     box-shadow: none;
     border-top: 0;
     border-left: 1px solid #3d3428;
     padding: 10px 12px;
     background: #221d17;
+    pointer-events: auto;
+    overflow: visible;
   }
 
   .order-wizard[data-zone="groups"] .check-list,
   .order-wizard[data-zone="menu"] .check-list {
     max-height: none;
     flex: 1 1 auto;
+    overflow: auto;
+  }
+
+  .order-wizard[data-zone="groups"] .check-row,
+  .order-wizard[data-zone="menu"] .check-row {
+    overflow: visible;
   }
 
   .order-wizard[data-zone="groups"] .check-sum-box .check-sum.sub,

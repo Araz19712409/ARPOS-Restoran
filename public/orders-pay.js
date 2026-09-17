@@ -720,6 +720,40 @@
       return info;
     }
 
+    function decorateReceipt(order) {
+      if (!order) {
+        return null;
+      }
+      var view = Object.assign({}, order);
+      if (ctx.settings) {
+        if (ctx.settings.branchName) {
+          view.branchName = ctx.settings.branchName;
+        }
+        if (ctx.settings.branchCode) {
+          view.branchCode = ctx.settings.branchCode;
+        }
+        if (ctx.settings.receipt) {
+          view.receipt = ctx.settings.receipt;
+        }
+      }
+      return view;
+    }
+
+    function hydrateLastReceipt() {
+      if (!ctx.waiter) {
+        ctx.lastReceipt = null;
+        syncLastReceiptBtn();
+        return Promise.resolve();
+      }
+      return api('/api/orders/last-paid').then(function (body) {
+        var order = body && body.data && body.data.order;
+        ctx.lastReceipt = order && order.id ? decorateReceipt(order) : null;
+        syncLastReceiptBtn();
+      }).catch(function () {
+        syncLastReceiptBtn();
+      });
+    }
+
     function requestReceiptPrint(opts) {
       opts = opts || {};
       if (!ctx.lastReceipt || !ctx.waiter) {
@@ -747,12 +781,24 @@
     }
 
     function printLastReceiptQuick() {
-      if (!ctx.lastReceipt || !ctx.waiter) {
+      if (!ctx.waiter) {
         say('Son ödənilmiş çek yoxdur.', 'err');
         syncLastReceiptBtn();
         return;
       }
-      requestReceiptPrint({ browserFallback: false });
+      function go() {
+        if (!ctx.lastReceipt || !ctx.lastReceipt.id) {
+          say('Son ödənilmiş çek yoxdur.', 'err');
+          syncLastReceiptBtn();
+          return;
+        }
+        requestReceiptPrint({ browserFallback: false });
+      }
+      if (ctx.lastReceipt && ctx.lastReceipt.id) {
+        go();
+        return;
+      }
+      hydrateLastReceipt().then(go);
     }
 
     function syncLastReceiptBtn() {
@@ -770,7 +816,100 @@
         return false;
       }
       var perms = ctx.waiter.permissions;
-      return perms.indexOf('payments.take') >= 0 || perms.indexOf('reports.view') >= 0;
+      return perms.indexOf('payments.take') >= 0 ||
+        perms.indexOf('reports.view') >= 0 ||
+        perms.indexOf('orders.create') >= 0;
+    }
+
+    function billOrder() {
+      var tid = ctx.tableId;
+      if (typeof ctx.openOrderForTable === 'function' && tid) {
+        return ctx.openOrderForTable(tid);
+      }
+      return typeof ctx.openOrder === 'function' ? ctx.openOrder() : null;
+    }
+
+    function syncPrebillBtn() {
+      var btn = document.getElementById('prebill-btn');
+      if (!btn) {
+        return;
+      }
+      var order = billOrder();
+      var pending = ctx.pending || [];
+      var hasLines = pending.length > 0 || !!(order && (order.items || []).some(function (item) {
+        return !item.voided;
+      }));
+      var ok = !!(can('orders.create') && hasLines);
+      btn.disabled = !ok;
+      btn.title = !can('orders.create')
+        ? 'Hesab çapına icazəniz yoxdur.'
+        : (!hasLines
+          ? 'Əvvəl məhsul seçin və ya qəbul edin.'
+          : 'Satışdan əvvəl hesab. Ödəniş deyil.');
+    }
+
+    function printPrebill() {
+      if (printPrebill.busy) {
+        return;
+      }
+      if (!can('orders.create')) {
+        say('Hesab çapına icazəniz yoxdur.', 'err');
+        return;
+      }
+      var order = billOrder();
+      var pending = ctx.pending || [];
+      if (!order) {
+        say(pending.length
+          ? 'Əvvəl Qəbul et, sonra Hesab. Ödəniş deyil.'
+          : 'Açıq hesab yoxdur.', 'err');
+        return;
+      }
+      if (!can('payments.take') && typeof ctx.requestAdminUnlock === 'function') {
+        ctx.requestAdminUnlock(function () {
+          sendPrebill(order, pending);
+        });
+        return;
+      }
+      sendPrebill(order, pending);
+    }
+
+    function sendPrebill(order, pending) {
+      var btn = document.getElementById('prebill-btn');
+      printPrebill.busy = true;
+      if (btn) {
+        btn.classList.add('is-busy');
+      }
+      api('/api/orders/prebill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.id,
+          pending: (pending || []).map(function (row) {
+            return {
+              name: row.name,
+              qty: row.qty,
+              salePrice: row.salePrice,
+              note: row.note
+            };
+          })
+        })
+      }).then(function (body) {
+        var data = (body && body.data) || {};
+        if (data.noPrinter) {
+          say((data.warnings && data.warnings[0]) || 'Kassa printeri yoxdur.', 'err');
+          return;
+        }
+        say('Hesab çap olundu');
+      }).catch(function (error) {
+        say((error && error.message) || 'Hesab çapı alınmadı.', 'err');
+      }).then(function () {
+        printPrebill.busy = false;
+        if (btn) {
+          window.setTimeout(function () {
+            btn.classList.remove('is-busy');
+          }, 120);
+        }
+      });
     }
 
     function syncPaidReceiptsBtn() {
@@ -964,6 +1103,12 @@
         payFail('Ödənişə icazəniz yoxdur.');
         return;
       }
+      var bill = typeof ctx.openOrder === 'function' ? ctx.openOrder() : null;
+      if (typeof ctx.isForeignOpen === 'function' && ctx.isForeignOpen(bill) &&
+          !(typeof ctx.canTakeOverTable === 'function' && ctx.canTakeOverTable())) {
+        payFail('Başqa ofisiantın masası');
+        return;
+      }
       if (!ctx.waiter) {
         showLock();
         return;
@@ -1033,6 +1178,22 @@
     if (lastReceiptBtn) {
       lastReceiptBtn.addEventListener('click', printLastReceiptQuick);
     }
+    var prebillBtn = el('prebill-btn');
+    if (prebillBtn) {
+      prebillBtn.addEventListener('pointerdown', function () {
+        if (!prebillBtn.disabled) {
+          prebillBtn.classList.add('is-busy');
+        }
+      });
+      prebillBtn.addEventListener('pointerup', function () {
+        window.setTimeout(function () {
+          if (!printPrebill.busy) {
+            prebillBtn.classList.remove('is-busy');
+          }
+        }, 80);
+      });
+      prebillBtn.addEventListener('click', printPrebill);
+    }
     var paidReceiptsBtn = el('paid-receipts-btn');
     if (paidReceiptsBtn) {
       paidReceiptsBtn.addEventListener('click', function () {
@@ -1058,10 +1219,13 @@
     }
     syncLastReceiptBtn();
     syncPaidReceiptsBtn();
+    syncPrebillBtn();
     syncReceiptCopiesHint();
 
     ctx.syncLastReceiptBtn = syncLastReceiptBtn;
+    ctx.hydrateLastReceipt = hydrateLastReceipt;
     ctx.syncPaidReceiptsBtn = syncPaidReceiptsBtn;
+    ctx.syncPrebillBtn = syncPrebillBtn;
     ctx.syncReceiptCopiesHint = syncReceiptCopiesHint;
 
     var receiptStayBtn = el('receipt-stay');

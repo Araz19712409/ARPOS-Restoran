@@ -11,9 +11,9 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <title>Sifariş</title>
-  <link rel="stylesheet" href="app.css?v=22">
+  <link rel="stylesheet" href="app.css?v=23">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css?v=41">
+  <link rel="stylesheet" href="orders.css?v=55">
   <link rel="stylesheet" href="dates.css">
 </head>
 <body class="order-page order-wizard" data-zone="floor">
@@ -27,18 +27,20 @@
         try { localStorage.setItem('arpos-mode', 'waiter'); } catch (e) {}
       } else if (q === 'kassa') {
         try { localStorage.removeItem('arpos-mode'); } catch (e) {}
+        stored = '';
       }
       var standalone = false;
       try {
         standalone = window.matchMedia('(display-mode: standalone)').matches ||
           !!window.navigator.standalone;
       } catch (e) {}
+      /* Wizard hamıya: açılışda masalar → masa → qruplar. waiter-mode yalnız ofisiant. */
+      document.documentElement.classList.add('order-wizard');
+      document.body.classList.add('order-wizard');
       if (q === 'waiter' || (!q && standalone && stored === 'waiter')) {
         document.documentElement.classList.add('waiter-mode');
         document.body.classList.add('waiter-mode');
       }
-      document.documentElement.classList.add('order-wizard');
-      document.body.classList.add('order-wizard');
     }());
   </script>
   <header class="top">
@@ -204,6 +206,7 @@
         <button id="fire-course" type="button" style="display:none">İstini göndər</button>
       </div>
       <div class="receipt-quick-actions" id="receipt-quick-actions">
+        <button id="prebill-btn" type="button" title="Satışdan əvvəl hesab. Ödəniş deyil.">Hesab</button>
         <button id="last-receipt-btn" type="button" disabled title="Son ödənilmiş çek yoxdur">Son çek</button>
         <button id="paid-receipts-btn" type="button" data-need="payments.take|reports.view">Çeklər</button>
       </div>
@@ -595,15 +598,15 @@
   <script src="confirm.js"></script>
   <script src="offline.js"></script>
   <script src="dom.js?v=22"></script>
-  <script src="nav.js?v=2"></script>
-  <script src="receipt-view.js?v=2"></script>
+  <script src="nav.js?v=4"></script>
+  <script src="receipt-view.js?v=3"></script>
   <script src="shift-z-view.js?v=6"></script>
   <script src="dates.js"></script>
   <script src="group-icons.js?v=3"></script>
   <script src="money.js?v=1"></script>
-  <script src="orders-zones.js?v=3"></script>
-  <script src="orders-shift.js?v=4"></script>
-  <script src="orders-pay.js?v=4"></script>
-  <script src="orders-ui.js?v=48"></script>
+  <script src="orders-zones.js?v=4"></script>
+  <script src="orders-shift.js?v=5"></script>
+  <script src="orders-pay.js?v=12"></script>
+  <script src="orders-ui.js?v=72"></script>
 </body>
 </html>

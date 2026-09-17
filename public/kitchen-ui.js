@@ -118,7 +118,7 @@
     }
     lines.forEach(function (line) {
       var card = document.createElement('article');
-      card.className = 'kitchen-card ' + ageClass(line.at);
+      card.className = 'kitchen-card ' + ageClass(line.at) + (line.voided ? ' is-void' : '');
       card.innerHTML =
         '<div class="meta"><span class="ch-badge hidden"></span><span></span><span class="when"></span></div>' +
         '<p class="qty"></p><h3></h3><p class="note"></p><p class="who"></p>';
@@ -135,11 +135,13 @@
       card.querySelector('.meta span:not(.ch-badge):not(.when)').textContent = line.tableName + ' • ' + line.stationName;
       card.querySelector('.when').textContent = ageText(line.at);
       card.querySelector('.qty').textContent = '× ' + line.qty;
-      card.querySelector('h3').textContent = line.name +
+      card.querySelector('h3').textContent = (line.voided ? 'LƏĞV · ' : '') + line.name +
         (Number(line.course) === 1 ? ' • soyuq' : (Number(line.course) === 2 ? ' • isti' : ''));
-      card.querySelector('.note').textContent = line.note || '';
+      card.querySelector('.note').textContent = line.voided
+        ? 'Bu məhsul ləğv olundu.'
+        : (line.note || '');
       card.querySelector('.who').textContent = line.waiterName || '';
-      if (can('kitchen.done')) {
+      if (!line.voided && can('kitchen.done')) {
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.textContent = stationId === -1 || line.pass ? 'Verildi' : 'Hazır';

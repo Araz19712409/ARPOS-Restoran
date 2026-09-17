@@ -36,8 +36,8 @@
   }
 
   function useFloorMap() {
-    return isOrderWizard() && window.matchMedia &&
-      window.matchMedia('(min-width: 901px)').matches;
+    /* Əsas axın: səliqəli masa grid (çertyoj məcburi deyil) */
+    return false;
   }
 
   function clampFloorAxisPct(n) {
@@ -101,7 +101,7 @@
   }
 
   function refitFloorMapIfReady() {
-    if (!(waiter && useFloorMap())) {
+    if (!useFloorMap()) {
       return;
     }
     var board = el('table-board');
@@ -218,6 +218,10 @@
   var ordersPollWanted = false;
   var ORDERS_POLL_MS = 4000;
   var switching = false;
+  var adminUnlock = false;
+  var afterAdminUnlock = null;
+  var resumeAfterAdmin = null;
+  var adminUnlockWaiterUi = false;
   function storedScale() {
     try {
       var raw = window.localStorage.getItem('orderCardScale');
@@ -398,6 +402,10 @@
 
   function canTakeOverTable() {
     return can('orders.takeover');
+  }
+
+  function foreignLocked() {
+    return isForeignOpen(openOrder()) && !canTakeOverTable();
   }
 
   function confirmOpenForeign(open) {
@@ -616,6 +624,38 @@
     return waiter && waiter.permissions && waiter.permissions.indexOf(key) !== -1;
   }
 
+  function isAdminUser() {
+    return !!(waiter && waiter.user && Number(waiter.user.roleId) === 1);
+  }
+
+  function syncPermissions(list) {
+    if (!waiter || !Array.isArray(list)) {
+      return false;
+    }
+    var prev = (waiter.permissions || []).slice().sort().join('|');
+    var next = list.slice().sort().join('|');
+    if (prev === next) {
+      return false;
+    }
+    waiter.permissions = list.slice();
+    try {
+      window.sessionStorage.setItem('posWaiter', JSON.stringify(waiter));
+    } catch (error) {}
+    return true;
+  }
+
+  function removePendingAt(index) {
+    if (index < 0 || index >= pending.length) {
+      return;
+    }
+    if (!isAdminUser()) {
+      say('Yalnız admin azalda bilər.', 'err');
+      return;
+    }
+    pending.splice(index, 1);
+    renderCheck();
+  }
+
   function pendingGuestMap() {
     try {
       var raw = JSON.parse(window.sessionStorage.getItem('posPendingGuests') || '{}');
@@ -678,8 +718,54 @@
     showLock();
   }
 
+  function currentOrderZone() {
+    var page = document.querySelector('.order-page');
+    return (page && page.getAttribute('data-zone')) || '';
+  }
+
+  function applyWaiterUi(on) {
+    if (on) {
+      document.documentElement.classList.add('waiter-mode');
+      document.body.classList.add('waiter-mode');
+    } else {
+      document.documentElement.classList.remove('waiter-mode');
+      document.body.classList.remove('waiter-mode');
+    }
+  }
+
+  function restoreAdminSeat() {
+    var resume = resumeAfterAdmin;
+    resumeAfterAdmin = null;
+    if (!resume || !resume.tableId) {
+      return Promise.resolve();
+    }
+    tableId = resume.tableId;
+    var zone = resume.zone;
+    function show() {
+      if (zone && zone !== currentOrderZone()) {
+        setOrderZone(zone);
+      }
+      drawWaiterLine();
+      renderCheck();
+      if (typeof ctx.syncPrebillBtn === 'function') {
+        ctx.syncPrebillBtn();
+      }
+      if (typeof ctx.syncPaidReceiptsBtn === 'function') {
+        ctx.syncPaidReceiptsBtn();
+      }
+    }
+    if (isDraftSeat(tableId) || !terminal) {
+      show();
+      return Promise.resolve();
+    }
+    return claimTable(tableId).then(show, show);
+  }
+
   function cancelSwitch() {
     switching = false;
+    adminUnlock = false;
+    afterAdminUnlock = null;
+    resumeAfterAdmin = null;
     pinBuffer = '';
     drawPin();
     document.getElementById('pin-error').textContent = '';
@@ -687,6 +773,10 @@
     var eye = pinEyebrow();
     if (eye) {
       eye.textContent = 'Ofisiant girişi';
+    }
+    var h2 = document.querySelector('#pin-lock h2');
+    if (h2) {
+      h2.textContent = 'PIN yazın';
     }
     hideLock();
   }
@@ -697,7 +787,47 @@
     if (eye) {
       eye.textContent = 'Ofisiant girişi';
     }
+    var h2b = document.querySelector('#pin-lock h2');
+    if (h2b) {
+      h2b.textContent = 'PIN yazın';
+    }
     switching = false;
+    adminUnlock = false;
+  }
+
+  function requestAdminUnlock(done) {
+    if (waiter && waiter.user && Number(waiter.user.roleId) === 1) {
+      if (typeof done === 'function') {
+        done();
+      }
+      return;
+    }
+    resumeAfterAdmin = {
+      tableId: tableId,
+      zone: currentOrderZone() || ''
+    };
+    adminUnlock = true;
+    afterAdminUnlock = typeof done === 'function' ? done : null;
+    switching = true;
+    pinBuffer = '';
+    drawPin();
+    var err = document.getElementById('pin-error');
+    if (err) {
+      err.textContent = '';
+    }
+    var back = document.getElementById('pin-switch-back');
+    if (back) {
+      back.classList.remove('hidden');
+    }
+    var eye = pinEyebrow();
+    if (eye) {
+      eye.textContent = 'Admin PIN';
+    }
+    var h = document.querySelector('#pin-lock h2');
+    if (h) {
+      h.textContent = 'Admin daxil olsun';
+    }
+    showLock();
   }
 
   function drawPin() {
@@ -906,6 +1036,10 @@
     }
     function afterOwnerOk() {
       if (pending.length && tableId && tableId !== id) {
+        if (!can('orders.void')) {
+          say('Əvvəl qəbul edin. Səbəti atmaq üçün ləğv icazəsi lazımdır.', 'err');
+          return Promise.resolve();
+        }
         return window.askYes('Masa', 'Qəbul olunmamış sətirlər silinəcək. Davam?').then(function (ok) {
           if (!ok) {
             return;
@@ -942,13 +1076,23 @@
     if (data) {
       window.sessionStorage.setItem('posWaiter', JSON.stringify(data));
       hideLock();
+      var keepSeat = !!(resumeAfterAdmin && resumeAfterAdmin.tableId);
+      if (keepSeat && isWaiterMode()) {
+        adminUnlockWaiterUi = true;
+        applyWaiterUi(false);
+      }
       drawWaiterLine();
-      if (isOrderWizard()) {
+      if (isOrderWizard() && !keepSeat) {
         setOrderZone('floor');
       }
       ensureTerminal(false);
       startOrdersPoll();
     } else {
+      if (adminUnlockWaiterUi) {
+        adminUnlockWaiterUi = false;
+        applyWaiterUi(true);
+      }
+      resumeAfterAdmin = null;
       stopOrdersPoll();
       (terminal ? api('/api/terminals/release', {
         method: 'POST',
@@ -969,8 +1113,16 @@
     if (typeof ctx.syncPaidReceiptsBtn === 'function') {
       ctx.syncPaidReceiptsBtn();
     }
+    if (typeof ctx.syncPrebillBtn === 'function') {
+      ctx.syncPrebillBtn();
+    }
     if (typeof ctx.syncLastReceiptBtn === 'function') {
       ctx.syncLastReceiptBtn();
+    }
+    if (data && typeof ctx.hydrateLastReceipt === 'function') {
+      ctx.hydrateLastReceipt();
+    } else if (!data) {
+      lastReceipt = null;
     }
     if (typeof ctx.syncReceiptCopiesHint === 'function') {
       ctx.syncReceiptCopiesHint();
@@ -999,6 +1151,7 @@
       locks = parts[2].data.locks || [];
       waitlist = (parts[3] && parts[3].data && parts[3].data.items) || [];
       seatedWait = (parts[3] && parts[3].data && parts[3].data.seated) || [];
+      syncPermissions(parts[2].data.permissions);
       if (typeof ctx.syncReceiptCopiesHint === 'function') {
         ctx.syncReceiptCopiesHint();
       }
@@ -1033,6 +1186,9 @@
       }
       render();
       refreshShiftBadge();
+      if (typeof ctx.hydrateLastReceipt === 'function') {
+        ctx.hydrateLastReceipt();
+      }
     }).catch(function (error) {
       say(error.message, 'err');
     });
@@ -1142,6 +1298,7 @@
       var prevCheck = orderFootprint(openOrder());
       waitlist = (parts[1] && parts[1].data && parts[1].data.items) || [];
       seatedWait = (parts[1] && parts[1].data && parts[1].data.seated) || [];
+      var permsChanged = syncPermissions(data.permissions);
       applyOrdersPayload(data);
       var low = data.lowStock || [];
       if (!lowTold && low.length) {
@@ -1155,10 +1312,13 @@
       if (force || prevFloor !== floorBusyFootprint()) {
         renderFloor();
       }
-      if (tableId && prevCheck !== orderFootprint(openOrder())) {
+      if (tableId && (permsChanged || prevCheck !== orderFootprint(openOrder()))) {
         renderCheck();
       }
       drawWaiterLine();
+      if (typeof ctx.hydrateLastReceipt === 'function') {
+        ctx.hydrateLastReceipt();
+      }
     }).catch(function () {
       return null;
     }).then(function () {
@@ -1659,7 +1819,7 @@
         heading.setAttribute('role', 'button');
         heading.tabIndex = 0;
         heading.textContent = room.name + ' · ' + roomTables.length;
-        var collapsed = !!hallCollapseMap()[String(room.id)];
+        var collapsed = !isOrderWizard() ? false : !!hallCollapseMap()[String(room.id)];
         if (collapsed) {
           section.classList.add('collapsed');
         }
@@ -2069,6 +2229,9 @@
         })
       });
     }
+    if (typeof ctx.syncPrebillBtn === 'function') {
+      ctx.syncPrebillBtn();
+    }
     renderCheck();
   }
 
@@ -2284,6 +2447,28 @@
     if (!menu.childNodes.length) {
       return null;
     }
+    function placeMenu() {
+      var rect = btn.getBoundingClientRect();
+      var menuH = menu.offsetHeight || 120;
+      var menuW = Math.max(menu.offsetWidth || 120, 120);
+      var top = rect.top - menuH - 4;
+      if (top < 8) {
+        top = rect.bottom + 4;
+      }
+      var left = rect.right - menuW;
+      if (left < 8) {
+        left = 8;
+      }
+      if (left + menuW > window.innerWidth - 8) {
+        left = Math.max(8, window.innerWidth - menuW - 8);
+      }
+      menu.style.position = 'fixed';
+      menu.style.top = Math.round(top) + 'px';
+      menu.style.left = Math.round(left) + 'px';
+      menu.style.right = 'auto';
+      menu.style.bottom = 'auto';
+      menu.style.zIndex = '80';
+    }
     btn.addEventListener('click', function (event) {
       event.preventDefault();
       event.stopPropagation();
@@ -2291,6 +2476,7 @@
       closeCheckMenus();
       if (!open) {
         menu.classList.add('open');
+        placeMenu();
       }
     });
     wrap.appendChild(btn);
@@ -2328,7 +2514,7 @@
       pendingGuests = orderGuests;
     }
     if (guestsBox) {
-      guestsBox.disabled = !hasSeat;
+      guestsBox.disabled = !hasSeat || foreignLocked();
     }
     var svc = el('service-guest');
     var showSvc = isServiceId(tableId) || !!(order && (order.channel === 'takeaway' || order.channel === 'delivery'));
@@ -2385,27 +2571,29 @@
       prepayOpen.style.display =
         booked && can('payments.take') && (state === 'reserved' || state === 'busy') ? '' : 'none';
     }
-    var canPay = !!(order && can('payments.take'));
+    var foreignBlock = foreignLocked();
+    var canPay = !!(order && can('payments.take') && !foreignBlock);
     var payOpen = el('pay-open');
     if (payOpen) {
       payOpen.style.display = canPay ? '' : 'none';
+      payOpen.disabled = !canPay;
     }
     var reprintOrder = el('reprint-order');
     if (reprintOrder) {
-      reprintOrder.style.display = order && order.items && order.items.length ? '' : 'none';
+      reprintOrder.style.display = order && order.items && order.items.length && !foreignBlock ? '' : 'none';
     }
     var discountOpen = el('discount-open');
     if (discountOpen) {
       discountOpen.style.display =
-        order && can('orders.discount') && !(order.payments && order.payments.length) ? '' : 'none';
+        order && can('orders.discount') && !foreignBlock && !(order.payments && order.payments.length) ? '' : 'none';
     }
     var moveOpen = el('move-open');
     if (moveOpen) {
       moveOpen.style.display =
-        order && !(order.linkedTableIds || []).length &&
+        order && !foreignBlock && !(order.linkedTableIds || []).length &&
         (table || order.channel === 'takeaway' || order.channel === 'delivery' ||
           (Number(order.tableId) < 0 && !isDraftSeat(order.tableId))) &&
-        (can('orders.move') || can('orders.create')) ? '' : 'none';
+        can('orders.move') ? '' : 'none';
     }
     var held = !!(order && (order.items || []).some(function (item) {
       return !item.voided && !item.sent;
@@ -2420,21 +2608,21 @@
       } else {
         fireBtn.disabled = false;
         fireBtn.title = '';
-        fireBtn.style.display = held && can('orders.create') ? '' : 'none';
+        fireBtn.style.display = held && can('orders.create') && !foreignBlock ? '' : 'none';
       }
     }
     var handoffOpen = el('handoff-open');
     if (handoffOpen) {
-      handoffOpen.style.display = order && can('orders.create') ? '' : 'none';
+      handoffOpen.style.display = order && can('orders.create') && !foreignBlock ? '' : 'none';
     }
     var mergeOpen = el('merge-open');
     if (mergeOpen) {
-      mergeOpen.style.display = order && table && can('orders.create') ? '' : 'none';
+      mergeOpen.style.display = order && table && can('orders.create') && !foreignBlock ? '' : 'none';
     }
     var unmergeOpen = el('unmerge-open');
     if (unmergeOpen) {
       unmergeOpen.style.display =
-        order && (order.linkedTableIds || []).length && can('orders.create') ? '' : 'none';
+        order && !foreignBlock && (order.linkedTableIds || []).length && can('orders.create') ? '' : 'none';
     }
 
     if (!tableId) {
@@ -2501,7 +2689,45 @@
 
       var qtyCell = document.createElement('div');
       qtyCell.className = 'check-qty-cell';
-      qtyCell.textContent = '×' + String(item.qty || 0);
+      var sentCanCut = isAdminUser() && !item.voided && !item.settled && !foreignLocked() &&
+        order && !(order.payments && order.payments.length);
+      if (sentCanCut) {
+        var sentStep = document.createElement('div');
+        sentStep.className = 'stepper';
+        var sentMinus = document.createElement('button');
+        sentMinus.type = 'button';
+        sentMinus.className = 'step';
+        sentMinus.setAttribute('aria-label', 'Azalt');
+        sentMinus.textContent = '−';
+        var sentQ = document.createElement('span');
+        sentQ.className = 'q';
+        sentQ.textContent = String(item.qty || 0);
+        var sentPlus = document.createElement('button');
+        sentPlus.type = 'button';
+        sentPlus.className = 'step';
+        sentPlus.setAttribute('aria-label', 'Artır');
+        sentPlus.textContent = '+';
+        sentPlus.disabled = true;
+        sentPlus.title = 'Göndərilmiş sətirdə artırma yoxdur';
+        sentMinus.addEventListener('click', function () {
+          if (!isAdminUser() || foreignLocked()) {
+            say('Yalnız admin azalda bilər.', 'err');
+            return;
+          }
+          if (Number(item.qty) <= 1) {
+            runAction('/api/orders/void', { orderId: order.id, itemId: item.id },
+              '"' + item.name + '" ləğv edilsin və stansiyaya getsin?');
+            return;
+          }
+          runAction('/api/orders/void', { orderId: order.id, itemId: item.id, reduceBy: 1 });
+        });
+        sentStep.appendChild(sentMinus);
+        sentStep.appendChild(sentQ);
+        sentStep.appendChild(sentPlus);
+        qtyCell.appendChild(sentStep);
+      } else {
+        qtyCell.textContent = '×' + String(item.qty || 0);
+      }
 
       var amtCell = document.createElement('div');
       amtCell.className = 'check-amt-cell';
@@ -2510,39 +2736,20 @@
       amt.textContent = lineSumText(item);
       amtCell.appendChild(amt);
 
-      if (!item.voided && !item.settled) {
-        var menuEntries = [];
-        if (item.sent && can('orders.create') && order) {
-          menuEntries.push({
-            label: 'Çap',
-            action: function () {
-              runAction('/api/orders/reprint', { orderId: order.id, itemId: item.id }, 'Təkrar çap göndərilsin?');
-            }
-          });
-        }
-        if (can('orders.void') && order && !(order.payments && order.payments.length)) {
-          menuEntries.push({
-            label: 'Ləğv',
-            danger: true,
-            action: function () {
-              runAction('/api/orders/void', { orderId: order.id, itemId: item.id },
-                '"' + item.name + '" ləğv edilsin və stansiyaya getsin?');
-            }
-          });
-        }
-        if (can('orders.discount') && !item.complimentary && order && !(order.payments && order.payments.length)) {
-          menuEntries.push({
-            label: 'Pulsuz',
-            action: function () {
-              runAction('/api/orders/comp', { orderId: order.id, itemId: item.id },
-                '"' + item.name + '" pulsuz olsun?');
-            }
-          });
-        }
-        var menu = buildCheckMenu(menuEntries);
-        if (menu) {
-          amtCell.appendChild(menu);
-        }
+      if (!item.voided && !item.settled && can('orders.void') && !foreignLocked() &&
+          order && !(order.payments && order.payments.length)) {
+        var sentRemove = document.createElement('button');
+        sentRemove.type = 'button';
+        sentRemove.className = 'check-remove';
+        sentRemove.setAttribute('aria-label', 'Sil');
+        sentRemove.textContent = '×';
+        sentRemove.addEventListener('click', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          runAction('/api/orders/void', { orderId: order.id, itemId: item.id },
+            '"' + item.name + '" ləğv edilsin və stansiyaya getsin?');
+        });
+        amtCell.appendChild(sentRemove);
       }
 
       row.appendChild(main);
@@ -2598,14 +2805,35 @@
       plus.className = 'step';
       plus.setAttribute('aria-label', 'Artır');
       plus.textContent = '+';
+      if (!can('orders.create')) {
+        plus.disabled = true;
+      }
+      if (foreignLocked()) {
+        minus.disabled = true;
+        plus.disabled = true;
+      } else if (!isAdminUser()) {
+        minus.disabled = true;
+        minus.title = 'Yalnız admin azalda bilər';
+      }
       minus.addEventListener('click', function () {
-        item.qty -= 1;
-        if (item.qty < 1) {
-          pending.splice(index, 1);
+        if (foreignLocked()) {
+          return;
         }
+        if (!isAdminUser()) {
+          say('Yalnız admin azalda bilər.', 'err');
+          return;
+        }
+        if (Number(item.qty) <= 1) {
+          removePendingAt(index);
+          return;
+        }
+        item.qty -= 1;
         renderCheck();
       });
       plus.addEventListener('click', function () {
+        if (foreignLocked() || !can('orders.create')) {
+          return;
+        }
         item.qty += 1;
         renderCheck();
       });
@@ -2613,6 +2841,16 @@
       stepper.appendChild(qSpan);
       stepper.appendChild(plus);
       qtyCell.appendChild(stepper);
+      stepper.addEventListener('click', function (ev) {
+        if (isAdminUser() || foreignLocked()) {
+          return;
+        }
+        var box = minus.getBoundingClientRect();
+        if (ev.clientX >= box.left && ev.clientX <= box.right &&
+            ev.clientY >= box.top && ev.clientY <= box.bottom) {
+          say('Yalnız admin azalda bilər.', 'err');
+        }
+      });
 
       var amtCell = document.createElement('div');
       amtCell.className = 'check-amt-cell';
@@ -2621,32 +2859,31 @@
       amt.textContent = lineSumText(item);
       amtCell.appendChild(amt);
 
-      var pendMenu = [];
-      pendMenu.push({
-        label: 'Qeyd',
-        action: function () {
-          var note = window.prompt('Qeyd', item.note || '');
-          if (note == null) {
-            return;
-          }
-          item.note = note.trim().slice(0, 80);
-          item.choiceKey = choiceKey(item.portionId, item.extraIds, item.note);
-          renderCheck();
-        }
-      });
       if (can('orders.discount')) {
-        pendMenu.push({
-          label: item.complimentary ? 'Pulsuzu götür' : 'Pulsuz',
+        var pendMore = buildCheckMenu([{
+          label: 'Pulsuz',
           action: function () {
             item.complimentary = !item.complimentary;
-            item.salePrice = item.complimentary ? 0 : (item.basePrice || item.salePrice);
             renderCheck();
           }
-        });
+        }]);
+        if (pendMore) {
+          amtCell.appendChild(pendMore);
+        }
       }
-      var menu = buildCheckMenu(pendMenu);
-      if (menu) {
-        amtCell.appendChild(menu);
+
+      if (isAdminUser()) {
+        var removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'check-remove';
+        removeBtn.setAttribute('aria-label', 'Sil');
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          removePendingAt(index);
+        });
+        amtCell.appendChild(removeBtn);
       }
 
       row.appendChild(main);
@@ -2692,6 +2929,9 @@
     }
     setText('check-total', parts.total.toFixed(2) + ' AZN');
     syncWaiterBasketBadge();
+    if (typeof ctx.syncPrebillBtn === 'function') {
+      ctx.syncPrebillBtn();
+    }
     window.setTimeout(refreshColScrolls, 0);
   }
 
@@ -2839,7 +3079,8 @@
         body: JSON.stringify(extra)
       }).then(function (body) {
         var warns = (body.data && body.data.warnings) || [];
-        say(warns.length ? warns.join(' ') : 'Hazırdır.');
+        var okMsg = extra && extra.reduceBy ? 'Miqdar azaldıldı.' : 'Hazırdır.';
+        say(warns.length ? warns.join(' ') : okMsg);
         return load();
       }).catch(function (error) {
         say(error.message, 'err');
@@ -2867,8 +3108,29 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pin: pinBuffer })
     }).then(function (body) {
+      if (body.data && body.data.needTotp) {
+        document.getElementById('pin-error').textContent = 'Bu hesab üçün əlavə kod lazımdır.';
+        pinBuffer = '';
+        drawPin();
+        return;
+      }
       var perms = (body.data && body.data.permissions) || [];
-      if (switching && perms.indexOf('orders.create') === -1) {
+      if (adminUnlock) {
+        var roleId = body.data && body.data.user && Number(body.data.user.roleId);
+        if (roleId !== 1) {
+          document.getElementById('pin-error').textContent = 'Yalnız admin PIN.';
+          if (body.data && body.data.token) {
+            fetch('/api/logout', {
+              method: 'POST',
+              headers: { 'X-Session': body.data.token }
+            }).catch(function () {});
+          }
+          pinBuffer = '';
+          drawPin();
+          return;
+        }
+      }
+      if (switching && !adminUnlock && perms.indexOf('orders.create') === -1) {
         document.getElementById('pin-error').textContent = 'Bu PIN ilə sifarişə girilməz.';
         pinBuffer = '';
         drawPin();
@@ -2879,11 +3141,19 @@
       }
       document.getElementById('pin-error').textContent = '';
       body.data.fromLogin = true;
+      var after = afterAdminUnlock;
+      afterAdminUnlock = null;
       setWaiter(body.data);
       finishSwitch();
       pinBuffer = '';
       drawPin();
-      return load();
+      return load().then(function () {
+        return restoreAdminSeat();
+      }).then(function () {
+        if (typeof after === 'function') {
+          after();
+        }
+      });
     }).catch(function (error) {
       document.getElementById('pin-error').textContent = error.message;
       if (clearOnFail || pinBuffer.length >= 8) {
@@ -2970,45 +3240,73 @@
     runAction('/api/orders/reprint', { orderId: order.id }, 'Bütün göndərilmiş sətirlər təkrar çap olunsun?');
   });
 
+  function lockAccept() {
+    busy = true;
+    var btn = el('accept-order');
+    if (btn) {
+      btn.disabled = true;
+    }
+  }
+
+  function unlockAccept() {
+    busy = false;
+    var btn = el('accept-order');
+    if (btn) {
+      btn.disabled = false;
+    }
+  }
+
   document.getElementById('accept-order').addEventListener('click', function () {
     if (busy) {
       return;
     }
+    lockAccept();
     if (!can('orders.create')) {
+      unlockAccept();
       say('Sifariş yazmağa icazəniz yoxdur.', 'err');
       return;
     }
     if (!tableId) {
+      unlockAccept();
       say('Əvvəlcə masa seçin.', 'err');
       return;
     }
     if (!terminal) {
+      unlockAccept();
       say('Terminal seçin.', 'err');
       ensureTerminal(true);
       return;
     }
     if (!pending.length) {
+      unlockAccept();
       say('Əlavə edilən məhsul yoxdur.', 'err');
       return;
     }
     if (!waiter) {
+      unlockAccept();
       showLock();
       return;
     }
     window.askYes('Qəbul', 'Sifariş qəbul edilsin və stansiyalara göndərilsin?').then(function (ok) {
       if (!ok) {
+        unlockAccept();
         return;
       }
       return postAccept();
     }).catch(function (error) {
+      unlockAccept();
       say(error.message, 'err');
     });
   });
 
+  var acceptWait = null;
   function postAccept() {
-    busy = true;
+    if (acceptWait) {
+      return acceptWait;
+    }
+    lockAccept();
     say('Göndərilir...', 'warn');
-    return api('/api/orders/accept', {
+    acceptWait = api('/api/orders/accept', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -3042,10 +3340,32 @@
       var warns = (body.data && body.data.warnings) || [];
       say(warns.length ? warns.join(' ') : 'Sifariş qəbul olundu.');
       function afterAcceptUi() {
-        if (isWaiterMode()) {
+        if (isWaiterMode() || !can('payments.take')) {
           pending = [];
           tableId = 0;
           setOrderZone('floor');
+          switching = false;
+          adminUnlock = false;
+          afterAdminUnlock = null;
+          resumeAfterAdmin = null;
+          pinBuffer = '';
+          drawPin();
+          var errPin = document.getElementById('pin-error');
+          if (errPin) {
+            errPin.textContent = '';
+          }
+          var backPin = document.getElementById('pin-switch-back');
+          if (backPin) {
+            backPin.classList.add('hidden');
+          }
+          var eyePin = pinEyebrow();
+          if (eyePin) {
+            eyePin.textContent = 'Ofisiant girişi';
+          }
+          var h2Pin = document.querySelector('#pin-lock h2');
+          if (h2Pin) {
+            h2Pin.textContent = 'PIN yazın';
+          }
           setWaiter(null);
           return body;
         }
@@ -3064,12 +3384,15 @@
       }
       return load().then(afterAcceptUi);
     }).then(function (body) {
-      busy = false;
+      acceptWait = null;
+      unlockAccept();
       return body;
     }, function (error) {
-      busy = false;
+      acceptWait = null;
+      unlockAccept();
       throw error;
     });
+    return acceptWait;
   }
 
   function lineMinor(item) {
@@ -3176,7 +3499,7 @@
       say('Açıq hesab yoxdur.', 'err');
       return;
     }
-    if (!(can('orders.move') || can('orders.create'))) {
+    if (!can('orders.move')) {
       say('Köçürməyə icazəniz yoxdur.', 'err');
       return;
     }
@@ -3791,6 +4114,8 @@
   var savedFloorW = readFloorWidth();
   if (savedFloorW) {
     setFloorWidth(savedFloorW, false);
+  } else if (!isOrderWizard()) {
+    setFloorWidth(Math.round(Math.min(460, Math.max(300, window.innerWidth * 0.34))), false);
   }
   var resizer = document.getElementById('floor-resizer');
   resizer.addEventListener('mousedown', function (event) {
@@ -3935,7 +4260,7 @@
     }
     floorFitTimer = window.setTimeout(function () {
       floorFitTimer = 0;
-      if (isOrderWizard() && waiter && useFloorMap()) {
+      if (isOrderWizard() && useFloorMap()) {
         renderFloor();
       }
     }, 120);
@@ -4000,8 +4325,12 @@
   ctx.money = money;
   ctx.can = can;
   ctx.showLock = showLock;
+  ctx.requestAdminUnlock = requestAdminUnlock;
   ctx.ensureTerminal = ensureTerminal;
+  ctx.isForeignOpen = isForeignOpen;
+  ctx.canTakeOverTable = canTakeOverTable;
   ctx.openOrder = openOrder;
+  ctx.openOrderForTable = openOrderForTable;
   ctx.isServiceId = isServiceId;
   ctx.bookingFor = bookingFor;
   ctx.billAfter = billAfter;

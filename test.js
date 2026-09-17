@@ -800,8 +800,26 @@ test('çek brendinqi: boş title → branchName; dolu → ticket/view', function
     assert.ok(text.indexOf('Filial: M1') >= 0);
     assert.ok(text.indexOf('CEK #7') >= 0);
 
+    const merged = printers.mergeSameReceiptItems([
+      { productId: 1, name: 'SALYAN', qty: 1, salePrice: 1.5 },
+      { productId: 1, name: 'SALYAN', qty: 1, salePrice: 1.5 },
+      { productId: 2, name: 'Cay', qty: 1, salePrice: 2 },
+      { productId: 2, name: 'Cay', qty: 2, salePrice: 2 },
+      { productId: 3, name: 'Kofe', qty: 1, salePrice: 3 }
+    ]);
+    assert.strictEqual(merged.length, 3);
+    assert.strictEqual(merged[0].name, 'SALYAN');
+    assert.strictEqual(merged[0].qty, 2);
+    assert.strictEqual(merged[1].name, 'Cay');
+    assert.strictEqual(merged[1].qty, 3);
+    assert.strictEqual(merged[2].name, 'Kofe');
+    assert.strictEqual(merged[2].qty, 1);
+    assert.ok(orders.findOpenSameLine);
+    assert.strictEqual(orders.findOpenSameLine(merged, { productId: 2, name: 'Cay', qty: 1, salePrice: 2 }).qty, 3);
+
     const viewSrc = fs.readFileSync(path.join(__dirname, 'public', 'receipt-view.js'), 'utf8');
     assert.ok(viewSrc.indexOf('receiptTitle') >= 0);
+    assert.ok(viewSrc.indexOf('mergeSameReceiptItems') >= 0);
     assert.ok(viewSrc.indexOf('headerLines') >= 0);
     assert.ok(viewSrc.indexOf('footerLines') >= 0);
     assert.ok(viewSrc.indexOf('rc-logo') >= 0);
@@ -2057,7 +2075,7 @@ test('katalog maya strip; void/endirim payments blok', function () {
   assert.ok(ui.indexOf('order.payments && order.payments.length') >= 0);
   assert.ok(ui.indexOf("can('orders.discount')") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=48') >= 0);
+  assert.ok(/orders-ui\.js\?v=\d+/.test(html));
   const prodJs = fs.readFileSync(path.join(__dirname, 'public', 'products.js'), 'utf8');
   assert.ok(prodJs.indexOf('/api/catalog/manage') >= 0);
 });
@@ -2238,13 +2256,14 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(quickAt > secAt && quickAt < mainAt);
   assert.ok(foot.indexOf('id="reprint-order"') >= 0);
   assert.ok(foot.indexOf('id="discount-open"') >= 0);
+  assert.ok(html.indexOf('id="prebill-btn"') >= 0);
   assert.ok(foot.indexOf('id="last-receipt-btn"') >= 0);
   assert.ok(foot.indexOf('id="paid-receipts-btn"') >= 0);
   assert.ok(foot.indexOf('id="pay-open"') >= 0);
   assert.ok(foot.indexOf('id="accept-order"') >= 0);
-  assert.ok(html.indexOf('orders.css?v=41') >= 0);
+  assert.ok(/orders\.css\?v=\d+/.test(html));
   assert.ok(html.indexOf('id="paid-receipts-modal"') >= 0);
-  assert.ok(html.indexOf('orders-pay.js?v=4') >= 0);
+  assert.ok(/orders-pay\.js\?v=\d+/.test(html));
   const css = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
   assert.ok(css.indexOf('#check-total') >= 0);
   assert.ok(css.indexOf('.check-sum-box') >= 0 && css.indexOf('border-radius: 10px') >= 0);
@@ -2271,8 +2290,8 @@ test('sifariş məhsul kartı: compact ad+qiymət', function () {
   const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
   assert.ok(ui.indexOf("Mal #' + item.id") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders.css?v=41') >= 0);
-  assert.ok(html.indexOf('orders-ui.js?v=48') >= 0);
+  assert.ok(/orders\.css\?v=\d+/.test(html));
+  assert.ok(/orders-ui\.js\?v=\d+/.test(html));
 });
 
 test('sifariş 1.2.69: sticky fav, mənim masalarım, scroll oxları', function () {
@@ -2318,8 +2337,8 @@ test('sağ çek premium: ad × miqdar + məbləğ', function () {
   assert.ok(css.indexOf('.line-amt') >= 0);
   assert.ok(css.indexOf('.stepper .step') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders.css?v=41') >= 0);
-  assert.ok(html.indexOf('orders-ui.js?v=48') >= 0);
+  assert.ok(/orders\.css\?v=\d+/.test(html));
+  assert.ok(/orders-ui\.js\?v=\d+/.test(html));
 });
 
 test('məhsul qrupa keçir: modal + PUT groupId', function () {
@@ -2366,7 +2385,31 @@ test('satış çeki printCopies 1|2; deliverReceipt override', function () {
   assert.ok(printersSrc.indexOf('copiesOverride') >= 0);
   assert.ok(printersSrc.indexOf('printed: false') >= 0 || printersSrc.indexOf('printed:false') >= 0);
   const paySrc = fs.readFileSync(path.join(__dirname, 'public', 'orders-pay.js'), 'utf8');
-  assert.ok(paySrc.indexOf('last-receipt-btn') >= 0);
+  assert.ok(paySrc.indexOf('hydrateLastReceipt') >= 0);
+  assert.ok(paySrc.indexOf('/api/orders/last-paid') >= 0);
+  assert.ok(paySrc.indexOf('browserFallback: false') >= 0);
+  const lastPaidSrc = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  assert.ok(lastPaidSrc.indexOf("app.get('/api/orders/last-paid'") >= 0);
+  assert.ok(typeof orders.lastPaidOrder === 'function');
+  withTempDb(function () {
+    const store = orders.readOrders();
+    store.orders.push({
+      id: 9,
+      status: 'paid',
+      payment: { at: '2026-09-17T10:00:00', total: 1 }
+    });
+    store.orders.push({
+      id: 10,
+      status: 'paid',
+      payment: { at: '2026-09-17T12:00:00', total: 2 }
+    });
+    store.orders.push({ id: 11, status: 'open' });
+    orders.writeOrders(store);
+    const last = orders.lastPaidOrder();
+    assert.ok(last);
+    assert.strictEqual(last.id, 10);
+    assert.strictEqual(orders.lastPaidOrder().status, 'paid');
+  });
   assert.ok(paySrc.indexOf('paid-receipts-modal') >= 0);
   assert.ok(paySrc.indexOf('2 nüsxə') >= 0);
   assert.ok(paySrc.indexOf('Çap olundu') >= 0);
@@ -2439,7 +2482,7 @@ test('kassa qalığı ayar; Z counted növbəti startingCash', function () {
   assert.strictEqual(noCarry.shift.startingCash, 40);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
   assert.ok(html.indexOf('id="shift-cash"') >= 0);
-  assert.ok(html.indexOf('orders-shift.js?v=4') >= 0);
+  assert.ok(/orders-shift\.js\?v=\d+/.test(html));
   assert.ok(html.indexOf('id="shift-z-remove-cash"') >= 0);
   assert.ok(html.indexOf('Kassadan pulu çıxart') >= 0);
   assert.ok(html.indexOf('id="z-sum-drops"') >= 0);
@@ -2477,9 +2520,9 @@ test('PWA ofisiant: manifest mode=waiter; waiter-mode hook', function () {
   assert.ok(html.indexOf('arpos-mode') >= 0);
   assert.ok(html.indexOf('waiter-mode') >= 0);
   assert.ok(html.indexOf('apple-mobile-web-app-capable') >= 0);
-  assert.ok(html.indexOf('orders-ui.js?v=48') >= 0);
-  assert.ok(html.indexOf('orders.css?v=41') >= 0);
-  assert.ok(html.indexOf('orders-zones.js?v=3') >= 0);
+  assert.ok(/orders-ui\.js\?v=\d+/.test(html));
+  assert.ok(/orders\.css\?v=\d+/.test(html));
+  assert.ok(/orders-zones\.js\?v=\d+/.test(html));
   assert.ok(html.indexOf('order-wizard') >= 0);
   assert.ok(html.indexOf('id="order-back"') >= 0);
   assert.ok(html.indexOf('>Geri<') >= 0);
@@ -2685,8 +2728,8 @@ test('Ofis more-nav: kənar klik + Esc bağlanır', function () {
   assert.ok(box.indexOf('max-height') >= 0);
   assert.ok(box.indexOf('overflow') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('nav.js?v=2') >= 0);
-  assert.ok(html.indexOf('app.css?v=22') >= 0);
+  assert.ok(/nav\.js\?v=\d+/.test(html));
+  assert.ok(html.indexOf('app.css?v=23') >= 0);
 });
 
 test('fullscreen toggle: nav helper + waiter gizlə', function () {
@@ -2699,6 +2742,10 @@ test('fullscreen toggle: nav helper + waiter gizlə', function () {
   assert.ok(nav.indexOf('requestFullscreen') >= 0);
   assert.ok(nav.indexOf('webkitRequestFullscreen') >= 0);
   assert.ok(nav.indexOf('Tam ekran') >= 0);
+  assert.ok(nav.indexOf('function tryAutoFullscreen') >= 0);
+  assert.ok(nav.indexOf('function bindFirstGestureFs') >= 0);
+  assert.ok(nav.indexOf("addEventListener('pointerdown'") >= 0);
+  assert.ok(nav.indexOf("addEventListener('keydown'") >= 0);
   assert.ok(nav.indexOf('isWaiterUi') >= 0);
   assert.ok(nav.indexOf('Bu brauzerdə dəstəklənmir — F11 sınayın') >= 0);
   const css = fs.readFileSync(path.join(__dirname, 'public', 'app.css'), 'utf8');
@@ -2706,7 +2753,7 @@ test('fullscreen toggle: nav helper + waiter gizlə', function () {
   assert.ok(css.indexOf('min-height: 44px') >= 0);
   assert.ok(css.indexOf('.waiter-mode #fullscreen-toggle') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('nav.js?v=2') >= 0);
+  assert.ok(/nav\.js\?v=\d+/.test(html));
 });
 
 test('zal yaş: age-ok/warn/alert; vaxt format; boşda age yox', function () {
@@ -3078,16 +3125,110 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   assert.ok(serverSrc.indexOf('function assertOrderOwner') >= 0);
   assert.ok(serverSrc.indexOf("Başqa ofisiantın masası") >= 0);
   assert.ok(serverSrc.indexOf("orders.takeover") >= 0);
-  ['accept', 'pay', 'void', 'discount', 'move'].forEach(function (name) {
+  ['accept', 'pay', 'void', 'discount', 'move', 'merge', 'unmerge', 'fire', 'guests', 'reprint', 'refund'].forEach(function (name) {
     const marker = "app.post('/api/orders/" + name + "'";
     const start = serverSrc.indexOf(marker);
     assert.ok(start >= 0, name);
     const chunk = serverSrc.slice(start, start + 2200);
     assert.ok(chunk.indexOf('assertOrderOwner') >= 0, name + ' owner');
   });
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(ui.indexOf('function foreignLocked') >= 0);
+  assert.ok(ui.indexOf("isForeignOpen(openOrder()) && !canTakeOverTable()") >= 0);
+  assert.ok(ui.indexOf('if (!useFloorMap())') >= 0);
+  assert.ok(ui.indexOf('waiter && useFloorMap()') < 0);
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '1.2.81');
+  assert.strictEqual(require('./package.json').version, '2.0.1');
+});
+
+test('launcher: port açıqdırsa ikinci tam ekran yox, mövcud URL', function () {
+  const src = fs.readFileSync(path.join(__dirname, 'scripts', 'ArposLauncher.cs'), 'utf8');
+  assert.ok(src.indexOf('alreadyOpen') >= 0);
+  assert.ok(src.indexOf('PortOpen()') >= 0);
+  assert.ok(src.indexOf('--start-fullscreen') >= 0);
+  assert.ok(src.indexOf('--new-window') >= 0);
+  assert.ok(src.indexOf('OpenOrdersFullscreen()') >= 0);
+  assert.ok(src.indexOf('OpenOrdersExisting()') >= 0);
+  const afterIf = src.slice(src.indexOf('var alreadyOpen'));
+  assert.ok(afterIf.indexOf('if (alreadyOpen)') >= 0);
+  const existAt = src.indexOf('OpenOrdersExisting()');
+  const fullAt = src.indexOf('OpenOrdersFullscreen()');
+  assert.ok(existAt > src.indexOf('alreadyOpen'));
+  assert.ok(fullAt > existAt);
+});
+
+test('sprint E: plan ölçü toast + pending ± hüquq', function () {
+  const app = fs.readFileSync(path.join(__dirname, 'public', 'app.js'), 'utf8');
+  assert.ok(app.indexOf('function stylePx') >= 0);
+  assert.ok(app.indexOf('Saxlandı — ') >= 0);
+  assert.ok(app.indexOf("JSON.stringify({ x: payload.x, y: payload.y, w: payload.w, h: payload.h })") >= 0);
+  assert.ok(app.indexOf("querySelectorAll('[data-rz]')") >= 0);
+  assert.ok(app.indexOf("getElementById('sel-apply')") >= 0);
+  const css = fs.readFileSync(path.join(__dirname, 'public', 'app.css'), 'utf8');
+  assert.ok(css.indexOf('.table') >= 0 && css.indexOf('overflow: visible') >= 0);
+  assert.ok(css.indexOf('min-width: 14px') >= 0);
+  assert.ok(css.indexOf('pointer-events: auto') >= 0);
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(ui.indexOf('function isAdminUser') >= 0);
+  assert.ok(ui.indexOf("roleId) === 1") >= 0);
+  assert.ok(ui.indexOf('Yalnız admin azalda bilər') >= 0);
+  assert.ok(ui.indexOf("can('orders.create')") >= 0);
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
+  assert.ok(html.indexOf('orders-ui.js?v=72') >= 0);
+});
+
+test('admin sent qty cut + mətbəx AZALDILDI', function () {
+  const line = { id: 1, name: 'NƏ25', qty: 5, stationId: 1, sent: true, voided: false };
+  const part = orders.applyQtyCut(line, 2, 'Admin');
+  assert.ok(part.ok && !part.full);
+  assert.strictEqual(line.qty, 3);
+  assert.strictEqual(part.ticketQty, 2);
+  assert.strictEqual(part.slice.qty, 2);
+  assert.strictEqual(part.slice.name, 'NƏ25');
+  const gone = { id: 2, name: 'X', qty: 1, stationId: 1, sent: true, voided: false };
+  const full = orders.applyQtyCut(gone, 1, 'Admin');
+  assert.ok(full.ok && full.full);
+  assert.strictEqual(gone.voided, true);
+  const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  const voidFn = src.slice(src.indexOf("app.post('/api/orders/void'"), src.indexOf("app.post('/api/orders/reprint'"));
+  assert.ok(voidFn.indexOf('reduceBy') >= 0);
+  assert.ok(voidFn.indexOf('AZALDILDI') >= 0);
+  assert.ok(voidFn.indexOf('isAdminUser') >= 0);
+  assert.ok(voidFn.indexOf('ticketItems') >= 0);
+  assert.ok(voidFn.indexOf('dispatchTickets') >= 0);
+  const prn = fs.readFileSync(path.join(__dirname, 'printers.js'), 'utf8');
+  assert.ok(prn.indexOf('AZALD') >= 0);
+  const ticketFn = prn.slice(prn.indexOf('function buildOrderTicket'), prn.indexOf('const QUEUE_MAX_TRIES'));
+  assert.ok(ticketFn.indexOf('AZALD') >= 0);
+  const mockPayload = {
+    stationName: 'Metbex',
+    tableName: 'M1',
+    waiterName: 'Admin',
+    title: 'AZALDILDI',
+    items: [{ qty: 2, name: 'NE25' }]
+  };
+  assert.ok(/AZALD/i.test(mockPayload.title));
+  assert.strictEqual(mockPayload.items[0].qty, 2);
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(ui.indexOf('reduceBy: 1') >= 0);
+  assert.ok(ui.indexOf('sentCanCut') >= 0);
+  assert.ok(ui.indexOf('Miqdar azaldıldı.') >= 0);
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
+  assert.ok(html.indexOf('orders-ui.js?v=72') >= 0);
+});
+
+test('Qəbul et: double-click kilidi busy+disabled', function () {
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(ui.indexOf('function lockAccept') >= 0);
+  assert.ok(ui.indexOf('function unlockAccept') >= 0);
+  assert.ok(ui.indexOf('btn.disabled = true') >= 0);
+  assert.ok(ui.indexOf('if (acceptWait)') >= 0);
+  assert.ok(ui.indexOf('return acceptWait') >= 0);
+  const click = ui.slice(ui.indexOf("getElementById('accept-order')"), ui.indexOf('var acceptWait'));
+  assert.ok(click.indexOf('if (busy)') >= 0);
+  assert.ok(click.indexOf('lockAccept()') >= 0);
+  assert.ok(click.indexOf('lockAccept()') < click.indexOf("askYes('Qəbul'"));
 });
 
 console.log('Bütün testlər keçdi.');

@@ -21,6 +21,18 @@
     return n;
   }
 
+  function stylePx(el, name, fallback) {
+    var n = parseInt(String((el && el.style && el.style[name]) || ''), 10);
+    if (!Number.isFinite(n) || n <= 0) {
+      n = Number(fallback) || 0;
+    }
+    return n;
+  }
+
+  function toastBox(payload) {
+    say('Saxlandı — ' + payload.w + '×' + payload.h + ' (' + payload.x + ',' + payload.y + ')', 'ok');
+  }
+
   function canLayout(key) {
     return window.PosNav && window.PosNav.can(key);
   }
@@ -431,10 +443,10 @@
   function saveTableBox(el) {
     const id = Number(el.dataset.table);
     const payload = {
-      x: snap(el.offsetLeft, 0),
-      y: snap(el.offsetTop, 0),
-      w: snap(el.offsetWidth, GRID * 2, GRID * 12),
-      h: snap(el.offsetHeight, GRID * 2, GRID * 12)
+      x: snap(stylePx(el, 'left', el.offsetLeft), 0),
+      y: snap(stylePx(el, 'top', el.offsetTop), 0),
+      w: snap(stylePx(el, 'width', el.offsetWidth), GRID * 2, GRID * 12),
+      h: snap(stylePx(el, 'height', el.offsetHeight), GRID * 2, GRID * 12)
     };
     el.style.left = payload.x + 'px';
     el.style.top = payload.y + 'px';
@@ -450,7 +462,9 @@
     api('/api/tables/' + id, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ x: payload.x, y: payload.y, w: payload.w, h: payload.h })
+    }).then(function () {
+      toastBox(payload);
     }).catch(function (error) {
       say(error.message, 'err');
     });
@@ -515,7 +529,7 @@
       });
     });
     blueprint.querySelectorAll('.table').forEach(function (el) {
-      el.addEventListener('mousedown', function (event) {
+      function startTable(event, mode) {
         if (event.target.closest('button')) {
           return;
         }
@@ -524,11 +538,10 @@
         const floor = el.parentElement;
         const startX = event.clientX;
         const startY = event.clientY;
-        const left = el.offsetLeft;
-        const top = el.offsetTop;
-        const startW = el.offsetWidth;
-        const startH = el.offsetHeight;
-        const mode = event.target.dataset.rz || 'move';
+        const left = stylePx(el, 'left', el.offsetLeft);
+        const top = stylePx(el, 'top', el.offsetTop);
+        const startW = stylePx(el, 'width', el.offsetWidth);
+        const startH = stylePx(el, 'height', el.offsetHeight);
 
         function move(ev) {
           const dx = ev.clientX - startX;
@@ -560,8 +573,31 @@
 
         document.addEventListener('mousemove', move);
         document.addEventListener('mouseup', stop);
+      }
+
+      el.querySelectorAll('[data-rz]').forEach(function (handle) {
+        handle.addEventListener('mousedown', function (event) {
+          startTable(event, handle.dataset.rz);
+        });
+      });
+      el.addEventListener('mousedown', function (event) {
+        if (event.target.closest('[data-rz]')) {
+          return;
+        }
+        startTable(event, 'move');
       });
     });
+    var selApply = document.getElementById('sel-apply');
+    if (selApply && selApply.getAttribute('data-bound') !== '1') {
+      selApply.setAttribute('data-bound', '1');
+      selApply.addEventListener('click', function () {
+        var picked = blueprint.querySelector('.table');
+        if (!picked) {
+          return;
+        }
+        saveTableBox(picked);
+      });
+    }
   }
 
   document.getElementById('add-floor').addEventListener('click', async function () {

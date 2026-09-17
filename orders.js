@@ -208,6 +208,34 @@ function isOpenLine(item) {
   return !!(item && !item.voided && !item.settled);
 }
 
+function modsKey(mods) {
+  return (mods || []).map(function (row) {
+    return String((row && row.name) || '').trim();
+  }).filter(Boolean).sort().join('\t');
+}
+
+function saleLineKey(item) {
+  const price = Number(item && item.salePrice);
+  return [
+    String(Number(item && item.productId) || 0),
+    String((item && item.name) || '').trim(),
+    Number.isFinite(price) ? price.toFixed(2) : '0.00',
+    String((item && item.note) || '').trim(),
+    item && item.complimentary ? '1' : '0',
+    modsKey(item && item.modifiers)
+  ].join('|');
+}
+
+function findOpenSameLine(items, candidate) {
+  const key = saleLineKey(candidate);
+  return (items || []).find(function (row) {
+    if (!row || row.voided || row.settled || row.comboOf) {
+      return false;
+    }
+    return saleLineKey(row) === key;
+  }) || null;
+}
+
 function lineMinor(item) {
   return num.mulQty(num.toMinor(item && item.salePrice), item && item.qty);
 }
@@ -299,6 +327,33 @@ function cleanRunStatus(channel, value) {
   return '';
 }
 
+function lastPaidOrder() {
+  function pick(list) {
+    let best = null;
+    let bestAt = '';
+    (list || []).forEach(function (order) {
+      if (!order || order.status !== 'paid' || !order.payment) {
+        return;
+      }
+      const at = String(order.payment.at || order.updatedAt || '');
+      if (!best || at > bestAt) {
+        best = order;
+        bestAt = at;
+      }
+    });
+    return best;
+  }
+  const live = pick(readOrders().orders);
+  if (live) {
+    return live;
+  }
+  try {
+    return pick(readAllOrders().orders);
+  } catch (error) {
+    return null;
+  }
+}
+
 function paidTotal(order) {
   let sum = 0;
   (order.payments || []).forEach(function (row) {
@@ -307,6 +362,37 @@ function paidTotal(order) {
     sum = num.addMinor(sum, num.toMinor(row.giftAmount));
   });
   return num.fromMinor(sum);
+}
+
+function ticketSlice(line, qty) {
+  return {
+    id: line.id,
+    name: line.name,
+    qty: qty,
+    stationId: line.stationId,
+    extras: line.extras,
+    note: line.note,
+    course: line.course,
+    productId: line.productId,
+    sent: true
+  };
+}
+
+/** reduceBy > 0 və < qty → qismən kəs; əks halda tam void. */
+function applyQtyCut(line, reduceBy, staffName) {
+  if (!line || line.voided) {
+    return { ok: false, full: false, ticketQty: 0 };
+  }
+  const have = Math.max(0, Number(line.qty) || 0);
+  const cut = Math.max(0, Math.floor(Number(reduceBy) || 0));
+  if (cut > 0 && cut < have) {
+    line.qty = have - cut;
+    return { ok: true, full: false, ticketQty: cut, slice: ticketSlice(line, cut) };
+  }
+  line.voided = true;
+  line.voidedAt = new Date().toISOString();
+  line.voidedBy = staffName || '';
+  return { ok: true, full: true, ticketQty: have, slice: ticketSlice(line, have) };
 }
 
 module.exports = {
@@ -322,10 +408,15 @@ module.exports = {
   channelOfId: channelOfId,
   openForTable: openForTable,
   isOpenLine: isOpenLine,
+  saleLineKey: saleLineKey,
+  findOpenSameLine: findOpenSameLine,
   orderTotal: orderTotal,
   openTotal: openTotal,
   pickPayLines: pickPayLines,
+  lastPaidOrder: lastPaidOrder,
   paidTotal: paidTotal,
+  applyQtyCut: applyQtyCut,
+  ticketSlice: ticketSlice,
   hasProductSales: hasProductSales,
   soldProductIds: soldProductIds
 };

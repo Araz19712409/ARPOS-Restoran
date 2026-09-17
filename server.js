@@ -2085,10 +2085,25 @@ app.get('/api/orders', function (req, res) {
         reservations: reservations.readReservations().reservations,
         settings: settings.forPos(),
         locks: terminals.listLocks(),
+        permissions: req.staff && req.staff.permissions ? req.staff.permissions.slice() : [],
         lowStock: req.staff && users.hasPermission(req.staff.role, 'stock.view')
           ? stock.lowItems()
           : []
       }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
+app.get('/api/orders/last-paid', function (req, res) {
+  try {
+    if (!needAnyPerm(req, res, ['payments.take', 'orders.create', 'reports.view'])) {
+      return;
+    }
+    res.json({
+      success: true,
+      data: { order: orders.lastPaidOrder() || null }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
@@ -2757,6 +2772,7 @@ app.post('/api/orders/guests', function (req, res) {
     if (!order) {
       return { guests: guests, pending: true };
     }
+    assertOrderOwner(order, req.staff);
     needOrderTables(order, terminal);
     order.guests = guests;
     if (guestName || body.guestName != null) {
@@ -2896,6 +2912,7 @@ app.post('/api/orders/run-status', function (req, res) {
     if (order.channel !== 'delivery' && order.channel !== 'takeaway') {
       reject(400, 'Yalnız götür / çatdır.');
     }
+    assertOrderOwner(order, req.staff);
     needOrderTables(order, terminal);
     order.runStatus = orders.cleanRunStatus(order.channel, body.runStatus);
     order.updatedAt = new Date().toISOString();
@@ -3020,11 +3037,26 @@ app.post('/api/orders/accept', async function (req, res) {
           waiterName: staff.user.name,
           seatTableId: seat.tableId
         };
-        store.nextItemId += 1;
-        order.items.push(item);
-        added.push(item);
-        if (sendNow) {
-          fresh.push(item);
+        const canMerge = !(product.comboIds && product.comboIds.length);
+        const existing = canMerge ? orders.findOpenSameLine(order.items, item) : null;
+        if (existing) {
+          existing.qty = Number(existing.qty || 0) + qty;
+          if (sendNow) {
+            existing.sent = true;
+            existing.sentAt = existing.sentAt || new Date().toISOString();
+          }
+          const delta = Object.assign({}, existing, { qty: qty });
+          added.push(delta);
+          if (sendNow) {
+            fresh.push(delta);
+          }
+        } else {
+          store.nextItemId += 1;
+          order.items.push(item);
+          added.push(item);
+          if (sendNow) {
+            fresh.push(item);
+          }
         }
         (product.comboIds || []).forEach(function (cid) {
           const child = catalogStore.products.find(function (row) { return row.id === Number(cid); });
@@ -3140,14 +3172,22 @@ function kitchenBoard(stationId, pass) {
       return;
     }
     (order.items || []).forEach(function (item) {
-      if (item.voided || !item.sent) {
+      if (item.voided) {
+        if (pass || !item.sent) {
+          return;
+        }
+        var voidAt = Date.parse(item.voidedAt || order.updatedAt);
+        if (!Number.isFinite(voidAt) || (Date.now() - voidAt) > 45 * 60 * 1000) {
+          return;
+        }
+      } else if (!item.sent) {
         return;
       }
       if (pass) {
         if (!item.kitchenDone || item.served) {
           return;
         }
-      } else if (item.kitchenDone) {
+      } else if (!item.voided && item.kitchenDone) {
         return;
       }
       if (!pass && stationId && Number(item.stationId) !== stationId) {
@@ -3169,7 +3209,8 @@ function kitchenBoard(stationId, pass) {
         course: item.course,
         note: catalog.markText(item),
         waiterName: item.waiterName || order.waiterName || '',
-        at: item.sentAt || order.updatedAt,
+        at: item.voided ? (item.voidedAt || order.updatedAt) : (item.sentAt || order.updatedAt),
+        voided: !!item.voided,
         pass: !!pass
       });
     });
@@ -3294,20 +3335,30 @@ app.post('/api/orders/void', async function (req, res) {
       if (!line || line.voided) {
         reject(400, 'Sətir ləğv oluna bilməz.');
       }
-      line.voided = true;
-      line.voidedAt = new Date().toISOString();
-      line.voidedBy = staff.user.name;
-      const extra = (order.items || []).filter(function (row) {
-        return Number(row.comboOf) === Number(line.id) && !row.voided;
-      });
-      extra.forEach(function (child) {
-        child.voided = true;
-        child.voidedAt = line.voidedAt;
-        child.voidedBy = staff.user.name;
-      });
+      const haveQty = Math.max(0, Number(line.qty) || 0);
+      const reduceBy = Math.max(0, Math.floor(Number(body.reduceBy) || 0));
+      const partial = reduceBy > 0 && reduceBy < haveQty;
+      if (partial && !users.isAdminUser(staff.user)) {
+        reject(403, 'Miqdarı yalnız admin azalda bilər.');
+      }
+      const cut = orders.applyQtyCut(line, partial ? reduceBy : 0, staff.user.name);
+      const extra = [];
+      if (cut.full) {
+        (order.items || []).filter(function (row) {
+          return Number(row.comboOf) === Number(line.id) && !row.voided;
+        }).forEach(function (child) {
+          child.voided = true;
+          child.voidedAt = line.voidedAt;
+          child.voidedBy = staff.user.name;
+          extra.push(child);
+        });
+      }
       order.updatedAt = new Date().toISOString();
       orders.writeOrders(store);
-      const restock = [line].concat(extra).filter(function (row) { return row.sent; });
+      const ticketItems = cut.full
+        ? [line].concat(extra)
+        : [cut.slice];
+      const restock = ticketItems.filter(function (row) { return row.sent || line.sent; });
       if (restock.length && settings.isStockMode()) {
         stock.restockLines(catalog.readCatalog(), restock, { orderId: order.id });
       }
@@ -3316,7 +3367,10 @@ app.post('/api/orders/void', async function (req, res) {
         line: line,
         extra: extra,
         staff: staff,
-        skipTicket: !line.sent && !extra.some(function (row) { return row.sent; })
+        skipTicket: false,
+        ticketItems: ticketItems,
+        ticketTitle: cut.full ? 'LEGV OLUNDU' : 'AZALDILDI',
+        partial: !cut.full
       };
     });
   } catch (error) {
@@ -3328,10 +3382,10 @@ app.post('/api/orders/void', async function (req, res) {
       ? []
       : await dispatchTickets(
         catalog.readCatalog(),
-        [packed.line].concat(packed.extra || []),
+        packed.ticketItems || [packed.line].concat(packed.extra || []),
         packed.order.tableName,
         packed.staff.user.name,
-        'LEGV'
+        packed.ticketTitle || 'LEGV OLUNDU'
       );
     audit(req, 'void', packed.order.tableName + ' — ' + packed.line.name);
     res.json({ success: true, data: { order: packed.order, warnings: warnings } });
@@ -3355,6 +3409,14 @@ app.post('/api/orders/reprint', async function (req, res) {
       res.status(404).json({ success: false, message: 'Sifariş tapılmadı.' });
       return;
     }
+    if (order.status === 'open') {
+      try {
+        assertOrderOwner(order, staff);
+      } catch (error) {
+        sendFail(res, error);
+        return;
+      }
+    }
     let lines = order.items.filter(function (item) { return !item.voided && item.sent; });
     if (body.itemId) {
       lines = lines.filter(function (item) { return item.id === Number(body.itemId); });
@@ -3371,6 +3433,107 @@ app.post('/api/orders/reprint', async function (req, res) {
       'TEKRAR CAPI'
     );
     res.json({ success: true, data: { warnings: warnings } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
+// Satışdan əvvəl hesab (ödəniş deyil)
+app.post('/api/orders/prebill', async function (req, res) {
+  try {
+    const body = req.body || {};
+    const staff = users.canUser(Number(body.waiterId), 'orders.create');
+    if (!staff || !staff.ok) {
+      res.status(403).json({ success: false, message: staff ? 'Çapa icazəniz yoxdur.' : 'PIN ilə daxil olun.' });
+      return;
+    }
+    const store = orders.readOrders();
+    const order = store.orders.find(function (item) {
+      return item.id === Number(body.orderId) && item.status === 'open';
+    });
+    if (!order) {
+      res.status(404).json({ success: false, message: 'Açıq hesab yoxdur.' });
+      return;
+    }
+    try {
+      assertOrderOwner(order, staff);
+    } catch (error) {
+      sendFail(res, error);
+      return;
+    }
+    const extra = Array.isArray(body.pending) ? body.pending : [];
+    const printItems = (order.items || []).filter(function (item) {
+      return !item.voided;
+    }).map(function (item) {
+      return {
+        name: item.name,
+        qty: item.qty,
+        salePrice: item.salePrice,
+        note: item.note,
+        modifiers: item.modifiers
+      };
+    });
+    extra.slice(0, 80).forEach(function (row) {
+      if (!row) {
+        return;
+      }
+      const qty = Math.max(0, Number(row.qty) || 0);
+      if (!qty) {
+        return;
+      }
+      printItems.push({
+        name: String(row.name || 'Mal').slice(0, 80),
+        qty: qty,
+        salePrice: Number(row.salePrice) || 0,
+        note: String(row.note || '').slice(0, 80)
+      });
+    });
+    if (!printItems.length) {
+      res.status(400).json({ success: false, message: 'Hesabda sətir yoxdur.' });
+      return;
+    }
+    let itemsTotal = 0;
+    printItems.forEach(function (item) {
+      itemsTotal += Number(item.salePrice) * Number(item.qty);
+    });
+    itemsTotal = Number(itemsTotal.toFixed(2));
+    const cfg = settings.readSettings();
+    const parts = settings.billParts(itemsTotal, order.waiterId, cfg, order.discount);
+    const tip = Number(order.tipAmount) || 0;
+    const view = {
+      id: order.id,
+      tableName: order.tableName,
+      waiterName: order.waiterName,
+      items: printItems,
+      prebill: true,
+      branchName: cfg.branchName,
+      branchCode: cfg.branchCode,
+      receipt: cfg.receipt,
+      payment: {
+        itemsTotal: parts.itemsTotal,
+        discountAmount: parts.discountAmount,
+        serviceCharge: parts.serviceCharge,
+        servicePercent: parts.servicePercent,
+        total: Number((Number(parts.total) + tip).toFixed(2)),
+        waiterName: order.waiterName,
+        at: new Date().toISOString()
+      }
+    };
+    audit(req, 'prebill', order.tableName + ' #' + order.id);
+    const havePrinter = (printers.readStore().printers || []).some(function (item) {
+      return item.enabled && item.role === 'receipt';
+    });
+    if (!havePrinter) {
+      res.json({
+        success: true,
+        data: { noPrinter: true, warnings: ['Kassa printeri yoxdur.'] }
+      });
+      return;
+    }
+    res.json({ success: true, data: { printed: true } });
+    printers.sendReceiptTickets(view).catch(function (error) {
+      logger.error({ kind: 'prebill', err: error && error.message });
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
   }
@@ -3393,6 +3556,7 @@ app.post('/api/orders/fire', async function (req, res) {
       if (!order) {
         reject(404, 'Açıq hesab tapılmadı.');
       }
+      assertOrderOwner(order, staff);
       needOrderTables(order, terminal);
       const course = Number(body.course) === 1 ? 1 : 2;
       order.firedCourse = Math.max(Number(order.firedCourse) || 1, course);
@@ -3862,6 +4026,9 @@ app.post('/api/orders/receipt', async function (req, res) {
     let staff = users.canUser(Number(body.waiterId), 'payments.take');
     if (!staff || !staff.ok) {
       staff = users.canUser(Number(body.waiterId), 'reports.view');
+    }
+    if (!staff || !staff.ok) {
+      staff = users.canUser(Number(body.waiterId), 'orders.create');
     }
     if (!staff || !staff.ok) {
       res.status(403).json({ success: false, message: staff ? 'Çapa icazəniz yoxdur.' : 'PIN ilə daxil olun.' });
@@ -4740,6 +4907,7 @@ app.post('/api/orders/merge', function (req, res) {
     if (!order) {
       reject(404, 'Açıq hesab tapılmadı.');
     }
+    assertOrderOwner(order, staff);
     if (orders.isServiceTable(order.tableId) || order.channel === 'takeaway' || order.channel === 'delivery') {
       reject(400, 'Takeaway/çatdırılma hesabı birləşməz.');
     }
@@ -4756,6 +4924,9 @@ app.post('/api/orders/merge', function (req, res) {
     const destOrder = orders.findOpenForTable(store, dest.id);
     if (destOrder && destOrder.id === order.id) {
       reject(400, 'Bu masa artıq bu hesabdadır.');
+    }
+    if (destOrder) {
+      assertOrderOwner(destOrder, staff);
     }
     if (destOrder && destOrder.payments && destOrder.payments.length) {
       reject(400, 'O masada ödəniş var. Birləşdirmək olmaz.');
@@ -4820,6 +4991,7 @@ app.post('/api/orders/unmerge', function (req, res) {
     if (!order) {
       reject(404, 'Açıq hesab tapılmadı.');
     }
+    assertOrderOwner(order, staff);
     needOrderTables(order, terminal);
     const splitId = Number(body.tableId);
     const linked = order.linkedTableIds || [];
@@ -4921,6 +5093,7 @@ app.post('/api/orders/refund', function (req, res) {
     if (order.status !== 'paid') {
       reject(400, 'Yalnız ödənilmiş çeki qaytarmaq olar.');
     }
+    assertOrderOwner(order, staff);
     const reason = sanitize(body.reason, 40);
     if (!reason) {
       reject(400, 'Səbəbi yazın.');

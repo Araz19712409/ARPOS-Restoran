@@ -1,6 +1,6 @@
 {
   "name": "arpos-restoran",
-  "version": "1.2.81",
+  "version": "2.0.1",
   "productName": "Arpos Restoran",
   "main": "server.js",
   "scripts": {

@@ -8,6 +8,8 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 
+- **2.0.1** — 2026-09-17 — Admin sent miqdar − + mətbəx; Qəbul double-click kilidi; launcher tam ekran
+- **2.0.0** — 2026-09-17 — Cari UI baza (1.2.x xətti bağlanır; interfeys dəyişmədi)
 - **1.2.81** — 2026-09-16 — Zal: çertyoj düzülüşü; viewport dartma; scroll yox
 - **1.2.80** — 2026-09-16 — Zal: slider + əl dartması (sağ/aşağı); son ölçü yadda
 - **1.2.79** — 2026-09-16 — Zal: ayrı yatay/şaquli ölçü; ekrandan daşmır; yaddaş
