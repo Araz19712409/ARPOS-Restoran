@@ -3157,7 +3157,7 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   assert.ok(ui.indexOf('waiter && useFloorMap()') < 0);
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '2.0.5');
+  assert.strictEqual(require('./package.json').version, '2.0.6');
 });
 
 test('launcher: port açıqdırsa ikinci tam ekran yox, mövcud URL', function () {
@@ -3269,7 +3269,11 @@ test('admin PIN unlock: sessiya ofisiant qalır', function () {
   assert.ok(unlockFn.indexOf('PosNav.forget') < 0);
   assert.ok(ui.indexOf('adminApprovedUntil') >= 0);
   const pay = fs.readFileSync(path.join(__dirname, 'public', 'orders-pay.js'), 'utf8');
-  assert.ok(pay.indexOf('requestAdminUnlock') >= 0);
+  const prebillFn = pay.slice(pay.indexOf('function printPrebill'), pay.indexOf('function sendPrebill'));
+  assert.ok(prebillFn.indexOf('requestAdminUnlock') < 0);
+  assert.ok(prebillFn.indexOf('openPay') < 0);
+  const payClick = pay.slice(pay.indexOf("on('pay-open'"), pay.indexOf("on('pay-open'") + 500);
+  assert.ok(payClick.indexOf('requestAdminUnlock') >= 0);
   const srv = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
   assert.ok(srv.indexOf("app.post('/api/admin-unlock'") >= 0);
   assert.ok(srv.indexOf('grantPayUnlock') >= 0);
@@ -3278,7 +3282,7 @@ test('admin PIN unlock: sessiya ofisiant qalır', function () {
   assert.ok(sess.indexOf('function grantPayUnlock') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
   assert.ok(html.indexOf('orders-ui.js?v=75') >= 0);
-  assert.ok(html.indexOf('orders-pay.js?v=13') >= 0);
+  assert.ok(html.indexOf('orders-pay.js?v=14') >= 0);
 });
 
 console.log('Bütün testlər keçdi.');

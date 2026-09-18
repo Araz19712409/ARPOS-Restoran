@@ -864,13 +864,6 @@
           : 'Açıq hesab yoxdur.', 'err');
         return;
       }
-      if (!can('payments.take') && typeof ctx.requestAdminUnlock === 'function') {
-        ctx.requestAdminUnlock(function () {
-          sendPrebill(order, pending);
-          openPay();
-        });
-        return;
-      }
       sendPrebill(order, pending);
     }
 
