@@ -27,6 +27,32 @@
     return Dom.el ? Dom.el(id) : document.getElementById(id);
   }
 
+  function setPinError(text) {
+    var n = el('pin-error');
+    if (n) {
+      n.textContent = text == null ? '' : String(text);
+    }
+  }
+
+  function pinBackVisible(on) {
+    var n = el('pin-switch-back');
+    if (!n) {
+      return;
+    }
+    if (on) {
+      n.classList.remove('hidden');
+    } else {
+      n.classList.add('hidden');
+    }
+  }
+
+  function onTap(id, fn) {
+    var n = el(id);
+    if (n) {
+      n.addEventListener('click', fn);
+    }
+  }
+
   function isWaiterMode() {
     return !!(document.body && document.body.classList.contains('waiter-mode'));
   }
@@ -689,8 +715,12 @@
     window.sessionStorage.setItem('posPendingGuests', JSON.stringify(map));
   }
 
+  /* PIN/DOM sığorta. Geri: VERSIONS.md TODO «PIN/DOM sığorta». */
   function showLock() {
-    document.getElementById('pin-lock').classList.remove('hidden');
+    var lock = el('pin-lock');
+    if (lock) {
+      lock.classList.remove('hidden');
+    }
     if (window.PosNav && window.PosNav.hideBanner) {
       window.PosNav.hideBanner();
     }
@@ -699,7 +729,10 @@
   }
 
   function hideLock() {
-    document.getElementById('pin-lock').classList.add('hidden');
+    var lock = el('pin-lock');
+    if (lock) {
+      lock.classList.add('hidden');
+    }
   }
 
   function pinEyebrow() {
@@ -714,8 +747,8 @@
     switching = true;
     pinBuffer = '';
     drawPin();
-    document.getElementById('pin-error').textContent = '';
-    document.getElementById('pin-switch-back').classList.remove('hidden');
+    setPinError('');
+    pinBackVisible(true);
     var eye = pinEyebrow();
     if (eye) {
       eye.textContent = 'Ofisiantı dəyiş';
@@ -773,8 +806,8 @@
     resumeAfterAdmin = null;
     pinBuffer = '';
     drawPin();
-    document.getElementById('pin-error').textContent = '';
-    document.getElementById('pin-switch-back').classList.add('hidden');
+    setPinError('');
+    pinBackVisible(false);
     var eye = pinEyebrow();
     if (eye) {
       eye.textContent = 'Ofisiant girişi';
@@ -787,7 +820,7 @@
   }
 
   function finishSwitch() {
-    document.getElementById('pin-switch-back').classList.add('hidden');
+    pinBackVisible(false);
     var eye = pinEyebrow();
     if (eye) {
       eye.textContent = 'Ofisiant girişi';
@@ -871,7 +904,10 @@
   }
 
   function drawPin() {
-    document.getElementById('pin-dots').textContent = pinBuffer ? new Array(pinBuffer.length + 1).join('•') : '○ ○ ○ ○ ○ ○';
+    var dots = el('pin-dots');
+    if (dots) {
+      dots.textContent = pinBuffer ? new Array(pinBuffer.length + 1).join('•') : '○ ○ ○ ○ ○ ○';
+    }
   }
 
   function terminalPayload(extra) {
@@ -3156,14 +3192,14 @@
       body: JSON.stringify({ pin: pinBuffer })
     }).then(function (body) {
       if (body.data && body.data.needTotp) {
-        document.getElementById('pin-error').textContent = 'Bu hesab üçün əlavə kod lazımdır.';
+        setPinError('Bu hesab üçün əlavə kod lazımdır.');
         pinBuffer = '';
         drawPin();
         return;
       }
       var perms = (body.data && body.data.permissions) || [];
       if (switching && perms.indexOf('orders.create') === -1) {
-        document.getElementById('pin-error').textContent = 'Bu PIN ilə sifarişə girilməz.';
+        setPinError('Bu PIN ilə sifarişə girilməz.');
         pinBuffer = '';
         drawPin();
         return;
@@ -3171,7 +3207,7 @@
       if (switching && waiter && window.PosNav) {
         window.PosNav.forget();
       }
-      document.getElementById('pin-error').textContent = '';
+      setPinError('');
       body.data.fromLogin = true;
       afterAdminUnlock = null;
       setWaiter(body.data);
@@ -3182,7 +3218,7 @@
         return restoreAdminSeat();
       });
     }).catch(function (error) {
-      document.getElementById('pin-error').textContent = error.message;
+      setPinError(error.message);
       if (clearOnFail || pinBuffer.length >= 8) {
         pinBuffer = '';
         drawPin();
@@ -3190,37 +3226,39 @@
     });
   }
 
-  var pad = document.getElementById('pin-pad');
-  ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'OK'].forEach(function (key) {
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = key;
-    btn.addEventListener('click', function () {
-      if (key === 'C') {
-        pinBuffer = '';
-      } else if (key === 'OK') {
-        tryLogin(true);
-        return;
-      } else if (pinBuffer.length < 8) {
-        pinBuffer += key;
-      }
-      drawPin();
-      if (pinBuffer.length >= 6 && key !== 'C') {
-        tryLogin(false);
-      }
+  var pad = el('pin-pad');
+  if (pad) {
+    ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'OK'].forEach(function (key) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = key;
+      btn.addEventListener('click', function () {
+        if (key === 'C') {
+          pinBuffer = '';
+        } else if (key === 'OK') {
+          tryLogin(true);
+          return;
+        } else if (pinBuffer.length < 8) {
+          pinBuffer += key;
+        }
+        drawPin();
+        if (pinBuffer.length >= 6 && key !== 'C') {
+          tryLogin(false);
+        }
+      });
+      pad.appendChild(btn);
     });
-    pad.appendChild(btn);
-  });
+  }
 
-  document.getElementById('logout').addEventListener('click', function () {
+  onTap('logout', function () {
     switching = false;
     setWaiter(null);
   });
 
-  document.getElementById('switch-waiter').addEventListener('click', startSwitch);
-  document.getElementById('pin-switch-back').addEventListener('click', cancelSwitch);
+  onTap('switch-waiter', startSwitch);
+  onTap('pin-switch-back', cancelSwitch);
 
-  document.getElementById('switch-terminal').addEventListener('click', function () {
+  onTap('switch-terminal', function () {
     ensureTerminal(true);
   });
   pingTimer = window.setInterval(function () {
@@ -3238,23 +3276,26 @@
     });
   }, 20000);
 
-  document.getElementById('option-cancel').addEventListener('click', closeOptions);
-  document.getElementById('option-form').addEventListener('submit', function (event) {
-    event.preventDefault();
-    if (!optionProduct) {
-      return;
-    }
-    if (optionProduct.portions && optionProduct.portions.length && !optionPortionId) {
-      say('Porsiya seçin.', 'err');
-      return;
-    }
-    var product = optionProduct;
-    var price = linePrice(product, optionPortionId, optionExtraIds);
-    pushPending(product, price, optionPortionId, optionExtraIds.slice(), '');
-    closeOptions();
-  });
+  onTap('option-cancel', closeOptions);
+  var optionForm = el('option-form');
+  if (optionForm) {
+    optionForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+      if (!optionProduct) {
+        return;
+      }
+      if (optionProduct.portions && optionProduct.portions.length && !optionPortionId) {
+        say('Porsiya seçin.', 'err');
+        return;
+      }
+      var product = optionProduct;
+      var price = linePrice(product, optionPortionId, optionExtraIds);
+      pushPending(product, price, optionPortionId, optionExtraIds.slice(), '');
+      closeOptions();
+    });
+  }
 
-  document.getElementById('reprint-order').addEventListener('click', function () {
+  onTap('reprint-order', function () {
     var order = openOrder();
     if (!order) {
       say('Açıq sifariş yoxdur.', 'err');
@@ -3377,14 +3418,8 @@
           resumeAfterAdmin = null;
           pinBuffer = '';
           drawPin();
-          var errPin = document.getElementById('pin-error');
-          if (errPin) {
-            errPin.textContent = '';
-          }
-          var backPin = document.getElementById('pin-switch-back');
-          if (backPin) {
-            backPin.classList.add('hidden');
-          }
+          setPinError('');
+          pinBackVisible(false);
           var eyePin = pinEyebrow();
           if (eyePin) {
             eyePin.textContent = 'Ofisiant girişi';

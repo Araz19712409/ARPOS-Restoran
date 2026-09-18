@@ -7,7 +7,9 @@
 
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
+- **PIN/DOM sığorta — 2.0.5.** `el` / `setPinError` / `if (pad)`; `getElementById('accept-order')` eyni. Cache `orders-ui.js?v=75`. Geri: PIN funksiyalarını yoxlamasız `getElementById`, `?v=74`.
 
+- **2.0.5** — 2026-09-18 — PIN kilidi 60 sn; PIN/DOM null-safe
 - **2.0.4** — 2026-09-18 — Tam ekran düyməsi yalnız ikon (Çıx yazısı yox)
 - **2.0.3** — 2026-09-17 — Admin PIN unlock: icazə Admin, sessiya/çek ofisiant
 - **2.0.2** — 2026-09-17 — Admin − yalnız 1 ədəd (tam silmə stepperdən yox)

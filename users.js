@@ -9,8 +9,7 @@ function lockFile() {
   return db.dataFile('pin-lock.json');
 }
 const FAIL_LIMIT = 5;
-const LOCK_MS = 15 * 60 * 1000;
-const LOCK_MS_MAX = 60 * 60 * 1000;
+const LOCK_MS = 60 * 1000;
 const PIN_SCHEME = 'pbkdf2';
 // TODO: admin unlock / TOTP bu kilidi açmır — ayrıca.
 
@@ -95,10 +94,8 @@ function pinLockKey(pin) {
   return stamp ? 'pin:' + stamp : '';
 }
 
-function lockDurationMs(lockCount) {
-  const n = Math.max(1, Number(lockCount) || 1);
-  const ms = LOCK_MS * Math.pow(2, n - 1);
-  return ms > LOCK_MS_MAX ? LOCK_MS_MAX : ms;
+function lockDurationMs() {
+  return LOCK_MS;
 }
 
 function waitLeft(row, now) {
@@ -107,6 +104,19 @@ function waitLeft(row, now) {
   }
   const left = Math.ceil((row.until - now) / 1000);
   return left > 0 ? left : 0;
+}
+
+function capStaleLock(fails, now) {
+  const maxUntil = now + LOCK_MS;
+  let dirty = false;
+  Object.keys(fails || {}).forEach(function (key) {
+    const row = fails[key];
+    if (row && Number(row.until) > maxUntil) {
+      row.until = maxUntil;
+      dirty = true;
+    }
+  });
+  return dirty;
 }
 
 function lockKeys(ip, pin) {
@@ -169,6 +179,9 @@ function writeLocks(fails) {
 function pinWait(ip, pin) {
   const fails = readLocks();
   const now = Date.now();
+  if (capStaleLock(fails, now)) {
+    writeLocks(fails);
+  }
   let max = 0;
   lockKeys(ip, pin).forEach(function (key) {
     const left = waitLeft(fails[migrateKey(key)] || fails[key], now);
@@ -182,6 +195,9 @@ function pinWait(ip, pin) {
 function failPin(ip, pin) {
   const fails = readLocks();
   const now = Date.now();
+  if (capStaleLock(fails, now)) {
+    writeLocks(fails);
+  }
   const keys = lockKeys(ip, pin).map(migrateKey).filter(function (key, i, all) {
     return all.indexOf(key) === i;
   });

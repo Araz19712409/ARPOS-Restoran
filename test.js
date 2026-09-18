@@ -249,7 +249,7 @@ function withTempPinLock(fn) {
   }
 }
 
-test('PIN 5 səhvdən sonra 15 dəqiqə kilid', function () {
+test('PIN 5 səhvdən sonra 60 saniyə kilid', function () {
   withTempPinLock(function () {
     const ip = '10.0.0.9';
     var i;
@@ -257,17 +257,16 @@ test('PIN 5 səhvdən sonra 15 dəqiqə kilid', function () {
       assert.strictEqual(users.failPin(ip, '111111'), 0);
     }
     const wait = users.failPin(ip, '111111');
-    assert.ok(wait >= 15 * 60 - 1);
-    assert.ok(wait <= 15 * 60);
-    assert.ok(users.pinWait(ip, '111111') >= 15 * 60 - 1);
+    assert.ok(wait >= 60 - 1);
+    assert.ok(wait <= 60);
+    assert.ok(users.pinWait(ip, '111111') >= 60 - 1);
   });
 });
 
-test('PIN kilidi eksponensial 15-30-60', function () {
-  assert.strictEqual(users.lockDurationMs(1), 15 * 60 * 1000);
-  assert.strictEqual(users.lockDurationMs(2), 30 * 60 * 1000);
-  assert.strictEqual(users.lockDurationMs(3), 60 * 60 * 1000);
-  assert.strictEqual(users.lockDurationMs(8), 60 * 60 * 1000);
+test('PIN kilidi həmişə 60 saniyə', function () {
+  assert.strictEqual(users.lockDurationMs(1), 60 * 1000);
+  assert.strictEqual(users.lockDurationMs(2), 60 * 1000);
+  assert.strictEqual(users.lockDurationMs(8), 60 * 1000);
   withTempPinLock(function (dir) {
     const ip = '10.0.0.10';
     var i;
@@ -284,8 +283,27 @@ test('PIN kilidi eksponensial 15-30-60', function () {
       assert.strictEqual(users.failPin(ip, '222222'), 0);
     }
     const wait = users.failPin(ip, '222222');
-    assert.ok(wait >= 30 * 60 - 1);
-    assert.ok(wait <= 30 * 60);
+    assert.ok(wait >= 60 - 1);
+    assert.ok(wait <= 60);
+  });
+});
+
+test('köhnə 15 dəq PIN kilidi 60 saniyəyə endirilir', function () {
+  withTempPinLock(function (dir) {
+    const ip = '10.0.0.19';
+    var i;
+    for (i = 0; i < 5; i += 1) {
+      users.failPin(ip, '666666');
+    }
+    const lockPath = path.join(dir, 'pin-lock.json');
+    const box = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+    Object.keys(box.fails).forEach(function (key) {
+      box.fails[key].until = Date.now() + 15 * 60 * 1000;
+    });
+    fs.writeFileSync(lockPath, JSON.stringify(box));
+    const wait = users.pinWait(ip, '666666');
+    assert.ok(wait >= 60 - 1);
+    assert.ok(wait <= 60);
   });
 });
 
@@ -301,7 +319,7 @@ test('doğru PIN-dən sonra sayğac sıfırlanır', function () {
     for (i = 0; i < 4; i += 1) {
       assert.strictEqual(users.failPin(ip, '333333'), 0);
     }
-    assert.ok(users.failPin(ip, '333333') >= 15 * 60 - 1);
+    assert.ok(users.failPin(ip, '333333') >= 60 - 1);
   });
 });
 
@@ -313,7 +331,7 @@ test('eyni IP-də fərqli PIN 5-də kilidlənir', function () {
     assert.strictEqual(users.failPin(ip, '333333'), 0);
     assert.strictEqual(users.failPin(ip, '444444'), 0);
     const wait = users.failPin(ip, '555555');
-    assert.ok(wait >= 15 * 60 - 1);
+    assert.ok(wait >= 60 - 1);
   });
 });
 
@@ -3139,7 +3157,7 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   assert.ok(ui.indexOf('waiter && useFloorMap()') < 0);
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '2.0.4');
+  assert.strictEqual(require('./package.json').version, '2.0.5');
 });
 
 test('launcher: port açıqdırsa ikinci tam ekran yox, mövcud URL', function () {
@@ -3175,7 +3193,7 @@ test('sprint E: plan ölçü toast + pending ± hüquq', function () {
   assert.ok(ui.indexOf('Yalnız admin azalda bilər') >= 0);
   assert.ok(ui.indexOf("can('orders.create')") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=74') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=75') >= 0);
 });
 
 test('admin sent qty cut + mətbəx AZALDILDI', function () {
@@ -3223,7 +3241,7 @@ test('admin sent qty cut + mətbəx AZALDILDI', function () {
   assert.ok(ui.indexOf('stopPropagation') >= 0);
   assert.ok(ui.indexOf('Miqdar azaldıldı.') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=74') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=75') >= 0);
 });
 
 test('Qəbul et: double-click kilidi busy+disabled', function () {
@@ -3237,6 +3255,9 @@ test('Qəbul et: double-click kilidi busy+disabled', function () {
   assert.ok(click.indexOf('if (busy)') >= 0);
   assert.ok(click.indexOf('lockAccept()') >= 0);
   assert.ok(click.indexOf('lockAccept()') < click.indexOf("askYes('Qəbul'"));
+  assert.ok(ui.indexOf('function setPinError') >= 0);
+  assert.ok(ui.indexOf("var pad = el('pin-pad')") >= 0);
+  assert.ok(ui.indexOf('if (pad)') >= 0);
 });
 
 test('admin PIN unlock: sessiya ofisiant qalır', function () {
@@ -3256,7 +3277,7 @@ test('admin PIN unlock: sessiya ofisiant qalır', function () {
   const sess = fs.readFileSync(path.join(__dirname, 'sessions.js'), 'utf8');
   assert.ok(sess.indexOf('function grantPayUnlock') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=74') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=75') >= 0);
   assert.ok(html.indexOf('orders-pay.js?v=13') >= 0);
 });
 
