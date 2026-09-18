@@ -1056,10 +1056,10 @@
     var ico = document.createElement('span');
     ico.className = 'fs-ico';
     ico.setAttribute('aria-hidden', 'true');
-    ico.textContent = on ? '↙' : '⛶';
+    ico.textContent = on ? '❐' : '⛶';
     btn.appendChild(ico);
-    btn.appendChild(document.createTextNode(on ? ' Çıx' : ' Tam ekran'));
     btn.setAttribute('aria-label', on ? 'Tam ekrandan çıx' : 'Tam ekran');
+    btn.title = on ? 'Tam ekrandan çıx' : 'Tam ekran';
   }
 
   function syncFsBtn(btn) {

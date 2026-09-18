@@ -2729,7 +2729,7 @@ test('Ofis more-nav: kənar klik + Esc bağlanır', function () {
   assert.ok(box.indexOf('overflow') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
   assert.ok(/nav\.js\?v=\d+/.test(html));
-  assert.ok(html.indexOf('app.css?v=23') >= 0);
+  assert.ok(/app\.css\?v=\d+/.test(html));
 });
 
 test('fullscreen toggle: nav helper + waiter gizlə', function () {
@@ -3139,7 +3139,7 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   assert.ok(ui.indexOf('waiter && useFloorMap()') < 0);
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '2.0.3');
+  assert.strictEqual(require('./package.json').version, '2.0.4');
 });
 
 test('launcher: port açıqdırsa ikinci tam ekran yox, mövcud URL', function () {

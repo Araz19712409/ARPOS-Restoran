@@ -8,6 +8,7 @@
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 
+- **2.0.4** — 2026-09-18 — Tam ekran düyməsi yalnız ikon (Çıx yazısı yox)
 - **2.0.3** — 2026-09-17 — Admin PIN unlock: icazə Admin, sessiya/çek ofisiant
 - **2.0.2** — 2026-09-17 — Admin − yalnız 1 ədəd (tam silmə stepperdən yox)
 - **2.0.1** — 2026-09-17 — Admin sent miqdar − + mətbəx; Qəbul double-click kilidi; launcher tam ekran

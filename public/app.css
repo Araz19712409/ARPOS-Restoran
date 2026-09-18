@@ -698,24 +698,27 @@ body.has-banner {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 0;
   min-height: 44px;
   min-width: 44px;
-  padding: 8px 12px;
+  width: 44px;
+  height: 44px;
+  padding: 8px;
   margin: 0;
   border: 1px solid #c4a574;
   border-radius: 8px;
   background: #2c261f;
-  color: #f4eadc;
+  color: #c4a574;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0;
+  line-height: 0;
   white-space: nowrap;
 }
 
 #fullscreen-toggle:hover:not(:disabled) {
   background: #221d17;
   border-color: #c4a574;
-  color: #f4eadc;
+  color: #c4a574;
 }
 
 #fullscreen-toggle:disabled {
@@ -725,7 +728,7 @@ body.has-banner {
 
 #fullscreen-toggle .fs-ico {
   color: #c4a574;
-  font-size: 1rem;
+  font-size: 1.15rem;
   line-height: 1;
 }
 
