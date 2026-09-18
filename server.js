@@ -4943,14 +4943,10 @@ app.post('/api/orders/move', async function (req, res) {
       }
       orders.writeOrders(store);
       writeLayout(layout);
-      const items = (order.items || []).filter(function (item) { return !item.voided; });
       return {
         order: order,
-        staff: staff,
         fromName: fromName,
-        destName: destName,
-        items: items,
-        catalogStore: catalog.readCatalog()
+        destName: destName
       };
     });
   } catch (error) {
@@ -4962,17 +4958,6 @@ app.post('/api/orders/move', async function (req, res) {
     success: true,
     data: { order: packed.order, warnings: [] }
   });
-  if (packed.items.length) {
-    dispatchTickets(
-      packed.catalogStore,
-      packed.items,
-      packed.fromName + ' → ' + packed.destName,
-      packed.staff.user.name,
-      'MASA DEYISDI'
-    ).catch(function () {
-      return null;
-    });
-  }
 });
 
 app.post('/api/orders/merge', function (req, res) {

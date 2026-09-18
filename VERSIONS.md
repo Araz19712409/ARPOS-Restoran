@@ -9,6 +9,7 @@
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 - **PIN/DOM sığorta — 2.0.5.** `el` / `setPinError` / `if (pad)`; `getElementById('accept-order')` eyni. Cache `orders-ui.js?v=75`. Geri: PIN funksiyalarını yoxlamasız `getElementById`, `?v=74`.
 
+- **2.0.8** — 2026-09-18 — Köçürmə stansiyaya çek göndərmir
 - **2.0.7** — 2026-09-18 — Kassa: Köçür Hesab sırasında
 - **2.0.6** — 2026-09-18 — Ofisiant Hesab: çap, admin PIN/ödəniş yox
 - **2.0.5** — 2026-09-18 — PIN kilidi 60 sn; PIN/DOM null-safe

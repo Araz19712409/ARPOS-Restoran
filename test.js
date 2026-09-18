@@ -2087,6 +2087,9 @@ test('katalog maya strip; void/endirim payments blok', function () {
   assert.ok(discFn.indexOf('Ödəniş başlayıb. Endirim dəyişməz.') >= 0);
   const clearFn = src.slice(src.indexOf("app.post('/api/orders/discount/clear'"), src.indexOf("app.post('/api/orders/move'"));
   assert.ok(clearFn.indexOf('Ödəniş başlayıb. Endirim dəyişməz.') >= 0);
+  const moveFn = src.slice(src.indexOf("app.post('/api/orders/move'"), src.indexOf("app.post('/api/orders/merge'"));
+  assert.ok(moveFn.indexOf('dispatchTickets') < 0);
+  assert.ok(moveFn.indexOf('MASA DEYISDI') < 0);
 
   const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
   assert.ok(ui.indexOf("can('orders.void')") >= 0);
@@ -3164,7 +3167,7 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   assert.ok(ui.indexOf('waiter && useFloorMap()') < 0);
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '2.0.7');
+  assert.strictEqual(require('./package.json').version, '2.0.8');
 });
 
 test('launcher: port açıqdırsa ikinci tam ekran yox, mövcud URL', function () {
