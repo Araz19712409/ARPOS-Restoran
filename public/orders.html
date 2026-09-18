@@ -13,7 +13,7 @@
   <title>Sifariş</title>
   <link rel="stylesheet" href="app.css?v=25">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css?v=55">
+  <link rel="stylesheet" href="orders.css?v=57">
   <link rel="stylesheet" href="dates.css">
 </head>
 <body class="order-page order-wizard" data-zone="floor">
@@ -207,6 +207,7 @@
       </div>
       <div class="receipt-quick-actions" id="receipt-quick-actions">
         <button id="prebill-btn" type="button" title="Satışdan əvvəl hesab. Ödəniş deyil.">Hesab</button>
+        <button id="move-open" type="button" title="Hesabı boş masaya köçür">Köçür</button>
         <button id="last-receipt-btn" type="button" disabled title="Son ödənilmiş çek yoxdur">Son çek</button>
         <button id="paid-receipts-btn" type="button" data-need="payments.take|reports.view">Çeklər</button>
       </div>
@@ -220,7 +221,6 @@
           <button id="reserve-table" type="button">Rezerv</button>
           <button id="cancel-reserve" type="button">Rezervi ləğv</button>
           <button id="prepay-open" type="button">İlkin</button>
-          <button id="move-open" type="button">Köçür</button>
           <button id="handoff-open" type="button" style="display:none">Hesabı ver</button>
           <button id="merge-open" type="button" style="display:none">Birləşdir</button>
           <button id="unmerge-open" type="button" style="display:none">Ayır</button>
@@ -607,6 +607,6 @@
   <script src="orders-zones.js?v=4"></script>
   <script src="orders-shift.js?v=5"></script>
   <script src="orders-pay.js?v=14"></script>
-  <script src="orders-ui.js?v=75"></script>
+  <script src="orders-ui.js?v=76"></script>
 </body>
 </html>

@@ -2275,8 +2275,11 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(foot.indexOf('id="reprint-order"') >= 0);
   assert.ok(foot.indexOf('id="discount-open"') >= 0);
   assert.ok(html.indexOf('id="prebill-btn"') >= 0);
+  assert.ok(foot.indexOf('id="move-open"') >= 0);
   assert.ok(foot.indexOf('id="last-receipt-btn"') >= 0);
   assert.ok(foot.indexOf('id="paid-receipts-btn"') >= 0);
+  const moveAt = foot.indexOf('id="move-open"');
+  assert.ok(moveAt > quickAt && moveAt < mainAt);
   assert.ok(foot.indexOf('id="pay-open"') >= 0);
   assert.ok(foot.indexOf('id="accept-order"') >= 0);
   assert.ok(/orders\.css\?v=\d+/.test(html));
@@ -2290,6 +2293,10 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(sec.indexOf('margin: 8px 0 10px') >= 0);
   assert.ok(css.indexOf('.check-foot-notes') >= 0);
   assert.ok(css.indexOf('.receipt-quick-actions') >= 0);
+  assert.ok(css.indexOf('@media (max-width: 700px)') >= 0);
+  const phoneWaiter = css.slice(css.indexOf('@media (max-width: 700px)'), css.indexOf('@media print'));
+  assert.ok(phoneWaiter.indexOf('html.waiter-mode') >= 0);
+  assert.ok(phoneWaiter.indexOf('overflow-x: hidden') >= 0);
   assert.ok(css.indexOf('.paid-receipts-card') >= 0);
   assert.ok(css.indexOf('.paid-receipts-card') >= 0 && css.indexOf('background: #2c261f') >= 0);
   assert.ok(css.indexOf('[data-zone="floor"] .sec-actions') >= 0 || css.indexOf('.sec-actions') >= 0);
@@ -3157,7 +3164,7 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   assert.ok(ui.indexOf('waiter && useFloorMap()') < 0);
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '2.0.6');
+  assert.strictEqual(require('./package.json').version, '2.0.7');
 });
 
 test('launcher: port açıqdırsa ikinci tam ekran yox, mövcud URL', function () {
@@ -3193,7 +3200,7 @@ test('sprint E: plan ölçü toast + pending ± hüquq', function () {
   assert.ok(ui.indexOf('Yalnız admin azalda bilər') >= 0);
   assert.ok(ui.indexOf("can('orders.create')") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=75') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=76') >= 0);
 });
 
 test('admin sent qty cut + mətbəx AZALDILDI', function () {
@@ -3241,7 +3248,7 @@ test('admin sent qty cut + mətbəx AZALDILDI', function () {
   assert.ok(ui.indexOf('stopPropagation') >= 0);
   assert.ok(ui.indexOf('Miqdar azaldıldı.') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=75') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=76') >= 0);
 });
 
 test('Qəbul et: double-click kilidi busy+disabled', function () {
@@ -3255,6 +3262,7 @@ test('Qəbul et: double-click kilidi busy+disabled', function () {
   assert.ok(click.indexOf('if (busy)') >= 0);
   assert.ok(click.indexOf('lockAccept()') >= 0);
   assert.ok(click.indexOf('lockAccept()') < click.indexOf("askYes('Qəbul'"));
+  assert.ok(ui.indexOf('Kağız çıxmasa Çap — Qəbulü təkrarlama.') >= 0);
   assert.ok(ui.indexOf('function setPinError') >= 0);
   assert.ok(ui.indexOf("var pad = el('pin-pad')") >= 0);
   assert.ok(ui.indexOf('if (pad)') >= 0);
@@ -3281,7 +3289,7 @@ test('admin PIN unlock: sessiya ofisiant qalır', function () {
   const sess = fs.readFileSync(path.join(__dirname, 'sessions.js'), 'utf8');
   assert.ok(sess.indexOf('function grantPayUnlock') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=75') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=76') >= 0);
   assert.ok(html.indexOf('orders-pay.js?v=14') >= 0);
 });
 
