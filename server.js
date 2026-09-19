@@ -2596,6 +2596,32 @@ function reject(status, message) {
   throw error;
 }
 
+function requireReserveAdmin(staff) {
+  if (!staff || !staff.ok) {
+    reject(403, staff ? 'Sizin buna icazəniz yoxdur.' : 'PIN ilə daxil olun.');
+  }
+  if (!users.isAdminUser(staff.user)) {
+    reject(403, 'Sizin buna icazəniz yoxdur.');
+  }
+}
+
+function reservationOwnedBy(staff, row) {
+  if (!staff || !staff.user || !row) {
+    return false;
+  }
+  if (users.isAdminUser(staff.user)) {
+    return true;
+  }
+  const wid = Number(row.waiterId);
+  if (wid && wid === Number(staff.user.id)) {
+    return true;
+  }
+  if (!wid && row.waiterName && row.waiterName === staff.user.name) {
+    return true;
+  }
+  return false;
+}
+
 /** Açıq hesabın ofisiant sahibi; orders.takeover olmadan başqası toxuna bilməz. */
 function assertOrderOwner(order, staff) {
   const wid = Number(order && order.waiterId) || 0;
@@ -2990,6 +3016,12 @@ app.post('/api/orders/accept', async function (req, res) {
       const seat = seatFromBody(layout, store, tableId);
       if (!seat) {
         reject(400, 'Masa seçin.');
+      }
+      if (!seat.service) {
+        const booked = reservations.activeForTable(reservations.readReservations(), seat.tableId);
+        if (booked && !reservationOwnedBy(staff, booked)) {
+          reject(403, 'Sizin buna icazəniz yoxdur.');
+        }
       }
       if (!lines.length) {
         reject(400, 'Məhsul əlavə edin.');
@@ -4148,9 +4180,9 @@ app.post('/api/orders/receipt', async function (req, res) {
 app.post('/api/reservations', function (req, res) {
   lock.withLock('write', function () {
     const body = req.body || {};
-    const staff = users.canUser(Number(body.waiterId), 'orders.create');
+      const staff = users.canUser(Number(body.waiterId), 'orders.create');
     if (!staff || !staff.ok) {
-      reject(403, staff ? 'Rezervə icazəniz yoxdur.' : 'PIN ilə daxil olun.');
+      reject(403, staff ? 'Sizin buna icazəniz yoxdur.' : 'PIN ilə daxil olun.');
     }
     const terminal = needTerminal(body);
     const tableId = Number(body.tableId);
@@ -4193,6 +4225,7 @@ app.post('/api/reservations', function (req, res) {
       at: at,
       note: sanitize(body.note, 80),
       status: 'active',
+      waiterId: staff.user.id,
       waiterName: staff.user.name
     };
     book.nextReservationId += 1;
@@ -4216,8 +4249,9 @@ app.post('/api/reservations/:id/prepay', function (req, res) {
     const body = req.body || {};
     const staff = users.canUser(Number(body.waiterId), 'payments.take');
     if (!staff || !staff.ok) {
-      reject(403, staff ? 'Ödənişə icazəniz yoxdur.' : 'PIN ilə daxil olun.');
+      reject(403, staff ? 'Sizin buna icazəniz yoxdur.' : 'PIN ilə daxil olun.');
     }
+    requireReserveAdmin(staff);
     const book = reservations.readReservations();
     const row = book.reservations.find(function (item) { return item.id === Number(req.params.id); });
     if (!row || (row.status !== 'active' && row.status !== 'seated')) {
@@ -4272,7 +4306,10 @@ app.delete('/api/reservations/:id', function (req, res) {
   try {
     const staff = users.canUser(Number(req.body && req.body.waiterId || req.query.waiterId), 'orders.create');
     if (!staff || !staff.ok) {
-      res.status(403).json({ success: false, message: staff ? 'Rezerv ləğvinə icazəniz yoxdur.' : 'PIN ilə daxil olun.' });
+      res.status(403).json({
+        success: false,
+        message: 'PIN ilə daxil olun.'
+      });
       return;
     }
     const id = Number(req.params.id);
@@ -4280,6 +4317,10 @@ app.delete('/api/reservations/:id', function (req, res) {
     const row = book.reservations.find(function (item) { return item.id === id; });
     if (!row || row.status !== 'active') {
       res.status(404).json({ success: false, message: 'Aktiv rezerv tapılmadı.' });
+      return;
+    }
+    if (!reservationOwnedBy(staff, row)) {
+      res.status(403).json({ success: false, message: 'Sizin buna icazəniz yoxdur.' });
       return;
     }
     if (row.prepay && Number(row.prepay.total) > 0) {
@@ -5781,6 +5822,11 @@ app.post('/api/terminals/claim', function (req, res) {
     const tableId = Number(body.tableId);
     if (!tableId) {
       res.status(400).json({ success: false, message: 'Masa seçin.' });
+      return;
+    }
+    const booked = reservations.activeForTable(reservations.readReservations(), tableId);
+    if (booked && !reservationOwnedBy(staff, booked)) {
+      res.status(403).json({ success: false, message: 'Sizin buna icazəniz yoxdur.' });
       return;
     }
     const open = orders.findOpenForTable(orders.readOrders(), tableId);

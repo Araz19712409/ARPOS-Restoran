@@ -1090,6 +1090,11 @@
   }
 
   function selectSeat(id) {
+    var reservedSeat = reservationFor(id);
+    if (reservedSeat && !isReserveOwner(reservedSeat)) {
+      say('Sizin buna icazəniz yoxdur.', 'err');
+      return Promise.resolve();
+    }
     function go() {
       var prev = tableId;
       if (prev && !isDraftSeat(prev) && prev !== id) {
@@ -1412,6 +1417,32 @@
     }) || null;
   }
 
+  function reserveClock(at) {
+    var s = String(at || '');
+    var t = s.indexOf('T') >= 0 ? (s.split('T')[1] || '') : '';
+    if (t) {
+      return t.slice(0, 5);
+    }
+    return s.slice(0, 16);
+  }
+
+  function isReserveOwner(booked) {
+    if (!waiter || !waiter.user || !booked) {
+      return false;
+    }
+    if (isAdminUser()) {
+      return true;
+    }
+    var wid = Number(booked.waiterId);
+    if (wid && wid === Number(waiter.user.id)) {
+      return true;
+    }
+    if (!wid && booked.waiterName && booked.waiterName === waiter.user.name) {
+      return true;
+    }
+    return false;
+  }
+
   function bookingFor(id) {
     var list = reservations.filter(function (item) {
       return item.tableId === id && (item.status === 'active' || item.status === 'seated');
@@ -1531,13 +1562,25 @@
           ? (age.text ? ('Birləşib · ' + age.text) : 'Birləşib')
           : (age.text || 'Hesab');
       } else if (state === 'reserved') {
-        small.textContent = 'Rezerv';
+        var bookedTile = reservationFor(table.id);
+        small.textContent = bookedTile && bookedTile.at
+          ? ('Rezerv ' + reserveClock(bookedTile.at))
+          : 'Rezerv';
       } else {
         small.textContent = table.capacity + ' nəfər';
       }
     }
     btn.appendChild(label);
     btn.appendChild(small);
+    if (state === 'reserved') {
+      var bookedWho = reservationFor(table.id);
+      if (bookedWho && bookedWho.waiterName) {
+        var whoRes = document.createElement('small');
+        whoRes.className = 'tile-waiter';
+        whoRes.textContent = bookedWho.waiterName;
+        btn.appendChild(whoRes);
+      }
+    }
     if (open && ownerLabel(open)) {
       var who = document.createElement('small');
       who.className = 'tile-waiter';
@@ -2644,8 +2687,7 @@
     }
     var prepayOpen = el('prepay-open');
     if (prepayOpen) {
-      prepayOpen.style.display =
-        booked && can('payments.take') && (state === 'reserved' || state === 'busy') ? '' : 'none';
+      prepayOpen.style.display = booked && (state === 'reserved' || state === 'busy') ? '' : 'none';
     }
     var foreignBlock = foreignLocked();
     var canPay = !!(order && can('payments.take') && !foreignBlock);
@@ -3339,6 +3381,12 @@
       say('Əvvəlcə masa seçin.', 'err');
       return;
     }
+    var reservedAccept = reservationFor(tableId);
+    if (reservedAccept && !isReserveOwner(reservedAccept)) {
+      unlockAccept();
+      say('Sizin buna icazəniz yoxdur.', 'err');
+      return;
+    }
     if (!terminal) {
       unlockAccept();
       say('Terminal seçin.', 'err');
@@ -3406,7 +3454,8 @@
       }
       clearPendingGuests(tableId);
       var warns = (body.data && body.data.warnings) || [];
-      say(warns.length ? warns.join(' ') : 'Sifariş qəbul olundu.');
+      var base = warns.length ? warns.join(' ') : 'Sifariş qəbul olundu.';
+      say(base + ' Kağız çıxmasa Çap — Qəbulü təkrarlama.');
       function afterAcceptUi() {
         if (isWaiterMode() || !can('payments.take')) {
           pending = [];
@@ -4100,6 +4149,10 @@
     if (!booked || !waiter) {
       return;
     }
+    if (!isReserveOwner(booked)) {
+      say('Sizin buna icazəniz yoxdur.', 'err');
+      return;
+    }
     window.askDelete(booked.name, 'Rezerv ləğv olunacaq.').then(function (ok) {
       if (!ok) {
         return;
@@ -4386,6 +4439,7 @@
   ctx.dec = dec;
   ctx.money = money;
   ctx.can = can;
+  ctx.isAdminUser = isAdminUser;
   ctx.showLock = showLock;
   ctx.requestAdminUnlock = requestAdminUnlock;
   ctx.ensureTerminal = ensureTerminal;

@@ -605,6 +605,18 @@ test('növbə avto yalnız pay; false-da yox; accept/fire yox', function () {
   const prepayAt = src.indexOf("app.post('/api/reservations/:id/prepay'");
   assert.ok(prepayAt >= 0);
   assert.ok(src.slice(prepayAt).indexOf('ensureShiftAuto') >= 0);
+  assert.ok(src.indexOf('function requireReserveAdmin') >= 0);
+  assert.ok(src.indexOf('Sizin buna icazəniz yoxdur.') >= 0);
+  const reserveFn = sliceBetween("app.post('/api/reservations'", "app.post('/api/reservations/:id/prepay'");
+  assert.ok(reserveFn.indexOf('requireReserveAdmin') < 0);
+  assert.ok(reserveFn.indexOf('waiterId: staff.user.id') >= 0);
+  assert.ok(src.indexOf('function reservationOwnedBy') >= 0);
+  const acceptReserve = sliceBetween("app.post('/api/orders/accept'", "app.post('/api/orders/fire'");
+  assert.ok(acceptReserve.indexOf('reservationOwnedBy') >= 0);
+  const claimFn = src.slice(src.indexOf("app.post('/api/terminals/claim'"), src.indexOf("app.post('/api/terminals/ping'"));
+  assert.ok(claimFn.indexOf('reservationOwnedBy') >= 0);
+  const prepayFn = src.slice(prepayAt, src.indexOf("app.delete('/api/reservations/:id'"));
+  assert.ok(prepayFn.indexOf('requireReserveAdmin') >= 0);
 });
 
 test('növbə Z bağlama gözlənilən nağd', function () {
@@ -2104,6 +2116,11 @@ test('katalog maya strip; void/endirim payments blok', function () {
 
   const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
   assert.ok(ui.indexOf("can('orders.void')") >= 0);
+  assert.ok(ui.indexOf("Sizin buna icazəniz yoxdur.") >= 0);
+  assert.ok(ui.indexOf('function isReserveOwner') >= 0);
+  assert.ok(ui.indexOf('reservedAccept') >= 0);
+  assert.ok(ui.indexOf('reservedSeat') >= 0);
+  assert.ok(ui.indexOf("Rezerv ' + reserveClock") >= 0 || ui.indexOf('reserveClock(bookedTile.at)') >= 0);
   assert.ok(ui.indexOf('order.payments && order.payments.length') >= 0);
   assert.ok(ui.indexOf("can('orders.discount')") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
@@ -2284,8 +2301,8 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   const quickAt = foot.indexOf('id="receipt-quick-actions"');
   const mainAt = foot.indexOf('class="main-actions"');
   const moreAt = foot.indexOf('id="check-more"');
-  assert.ok(sumAt >= 0 && hintAt > sumAt && msgAt > hintAt && secAt > msgAt && mainAt > secAt && moreAt > mainAt);
-  assert.ok(quickAt > secAt && quickAt < mainAt);
+  assert.ok(sumAt >= 0 && hintAt > sumAt && msgAt > hintAt && secAt > msgAt && mainAt > secAt);
+  assert.ok(moreAt > secAt && moreAt < quickAt && quickAt < mainAt);
   assert.ok(foot.indexOf('id="reprint-order"') >= 0);
   assert.ok(foot.indexOf('id="discount-open"') >= 0);
   assert.ok(html.indexOf('id="prebill-btn"') >= 0);
@@ -2314,6 +2331,14 @@ test('çek paneli: sec-actions main-dən əvvəl; premium kart', function () {
   assert.ok(css.indexOf('.paid-receipts-card') >= 0);
   assert.ok(css.indexOf('.paid-receipts-card') >= 0 && css.indexOf('background: #2c261f') >= 0);
   assert.ok(css.indexOf('[data-zone="floor"] .sec-actions') >= 0 || css.indexOf('.sec-actions') >= 0);
+  const wizHide = css.slice(
+    css.indexOf('.order-wizard[data-zone="floor"] .check-head'),
+    css.indexOf('.order-wizard.order-page[data-zone="groups"] .check-more')
+  );
+  assert.ok(wizHide.indexOf('[data-zone="floor"] .check-more') >= 0);
+  assert.ok(wizHide.indexOf('[data-zone="groups"] .check-more') < 0);
+  assert.ok(css.indexOf('.order-wizard.order-page[data-zone="groups"] .check-more') >= 0);
+  assert.ok(css.indexOf('.order-wizard.order-page[data-zone="menu"] .check-more') >= 0);
 });
 
 test('sifariş məhsul kartı: compact ad+qiymət', function () {
@@ -3178,7 +3203,7 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   assert.ok(ui.indexOf('waiter && useFloorMap()') < 0);
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '2.0.9');
+  assert.strictEqual(require('./package.json').version, '2.0.10');
 });
 
 test('launcher: port açıqdırsa ikinci tam ekran yox, mövcud URL', function () {
@@ -3214,7 +3239,7 @@ test('sprint E: plan ölçü toast + pending ± hüquq', function () {
   assert.ok(ui.indexOf('Yalnız admin azalda bilər') >= 0);
   assert.ok(ui.indexOf("can('orders.create')") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=76') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=79') >= 0);
 });
 
 test('admin sent qty cut + mətbəx AZALDILDI', function () {
@@ -3262,7 +3287,7 @@ test('admin sent qty cut + mətbəx AZALDILDI', function () {
   assert.ok(ui.indexOf('stopPropagation') >= 0);
   assert.ok(ui.indexOf('Miqdar azaldıldı.') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=76') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=79') >= 0);
 });
 
 test('Qəbul et: double-click kilidi busy+disabled', function () {
@@ -3303,8 +3328,8 @@ test('admin PIN unlock: sessiya ofisiant qalır', function () {
   const sess = fs.readFileSync(path.join(__dirname, 'sessions.js'), 'utf8');
   assert.ok(sess.indexOf('function grantPayUnlock') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=76') >= 0);
-  assert.ok(html.indexOf('orders-pay.js?v=14') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=79') >= 0);
+  assert.ok(html.indexOf('orders-pay.js?v=15') >= 0);
 });
 
 console.log('Bütün testlər keçdi.');

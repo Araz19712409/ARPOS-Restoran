@@ -553,6 +553,10 @@
     }
 
     function openPrepay() {
+      if (typeof ctx.isAdminUser === 'function' ? !ctx.isAdminUser() : true) {
+        say('Sizin buna icazəniz yoxdur.', 'err');
+        return;
+      }
       var booked = ctx.bookingFor(ctx.tableId);
       if (!booked || !can('payments.take')) {
         say('Aktiv rezerv yoxdur.', 'err');
@@ -1256,6 +1260,11 @@
       var cardAmount = M.fromMinor(M.toMinor(valOf('pay-card-amt')));
       var tendered = M.fromMinor(M.toMinor(valOf('pay-tendered')));
       if (ctx.payMode === 'reserve') {
+        if (typeof ctx.isAdminUser === 'function' ? !ctx.isAdminUser() : true) {
+          payFail('Sizin buna icazəniz yoxdur.');
+          ctx.busy = false;
+          return;
+        }
         var booked = ctx.bookingFor(ctx.tableId);
         if (!booked) {
           payFail('Aktiv rezerv yoxdur.');

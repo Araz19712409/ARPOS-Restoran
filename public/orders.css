@@ -2461,12 +2461,27 @@ html.waiter-mode .more-nav,
 .order-wizard[data-zone="groups"] .check-head,
 .order-wizard[data-zone="groups"] .check-foot-notes,
 .order-wizard[data-zone="groups"] .sec-actions,
-.order-wizard[data-zone="groups"] .check-more,
 .order-wizard[data-zone="menu"] .check-head,
 .order-wizard[data-zone="menu"] .check-foot-notes,
-.order-wizard[data-zone="menu"] .sec-actions,
-.order-wizard[data-zone="menu"] .check-more {
+.order-wizard[data-zone="menu"] .sec-actions {
   display: none;
+}
+
+.order-wizard.order-page[data-zone="groups"] .check-more,
+.order-wizard.order-page[data-zone="menu"] .check-more {
+  display: block !important;
+  flex: 0 0 auto;
+  margin: 0 0 8px;
+}
+
+.order-wizard[data-zone="groups"] .check-more summary,
+.order-wizard[data-zone="menu"] .check-more summary {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #c4a574;
+  border-radius: 8px;
+  background: #2c261f;
+  color: #f4eadc;
 }
 
 .order-wizard[data-zone="groups"] .check-scroll-host,
@@ -2741,8 +2756,9 @@ html.waiter-mode .more-nav,
     left: auto;
     right: auto;
     bottom: auto;
-    max-height: none;
-    height: auto;
+    max-height: 100%;
+    height: 100%;
+    min-height: 0;
     align-self: stretch;
     box-shadow: none;
     border-top: 0;
@@ -2750,7 +2766,7 @@ html.waiter-mode .more-nav,
     padding: 10px 12px;
     background: #221d17;
     pointer-events: auto;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .order-wizard[data-zone="groups"] .check-list,

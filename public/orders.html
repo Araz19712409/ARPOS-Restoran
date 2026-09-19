@@ -13,7 +13,7 @@
   <title>Sifariş</title>
   <link rel="stylesheet" href="app.css?v=25">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css?v=57">
+  <link rel="stylesheet" href="orders.css?v=60">
   <link rel="stylesheet" href="dates.css">
 </head>
 <body class="order-page order-wizard" data-zone="floor">
@@ -205,6 +205,17 @@
         <button id="discount-open" type="button">Endirim</button>
         <button id="fire-course" type="button" style="display:none">İstini göndər</button>
       </div>
+      <details class="check-more" id="check-more">
+        <summary>Digər</summary>
+        <div class="check-more-list">
+          <button id="reserve-table" type="button">Rezerv</button>
+          <button id="cancel-reserve" type="button">Rezervi ləğv</button>
+          <button id="prepay-open" type="button">İlkin</button>
+          <button id="handoff-open" type="button" style="display:none">Ofs dəyiş</button>
+          <button id="merge-open" type="button" style="display:none">Masa birl.</button>
+          <button id="unmerge-open" type="button" style="display:none">Ayır</button>
+        </div>
+      </details>
       <div class="receipt-quick-actions" id="receipt-quick-actions">
         <button id="prebill-btn" type="button" title="Satışdan əvvəl hesab. Ödəniş deyil.">Hesab</button>
         <button id="move-open" type="button" title="Hesabı boş masaya köçür">Köçür</button>
@@ -215,17 +226,6 @@
         <button id="pay-open" type="button">Ödəniş</button>
         <button id="accept-order" class="gold" type="button">Qəbul et</button>
       </div>
-      <details class="check-more" id="check-more">
-        <summary>Digər</summary>
-        <div class="check-more-list">
-          <button id="reserve-table" type="button">Rezerv</button>
-          <button id="cancel-reserve" type="button">Rezervi ləğv</button>
-          <button id="prepay-open" type="button">İlkin</button>
-          <button id="handoff-open" type="button" style="display:none">Hesabı ver</button>
-          <button id="merge-open" type="button" style="display:none">Birləşdir</button>
-          <button id="unmerge-open" type="button" style="display:none">Ayır</button>
-        </div>
-      </details>
     </div>
   </aside>
 
@@ -393,7 +393,7 @@
 
   <div id="handoff-modal" class="modal hidden">
     <form id="handoff-form" class="modal-card">
-      <h3>Hesabı ver</h3>
+      <h3>Ofs dəyiş</h3>
       <p class="hint">Yeni ofisiant öz PIN-ini yazır. Masa və terminal qalır.</p>
       <label>PIN
         <input id="handoff-pin" type="password" inputmode="numeric" maxlength="8" required>
@@ -606,7 +606,7 @@
   <script src="money.js?v=1"></script>
   <script src="orders-zones.js?v=4"></script>
   <script src="orders-shift.js?v=5"></script>
-  <script src="orders-pay.js?v=14"></script>
-  <script src="orders-ui.js?v=76"></script>
+  <script src="orders-pay.js?v=15"></script>
+  <script src="orders-ui.js?v=79"></script>
 </body>
 </html>
