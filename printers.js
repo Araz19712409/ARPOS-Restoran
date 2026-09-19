@@ -515,6 +515,15 @@ function line(width, left, right) {
   return a + new Array(space + 1).join(' ') + b;
 }
 
+function receiptNamePrice(width, nameLeft, amount) {
+  const left = toPrinterText(nameLeft || '');
+  const right = toPrinterText(amount || '');
+  if (left.length + 1 + right.length <= width) {
+    return [line(width, nameLeft, amount)];
+  }
+  return [left, line(width, '', amount)];
+}
+
 function dash(width) {
   return new Array(width + 1).join('-');
 }
@@ -1316,7 +1325,9 @@ function buildReceiptTicket(printer, order) {
   lines.push(dash(width));
   mergeSameReceiptItems(order.items).forEach(function (item) {
     const sum = Number((Number(item.salePrice) * Number(item.qty)).toFixed(2));
-    lines.push(toPrinterText(item.qty + 'x  ' + item.name));
+    receiptNamePrice(width, item.qty + 'x  ' + item.name, sum.toFixed(2)).forEach(function (row) {
+      lines.push(row);
+    });
     const marks = (item.modifiers || []).map(function (row) { return row.name; });
     if (item.note) {
       marks.push(item.note);
@@ -1324,7 +1335,6 @@ function buildReceiptTicket(printer, order) {
     if (marks.length) {
       lines.push(toPrinterText('    ' + marks.join(', ')));
     }
-    lines.push(line(width, '', sum.toFixed(2)));
   });
   lines.push(dash(width));
   lines.push(line(width, 'Mehsul', (Number.isFinite(itemsTotal) ? itemsTotal : total - service).toFixed(2)));
@@ -1377,6 +1387,7 @@ module.exports = {
   buildZTicket: buildZTicket,
   buildReceiptTicket: buildReceiptTicket,
   mergeSameReceiptItems: mergeSameReceiptItems,
+  receiptNamePrice: receiptNamePrice,
   toPrinterText: toPrinterText,
   printerPath: printerPath,
   deliverBytes: deliverBytes,

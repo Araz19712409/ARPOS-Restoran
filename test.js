@@ -817,6 +817,17 @@ test('çek brendinqi: boş title → branchName; dolu → ticket/view', function
     assert.ok(text.indexOf('Gelin yeniden') >= 0);
     assert.ok(text.indexOf('Filial: M1') >= 0);
     assert.ok(text.indexOf('CEK #7') >= 0);
+    assert.ok(text.indexOf(printers.receiptNamePrice(48, '1x  Cay', '2.00')[0]) >= 0);
+    const shortRow = printers.receiptNamePrice(48, '1x  Cay', '2.00');
+    assert.strictEqual(shortRow.length, 1);
+    assert.ok(shortRow[0].indexOf('1x  Cay') === 0);
+    assert.ok(shortRow[0].slice(-4) === '2.00');
+    const longName = '1x  ' + new Array(46).join('A');
+    const longRow = printers.receiptNamePrice(48, longName, '9.50');
+    assert.strictEqual(longRow.length, 2);
+    assert.strictEqual(longRow[0], longName);
+    assert.ok(longRow[1].slice(-4) === '9.50');
+    assert.ok(longRow[0].indexOf('9.50') < 0);
 
     const merged = printers.mergeSameReceiptItems([
       { productId: 1, name: 'SALYAN', qty: 1, salePrice: 1.5 },
@@ -3167,7 +3178,7 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   assert.ok(ui.indexOf('waiter && useFloorMap()') < 0);
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '2.0.8');
+  assert.strictEqual(require('./package.json').version, '2.0.9');
 });
 
 test('launcher: port açıqdırsa ikinci tam ekran yox, mövcud URL', function () {
