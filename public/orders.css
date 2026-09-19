@@ -878,6 +878,13 @@
   font-weight: 800;
 }
 
+.product-card h3 mark.search-hit {
+  background: none;
+  color: #e2b65a;
+  font-weight: 800;
+  padding: 0;
+}
+
 .size-scale {
   display: flex;
   align-items: center;

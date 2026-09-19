@@ -219,6 +219,8 @@
   var paySeatId = 0;
   var groupId = 0;
   var searchQuery = '';
+  /* false → köhnə axtarış (bir parça, rəng yox). Geri: bunu false et, cache ?v= bump. */
+  var SEARCH_1C = true;
   var pending = [];
   var pendingGuests = 0;
   var pendingGuestName = '';
@@ -301,8 +303,73 @@
     }
   }
 
+  function foldAz(value) {
+    return String(value || '').toLocaleLowerCase('az').replace(/ı/g, 'i');
+  }
+
   function normalize(value) {
-    return String(value || '').toLocaleLowerCase('az').trim();
+    return foldAz(value).trim();
+  }
+
+  function searchTokens(raw) {
+    return normalize(raw).split(/\s+/).filter(Boolean);
+  }
+
+  function textHasTokens(value, tokens) {
+    var n = normalize(value);
+    return tokens.every(function (t) {
+      return n.indexOf(t) !== -1;
+    });
+  }
+
+  function fillHighlightedName(el, text, tokens) {
+    if (!el) {
+      return;
+    }
+    el.textContent = '';
+    var src = String(text || '');
+    if (!SEARCH_1C || !tokens.length) {
+      el.appendChild(document.createTextNode(src));
+      return;
+    }
+    var lower = foldAz(src);
+    var marks = [];
+    var i;
+    for (i = 0; i < src.length; i += 1) {
+      marks[i] = false;
+    }
+    tokens.forEach(function (t) {
+      var from = 0;
+      while (t && from <= lower.length - t.length) {
+        var at = lower.indexOf(t, from);
+        if (at < 0) {
+          break;
+        }
+        var k;
+        for (k = 0; k < t.length; k += 1) {
+          marks[at + k] = true;
+        }
+        from = at + 1;
+      }
+    });
+    i = 0;
+    while (i < src.length) {
+      var on = marks[i];
+      var j = i + 1;
+      while (j < src.length && marks[j] === on) {
+        j += 1;
+      }
+      var piece = src.slice(i, j);
+      if (on) {
+        var hit = document.createElement('mark');
+        hit.className = 'search-hit';
+        hit.textContent = piece;
+        el.appendChild(hit);
+      } else {
+        el.appendChild(document.createTextNode(piece));
+      }
+      i = j;
+    }
   }
 
   function isServiceId(id) {
@@ -2005,15 +2072,22 @@
 
   function visibleProducts() {
     var q = normalize(searchQuery);
+    var tokens = SEARCH_1C ? searchTokens(searchQuery) : (q ? [q] : []);
     return products.filter(function (item) {
       if (item.blocked || item.soldOut) {
         return false;
       }
-      if (q) {
-        return normalize(item.name).indexOf(q) !== -1 ||
-          normalize(item.barcode).indexOf(q) !== -1;
+      if (!tokens.length) {
+        return item.groupId === groupId;
       }
-      return item.groupId === groupId;
+      if (SEARCH_1C) {
+        if (textHasTokens(item.name, tokens)) {
+          return true;
+        }
+        return tokens.length === 1 && normalize(item.barcode).indexOf(tokens[0]) !== -1;
+      }
+      return normalize(item.name).indexOf(q) !== -1 ||
+        normalize(item.barcode).indexOf(q) !== -1;
     });
   }
 
@@ -2187,7 +2261,15 @@
       }
       var label = String(item.name || '').trim() || ('Mal #' + item.id);
       var titleEl = card.querySelector('h3');
-      titleEl.textContent = label + (item.allergens ? ' ⚠' : '');
+      var hits = SEARCH_1C ? searchTokens(searchQuery) : [];
+      if (hits.length) {
+        fillHighlightedName(titleEl, label, hits);
+        if (item.allergens) {
+          titleEl.appendChild(document.createTextNode(' ⚠'));
+        }
+      } else {
+        titleEl.textContent = label + (item.allergens ? ' ⚠' : '');
+      }
       card.title = item.allergens ? (label + ' — ' + item.allergens) : label;
       card.querySelector('.price').textContent = Number(livePrice(item)).toFixed(2) + ' AZN' +
         (hasOptions(item) ? ' · seçim' : '');

@@ -9,6 +9,7 @@
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.
 - **PIN/DOM sığorta — 2.0.5.** `el` / `setPinError` / `if (pad)`; `getElementById('accept-order')` eyni. Cache `orders-ui.js?v=75`. Geri: PIN funksiyalarını yoxlamasız `getElementById`, `?v=74`.
 
+- **2.0.13** — 2026-09-19 — Axtarış: parçalar + i/ı; tapılan hərflər qızılı
 - **2.0.12** — 2026-09-19 — İlkin: 20/50/100 yuxarı məbləği dəyişir
 - **2.0.11** — 2026-09-19 — Rezerv təqvimi modalın üstündə
 - **2.0.10** — 2026-09-19 — Digər açıq; rezervi yalnız sahibi/Admin qəbul və ləğv

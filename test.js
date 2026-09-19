@@ -2123,8 +2123,15 @@ test('katalog maya strip; void/endirim payments blok', function () {
   assert.ok(ui.indexOf("Rezerv ' + reserveClock") >= 0 || ui.indexOf('reserveClock(bookedTile.at)') >= 0);
   assert.ok(ui.indexOf('order.payments && order.payments.length') >= 0);
   assert.ok(ui.indexOf("can('orders.discount')") >= 0);
+  assert.ok(ui.indexOf('var SEARCH_1C = true') >= 0);
+  assert.ok(ui.indexOf('function foldAz') >= 0);
+  assert.ok(ui.indexOf('.replace(/ı/g, \'i\')') >= 0 || ui.indexOf('.replace(/ı/g, "i")') >= 0);
+  assert.ok(ui.indexOf('function searchTokens') >= 0);
+  assert.ok(ui.indexOf('function fillHighlightedName') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
   assert.ok(/orders-ui\.js\?v=\d+/.test(html));
+  const ordersCss = fs.readFileSync(path.join(__dirname, 'public', 'orders.css'), 'utf8');
+  assert.ok(ordersCss.indexOf('mark.search-hit') >= 0);
   const prodJs = fs.readFileSync(path.join(__dirname, 'public', 'products.js'), 'utf8');
   assert.ok(prodJs.indexOf('/api/catalog/manage') >= 0);
 });
@@ -3205,7 +3212,7 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   assert.ok(ui.indexOf('waiter && useFloorMap()') < 0);
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '2.0.12');
+  assert.strictEqual(require('./package.json').version, '2.0.13');
 });
 
 test('launcher: port açıqdırsa ikinci tam ekran yox, mövcud URL', function () {
@@ -3241,7 +3248,7 @@ test('sprint E: plan ölçü toast + pending ± hüquq', function () {
   assert.ok(ui.indexOf('Yalnız admin azalda bilər') >= 0);
   assert.ok(ui.indexOf("can('orders.create')") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=79') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=81') >= 0);
   assert.ok(html.indexOf('dates.css?v=2') >= 0);
   const datesCss = fs.readFileSync(path.join(__dirname, 'public', 'dates.css'), 'utf8');
   const dateZ = datesCss.slice(datesCss.indexOf('#pos-date-modal'), datesCss.indexOf('#pos-date-modal .modal-card'));
@@ -3293,7 +3300,7 @@ test('admin sent qty cut + mətbəx AZALDILDI', function () {
   assert.ok(ui.indexOf('stopPropagation') >= 0);
   assert.ok(ui.indexOf('Miqdar azaldıldı.') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=79') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=81') >= 0);
 });
 
 test('Qəbul et: double-click kilidi busy+disabled', function () {
@@ -3334,7 +3341,7 @@ test('admin PIN unlock: sessiya ofisiant qalır', function () {
   const sess = fs.readFileSync(path.join(__dirname, 'sessions.js'), 'utf8');
   assert.ok(sess.indexOf('function grantPayUnlock') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=79') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=81') >= 0);
   assert.ok(html.indexOf('orders-pay.js?v=16') >= 0);
 });
 
