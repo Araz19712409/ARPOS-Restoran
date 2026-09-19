@@ -2139,6 +2139,8 @@ test('orders-pay.js null-safe split/due/cash', function () {
   assert.ok(pay.indexOf("document.getElementById('pay-split').value") < 0);
   assert.ok(pay.indexOf("document.getElementById('pay-cash-amt').value") < 0);
   assert.ok(pay.indexOf("document.getElementById('pay-due-amt').textContent") < 0);
+  assert.ok(pay.indexOf('function fillReserveQuick') >= 0);
+  assert.ok(pay.indexOf("setVal('pay-prepay-amt', ctx.payDue.toFixed(2))") >= 0);
 });
 
 test('pulsuz: Endirim yox → accept 403; kataloq 0 OK; pending gizlə; comp', function () {
@@ -3203,7 +3205,7 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   assert.ok(ui.indexOf('waiter && useFloorMap()') < 0);
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '2.0.11');
+  assert.strictEqual(require('./package.json').version, '2.0.12');
 });
 
 test('launcher: port açıqdırsa ikinci tam ekran yox, mövcud URL', function () {
@@ -3333,7 +3335,7 @@ test('admin PIN unlock: sessiya ofisiant qalır', function () {
   assert.ok(sess.indexOf('function grantPayUnlock') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
   assert.ok(html.indexOf('orders-ui.js?v=79') >= 0);
-  assert.ok(html.indexOf('orders-pay.js?v=15') >= 0);
+  assert.ok(html.indexOf('orders-pay.js?v=16') >= 0);
 });
 
 console.log('Bütün testlər keçdi.');

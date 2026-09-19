@@ -237,7 +237,23 @@
       setText('pay-row-remain', remaining.toFixed(2));
     }
 
+    function fillReserveQuick() {
+      var box = node('pay-quick');
+      if (!box) {
+        return;
+      }
+      var dueM = M.toMinor(ctx.payDue);
+      box.innerHTML = [10, 20, 50, 100, 200].map(function (amount) {
+        var cls = M.toMinor(amount) === dueM ? ' class="active"' : '';
+        return '<button type="button"' + cls + ' data-tender="' + amount.toFixed(2) + '">' + amount + '</button>';
+      }).join('');
+    }
+
     function fillPayQuick(cash) {
+      if (ctx.payMode === 'reserve') {
+        fillReserveQuick();
+        return;
+      }
       var box = node('pay-quick');
       if (!box) {
         return;
@@ -1090,7 +1106,16 @@
       if (!btn) {
         return;
       }
-      setVal('pay-tendered', btn.getAttribute('data-tender'));
+      var raw = btn.getAttribute('data-tender');
+      if (ctx.payMode === 'reserve') {
+        var amt = M.toMinor(raw);
+        ctx.payDue = amt > 0 ? M.fromMinor(amt) : 0;
+        setVal('pay-prepay-amt', ctx.payDue.toFixed(2));
+        setPayDueView();
+        setPayMethod(ctx.payMethod);
+        return;
+      }
+      setVal('pay-tendered', raw);
       syncPayFields('tender');
     });
     on('pay-open', 'click', function () {
