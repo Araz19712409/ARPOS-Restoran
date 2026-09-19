@@ -3203,7 +3203,7 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   assert.ok(ui.indexOf('waiter && useFloorMap()') < 0);
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '2.0.10');
+  assert.strictEqual(require('./package.json').version, '2.0.11');
 });
 
 test('launcher: port açıqdırsa ikinci tam ekran yox, mövcud URL', function () {
@@ -3240,6 +3240,10 @@ test('sprint E: plan ölçü toast + pending ± hüquq', function () {
   assert.ok(ui.indexOf("can('orders.create')") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
   assert.ok(html.indexOf('orders-ui.js?v=79') >= 0);
+  assert.ok(html.indexOf('dates.css?v=2') >= 0);
+  const datesCss = fs.readFileSync(path.join(__dirname, 'public', 'dates.css'), 'utf8');
+  const dateZ = datesCss.slice(datesCss.indexOf('#pos-date-modal'), datesCss.indexOf('#pos-date-modal .modal-card'));
+  assert.ok(dateZ.indexOf('z-index: 68') >= 0);
 });
 
 test('admin sent qty cut + mətbəx AZALDILDI', function () {
