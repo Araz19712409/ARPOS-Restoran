@@ -2805,7 +2805,7 @@ function freeOrderTables(order, terminalId) {
   orders.tableIdsOf(order).forEach(function (id) {
     const table = layout.tables.find(function (item) { return item.id === id; });
     if (table) {
-      const stillBooked = reservations.activeForTable(book, table.id);
+      const stillBooked = reservations.blockingForTable(book, table.id);
       table.status = stillBooked ? 'rezerv' : 'boş';
     }
     if (terminalId) {
@@ -3018,7 +3018,7 @@ app.post('/api/orders/accept', async function (req, res) {
         reject(400, 'Masa seçin.');
       }
       if (!seat.service) {
-        const booked = reservations.activeForTable(reservations.readReservations(), seat.tableId);
+        const booked = reservations.blockingForTable(reservations.readReservations(), seat.tableId);
         if (booked && !reservationOwnedBy(staff, booked)) {
           reject(403, 'Sizin buna icazəniz yoxdur.');
         }
@@ -3207,7 +3207,7 @@ app.post('/api/orders/accept', async function (req, res) {
       orders.writeOrders(store);
       if (!seat.service) {
         const book = reservations.readReservations();
-        const seated = reservations.activeForTable(book, seat.tableId);
+        const seated = reservations.blockingForTable(book, seat.tableId);
         if (seated) {
           seated.status = 'seated';
           reservations.writeReservations(book);
@@ -4950,7 +4950,7 @@ app.post('/api/orders/move', async function (req, res) {
         reject(400, 'Yeni masada açıq hesab var.');
       }
       const book = reservations.readReservations();
-      if (reservations.activeForTable(book, dest.id)) {
+      if (reservations.blockingForTable(book, dest.id)) {
         reject(400, 'Yeni masa rezervdir.');
       }
       const taken = terminals.claim(dest.id, terminal, staff.user.name, [dest.id]);
@@ -4979,7 +4979,7 @@ app.post('/api/orders/move', async function (req, res) {
       order.updatedAt = new Date().toISOString();
       dest.status = 'dolu';
       if (from) {
-        const stillBooked = reservations.activeForTable(reservations.readReservations(), from.id);
+        const stillBooked = reservations.blockingForTable(reservations.readReservations(), from.id);
         from.status = stillBooked ? 'rezerv' : 'boş';
       }
       orders.writeOrders(store);
@@ -5040,7 +5040,7 @@ app.post('/api/orders/merge', function (req, res) {
     if (destOrder && destOrder.payments && destOrder.payments.length) {
       reject(400, 'O masada ödəniş var. Birləşdirmək olmaz.');
     }
-    if (!destOrder && reservations.activeForTable(reservations.readReservations(), dest.id)) {
+    if (!destOrder && reservations.blockingForTable(reservations.readReservations(), dest.id)) {
       reject(400, 'O masa rezervdir.');
     }
     const keep = lockIdsOf(order).concat([dest.id]);
@@ -5122,7 +5122,7 @@ app.post('/api/orders/unmerge', function (req, res) {
       return Number(item.seatTableId) !== splitId;
     });
     order.linkedTableIds = linked.filter(function (id) { return Number(id) !== splitId; });
-    const stillBooked = reservations.activeForTable(reservations.readReservations(), table.id);
+    const stillBooked = reservations.blockingForTable(reservations.readReservations(), table.id);
     const liveLeft = (order.items || []).some(function (item) { return !item.voided; });
     if (moved.length) {
       const splitGuests = liveLeft ? 0 : (Number(order.guests) || 0);
@@ -5156,14 +5156,14 @@ app.post('/api/orders/unmerge', function (req, res) {
       order.status = 'cancelled';
       const primary = layout.tables.find(function (item) { return item.id === order.tableId; });
       if (primary) {
-        const booked = reservations.activeForTable(reservations.readReservations(), primary.id);
+        const booked = reservations.blockingForTable(reservations.readReservations(), primary.id);
         primary.status = booked ? 'rezerv' : 'boş';
       }
       terminals.release(order.tableId, terminal.id);
       (order.linkedTableIds || []).forEach(function (id) {
         const left = layout.tables.find(function (item) { return item.id === Number(id); });
         if (left) {
-          const booked = reservations.activeForTable(reservations.readReservations(), left.id);
+          const booked = reservations.blockingForTable(reservations.readReservations(), left.id);
           left.status = booked ? 'rezerv' : 'boş';
         }
         terminals.release(id, terminal.id);
@@ -5413,7 +5413,7 @@ app.post('/api/waitlist/:id/seat', function (req, res) {
     if (orders.findOpenForTable(orders.readOrders(), tableId)) {
       reject(400, 'Bu masada açıq hesab var.');
     }
-    if (reservations.activeForTable(reservations.readReservations(), tableId)) {
+    if (reservations.blockingForTable(reservations.readReservations(), tableId)) {
       reject(400, 'Bu masa rezervdir.');
     }
     if (waitlist.seatedAt(waitlist.readStore(), tableId)) {
@@ -5824,7 +5824,7 @@ app.post('/api/terminals/claim', function (req, res) {
       res.status(400).json({ success: false, message: 'Masa seçin.' });
       return;
     }
-    const booked = reservations.activeForTable(reservations.readReservations(), tableId);
+    const booked = reservations.blockingForTable(reservations.readReservations(), tableId);
     if (booked && !reservationOwnedBy(staff, booked)) {
       res.status(403).json({ success: false, message: 'Sizin buna icazəniz yoxdur.' });
       return;

@@ -1157,11 +1157,6 @@
   }
 
   function selectSeat(id) {
-    var reservedSeat = reservationFor(id);
-    if (reservedSeat && !isReserveOwner(reservedSeat)) {
-      say('Sizin buna icazəniz yoxdur.', 'err');
-      return Promise.resolve();
-    }
     function go() {
       var prev = tableId;
       if (prev && !isDraftSeat(prev) && prev !== id) {
@@ -1197,16 +1192,34 @@
       }
       return go();
     }
-    var open = openOrderForTable(id);
-    if (isForeignOpen(open)) {
-      return confirmOpenForeign(open).then(function (ok) {
+    function afterReserveOk() {
+      var open = openOrderForTable(id);
+      if (isForeignOpen(open)) {
+        return confirmOpenForeign(open).then(function (ok) {
+          if (!ok) {
+            return;
+          }
+          return afterOwnerOk();
+        });
+      }
+      return afterOwnerOk();
+    }
+    var upcoming = reservationFor(id);
+    var blocking = reservationBlocking(id);
+    if (upcoming) {
+      var msg = reserveNotice(upcoming);
+      if (blocking && !isReserveOwner(upcoming)) {
+        say(msg, 'warn');
+        return Promise.resolve();
+      }
+      return window.askYes('Rezerv', msg + ' Davam?').then(function (ok) {
         if (!ok) {
           return;
         }
-        return afterOwnerOk();
+        return afterReserveOk();
       });
     }
-    return afterOwnerOk();
+    return afterReserveOk();
   }
 
   function setWaiter(data) {
@@ -1484,6 +1497,47 @@
     }) || null;
   }
 
+  function reserveAtMs(row) {
+    var s = String(row && row.at || '').trim();
+    var m = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (m) {
+      return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), 0, 0).getTime();
+    }
+    var t = Date.parse(s);
+    return Number.isFinite(t) ? t : NaN;
+  }
+
+  function reservationInWindow(row, nowMs) {
+    if (!row || row.status !== 'active') {
+      return false;
+    }
+    var at = reserveAtMs(row);
+    if (!Number.isFinite(at)) {
+      return true;
+    }
+    var now = nowMs != null ? Number(nowMs) : Date.now();
+    return now >= at - 60 * 60 * 1000 && now <= at + 3 * 60 * 60 * 1000;
+  }
+
+  function reservationBlocking(id) {
+    var row = reservationFor(id);
+    return row && reservationInWindow(row) ? row : null;
+  }
+
+  function reserveNotice(row) {
+    if (!row) {
+      return '';
+    }
+    var who = String(row.name || 'qonaq');
+    var clock = reserveClock(row.at);
+    var n = Number(row.guests) || 0;
+    var ofs = String(row.waiterName || '').trim();
+    return 'Bu masa ' + who + ' tərəfindən rezervdir' +
+      (clock ? (' • ' + clock) : '') +
+      (n ? (' • ' + n + ' nəfər') : '') +
+      (ofs ? (' • ' + ofs) : '') + '.';
+  }
+
   function reserveClock(at) {
     var s = String(at || '');
     var t = s.indexOf('T') >= 0 ? (s.split('T')[1] || '') : '';
@@ -1527,7 +1581,7 @@
     if (seatedWait.some(function (row) { return Number(row.tableId) === table.id; })) {
       return 'busy';
     }
-    if (reservationFor(table.id)) {
+    if (reservationBlocking(table.id)) {
       return 'reserved';
     }
     return 'empty';
@@ -2761,15 +2815,16 @@
     var state = table ? tableState(table) : 'empty';
     var reserveBtn = el('reserve-table');
     if (reserveBtn) {
-      reserveBtn.style.display = table && state === 'empty' ? '' : 'none';
+      reserveBtn.style.display = table && state === 'empty' && !reservationFor(table.id) ? '' : 'none';
     }
     var cancelRes = el('cancel-reserve');
     if (cancelRes) {
-      cancelRes.style.display = table && state === 'reserved' ? '' : 'none';
+      cancelRes.style.display = table && reservationFor(table.id) ? '' : 'none';
     }
     var prepayOpen = el('prepay-open');
     if (prepayOpen) {
-      prepayOpen.style.display = booked && (state === 'reserved' || state === 'busy') ? '' : 'none';
+      prepayOpen.style.display = booked && (booked.status === 'active' || booked.status === 'seated' ||
+        state === 'reserved' || state === 'busy') ? '' : 'none';
     }
     var foreignBlock = foreignLocked();
     var canPay = !!(order && can('payments.take') && !foreignBlock);
@@ -3463,7 +3518,7 @@
       say('Əvvəlcə masa seçin.', 'err');
       return;
     }
-    var reservedAccept = reservationFor(tableId);
+    var reservedAccept = reservationBlocking(tableId);
     if (reservedAccept && !isReserveOwner(reservedAccept)) {
       unlockAccept();
       say('Sizin buna icazəniz yoxdur.', 'err');

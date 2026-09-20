@@ -70,6 +70,20 @@ test('kurs: bar dərhal, mətbəx isti, soyuq seçimi', function () {
   assert.strictEqual(catalog.courseOf({ stationId: 1, course: 0 }), 0);
 });
 
+test('rezerv pəncərə: 20:00 gündüz tutulmur', function () {
+  const resv = require('./reservations');
+  const row = { status: 'active', at: '2026-09-20T20:00' };
+  const noon = new Date(2026, 8, 20, 12, 0).getTime();
+  const eve = new Date(2026, 8, 20, 19, 30).getTime();
+  const late = new Date(2026, 8, 21, 0, 30).getTime();
+  assert.strictEqual(resv.inWindow(row, noon), false);
+  assert.strictEqual(resv.inWindow(row, eve), true);
+  assert.strictEqual(resv.inWindow(row, late), false);
+  const book = { reservations: [Object.assign({ tableId: 7 }, row)] };
+  assert.strictEqual(resv.blockingForTable(book, 7, noon), null);
+  assert.ok(resv.blockingForTable(book, 7, eve));
+});
+
 test('hesab: endirim, xidmət, bonus', function () {
   const parts = settings.billParts(100, 1, {
     serviceChargePercent: 10,
@@ -613,8 +627,10 @@ test('növbə avto yalnız pay; false-da yox; accept/fire yox', function () {
   assert.ok(src.indexOf('function reservationOwnedBy') >= 0);
   const acceptReserve = sliceBetween("app.post('/api/orders/accept'", "app.post('/api/orders/fire'");
   assert.ok(acceptReserve.indexOf('reservationOwnedBy') >= 0);
+  assert.ok(acceptReserve.indexOf('blockingForTable') >= 0);
   const claimFn = src.slice(src.indexOf("app.post('/api/terminals/claim'"), src.indexOf("app.post('/api/terminals/ping'"));
   assert.ok(claimFn.indexOf('reservationOwnedBy') >= 0);
+  assert.ok(claimFn.indexOf('blockingForTable') >= 0);
   const prepayFn = src.slice(prepayAt, src.indexOf("app.delete('/api/reservations/:id'"));
   assert.ok(prepayFn.indexOf('requireReserveAdmin') >= 0);
 });
@@ -2118,8 +2134,9 @@ test('katalog maya strip; void/endirim payments blok', function () {
   assert.ok(ui.indexOf("can('orders.void')") >= 0);
   assert.ok(ui.indexOf("Sizin buna icazəniz yoxdur.") >= 0);
   assert.ok(ui.indexOf('function isReserveOwner') >= 0);
+  assert.ok(ui.indexOf('function reservationBlocking') >= 0);
+  assert.ok(ui.indexOf('function reserveNotice') >= 0);
   assert.ok(ui.indexOf('reservedAccept') >= 0);
-  assert.ok(ui.indexOf('reservedSeat') >= 0);
   assert.ok(ui.indexOf("Rezerv ' + reserveClock") >= 0 || ui.indexOf('reserveClock(bookedTile.at)') >= 0);
   assert.ok(ui.indexOf('order.payments && order.payments.length') >= 0);
   assert.ok(ui.indexOf("can('orders.discount')") >= 0);
@@ -3248,7 +3265,7 @@ test('sprint E: plan ölçü toast + pending ± hüquq', function () {
   assert.ok(ui.indexOf('Yalnız admin azalda bilər') >= 0);
   assert.ok(ui.indexOf("can('orders.create')") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=81') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=82') >= 0);
   assert.ok(html.indexOf('dates.css?v=2') >= 0);
   const datesCss = fs.readFileSync(path.join(__dirname, 'public', 'dates.css'), 'utf8');
   const dateZ = datesCss.slice(datesCss.indexOf('#pos-date-modal'), datesCss.indexOf('#pos-date-modal .modal-card'));
@@ -3300,7 +3317,7 @@ test('admin sent qty cut + mətbəx AZALDILDI', function () {
   assert.ok(ui.indexOf('stopPropagation') >= 0);
   assert.ok(ui.indexOf('Miqdar azaldıldı.') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=81') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=82') >= 0);
 });
 
 test('Qəbul et: double-click kilidi busy+disabled', function () {
@@ -3341,7 +3358,7 @@ test('admin PIN unlock: sessiya ofisiant qalır', function () {
   const sess = fs.readFileSync(path.join(__dirname, 'sessions.js'), 'utf8');
   assert.ok(sess.indexOf('function grantPayUnlock') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=81') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=82') >= 0);
   assert.ok(html.indexOf('orders-pay.js?v=16') >= 0);
 });
 
