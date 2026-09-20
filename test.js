@@ -3229,7 +3229,7 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   assert.ok(ui.indexOf('waiter && useFloorMap()') < 0);
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '2.0.13');
+  assert.strictEqual(require('./package.json').version, '2.0.14');
 });
 
 test('launcher: port açıqdırsa ikinci tam ekran yox, mövcud URL', function () {
