@@ -8,6 +8,7 @@
     "test": "node test.js",
     "license": "node scripts/make-license.js",
     "setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-setup.ps1",
+    "bump": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bump-version.ps1",
     "update": "node scripts/auto-update.js"
   },
   "description": "Arpos Restoran — restoran kassası",

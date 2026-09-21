@@ -3,7 +3,7 @@
 ## Reliz qaydası
 - Hər hotfix Setup = yeni patch (məs. 1.2.31 → 1.2.32). Eyni semver ilə yeniləmə göndərilməz.
 - `package.json` = bu fayl = launcher; `SHA256SUMS.txt` məcburi.
-- Checklist: bump → `npm test` → setup → SHA → GitHub release.
+- Checklist: `npm run bump -- x.y.z` → `npm test` → setup → SHA → GitHub release.
 
 ## TODO (parçalama — böyük split yox)
 - `orders-ui.js` Faza 1 (1.2.44): zones/shift/pay çıxarıldı; davranış eyni. Əlavə split ayrıca Accept.

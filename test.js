@@ -966,7 +966,35 @@ test('boş data faylı xəta vermir', function () {
 });
 
 test('versiya oxunur', function () {
-  assert.ok(/^\d+\.\d+\.\d+$/.test(version.current()));
+  const pkg = require('./package.json').version;
+  assert.ok(/^\d+\.\d+\.\d+$/.test(pkg));
+  assert.strictEqual(version.current(), pkg);
+  const cs = fs.readFileSync(path.join(__dirname, 'scripts', 'ArposVersion.cs'), 'utf8');
+  assert.ok(cs.indexOf('public const string Text = "' + pkg + '"') >= 0);
+  version.ensure();
+  assert.strictEqual(version.readHistory().current, pkg);
+  const vf = path.join(require('./db').dataDir(), 'versions.json');
+  assert.ok(fs.existsSync(vf));
+  const box = JSON.parse(fs.readFileSync(vf, 'utf8'));
+  assert.strictEqual(box.current, pkg);
+  assert.ok(fs.existsSync(path.join(__dirname, 'scripts', 'bump-version.ps1')));
+});
+
+test('versiya ensure package-ə yapışır, history spam yox', function () {
+  withTempDb(function () {
+    const pkg = require('./package.json').version;
+    const vf = path.join(process.env.ARPOS_DATA_DIR, 'versions.json');
+    store.writeJson(vf, {
+      current: '0.0.1',
+      history: [{ version: '0.0.1', reason: 'start', note: 't', at: '2026-01-01T00:00:00.000Z' }]
+    });
+    const first = version.ensure();
+    assert.strictEqual(first.current, pkg);
+    const n = first.history.length;
+    const second = version.ensure();
+    assert.strictEqual(second.current, pkg);
+    assert.strictEqual(second.history.length, n);
+  });
 });
 
 test('kəsr nöqtə və vergülü qəbul edir', function () {
@@ -3229,11 +3257,13 @@ test('1.2.74 masa sahibliyi: ofisiant takeover yox; kassir/admin var; API 403', 
   assert.ok(ui.indexOf('waiter && useFloorMap()') < 0);
   const usersSrc = fs.readFileSync(path.join(__dirname, 'users.js'), 'utf8');
   assert.ok(usersSrc.indexOf("key: 'orders.takeover'") >= 0);
-  assert.strictEqual(require('./package.json').version, '2.0.14');
+  assert.strictEqual(require('./package.json').version, version.current());
 });
 
 test('launcher: port açıqdırsa ikinci tam ekran yox, mövcud URL', function () {
   const src = fs.readFileSync(path.join(__dirname, 'scripts', 'ArposLauncher.cs'), 'utf8');
+  assert.ok(src.indexOf('ARPOS_DATA_DIR') >= 0);
+  assert.ok(src.indexOf('.git') >= 0);
   assert.ok(src.indexOf('alreadyOpen') >= 0);
   assert.ok(src.indexOf('PortOpen()') >= 0);
   assert.ok(src.indexOf('--start-fullscreen') >= 0);
@@ -3265,7 +3295,7 @@ test('sprint E: plan ölçü toast + pending ± hüquq', function () {
   assert.ok(ui.indexOf('Yalnız admin azalda bilər') >= 0);
   assert.ok(ui.indexOf("can('orders.create')") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=82') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=83') >= 0);
   assert.ok(html.indexOf('dates.css?v=2') >= 0);
   const datesCss = fs.readFileSync(path.join(__dirname, 'public', 'dates.css'), 'utf8');
   const dateZ = datesCss.slice(datesCss.indexOf('#pos-date-modal'), datesCss.indexOf('#pos-date-modal .modal-card'));
@@ -3317,7 +3347,7 @@ test('admin sent qty cut + mətbəx AZALDILDI', function () {
   assert.ok(ui.indexOf('stopPropagation') >= 0);
   assert.ok(ui.indexOf('Miqdar azaldıldı.') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=82') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=83') >= 0);
 });
 
 test('Qəbul et: double-click kilidi busy+disabled', function () {
@@ -3331,7 +3361,7 @@ test('Qəbul et: double-click kilidi busy+disabled', function () {
   assert.ok(click.indexOf('if (busy)') >= 0);
   assert.ok(click.indexOf('lockAccept()') >= 0);
   assert.ok(click.indexOf('lockAccept()') < click.indexOf("askYes('Qəbul'"));
-  assert.ok(ui.indexOf('Kağız çıxmasa Çap — Qəbulü təkrarlama.') >= 0);
+  assert.ok(ui.indexOf('Kağız çıxmasa Çap — Təkrar qəbul etmə.') >= 0);
   assert.ok(ui.indexOf('function setPinError') >= 0);
   assert.ok(ui.indexOf("var pad = el('pin-pad')") >= 0);
   assert.ok(ui.indexOf('if (pad)') >= 0);
@@ -3358,7 +3388,7 @@ test('admin PIN unlock: sessiya ofisiant qalır', function () {
   const sess = fs.readFileSync(path.join(__dirname, 'sessions.js'), 'utf8');
   assert.ok(sess.indexOf('function grantPayUnlock') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=82') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=83') >= 0);
   assert.ok(html.indexOf('orders-pay.js?v=16') >= 0);
 });
 

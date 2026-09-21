@@ -36,6 +36,7 @@ const totp = require('./totp');
 
 db.open();
 db.migrateJson();
+version.ensure();
 
 const app = express();
 const PORT = 3004;

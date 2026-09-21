@@ -18,6 +18,18 @@ internal static class ArposLauncher
             return;
         }
         Directory.SetCurrentDirectory(root);
+        var dataDir = Path.Combine(root, "data");
+        var gitMark = Path.Combine(root, ".git");
+        var installedData = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Arpos Restoran",
+            "data");
+        if ((Directory.Exists(gitMark) || File.Exists(gitMark))
+            && Directory.Exists(installedData)
+            && !string.Equals(Path.GetFullPath(dataDir), Path.GetFullPath(installedData), StringComparison.OrdinalIgnoreCase))
+        {
+            dataDir = installedData;
+        }
         var node = FindNode(root);
         var server = Path.Combine(root, "server.js");
         if (!File.Exists(server))
@@ -41,6 +53,7 @@ internal static class ArposLauncher
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+            psi.EnvironmentVariables["ARPOS_DATA_DIR"] = dataDir;
             Process.Start(psi);
         }
         catch (Exception ex)

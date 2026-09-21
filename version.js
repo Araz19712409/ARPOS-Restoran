@@ -51,11 +51,23 @@ function appendMarkdown(ver, note) {
   fs.writeFileSync(LOG, head.join('\n') + (head.length ? '\n' : '') + line + rest);
 }
 
+function fileCurrent() {
+  try {
+    return String(store.readJson(histFile()).current || '');
+  } catch (error) {
+    return '';
+  }
+}
+
 function record(reason, note) {
   const ver = current();
   const box = readHistory();
   const last = box.history.length ? box.history[box.history.length - 1] : null;
   if (last && last.version === ver && last.reason === reason) {
+    if (fileCurrent() !== ver) {
+      box.current = ver;
+      store.writeJson(histFile(), box);
+    }
     return box;
   }
   box.current = ver;
@@ -86,12 +98,54 @@ function ensure() {
   if (!box.history.length) {
     return record('start', 'İlk işəsalma');
   }
+  box.current = ver;
+  if (fileCurrent() !== ver) {
+    store.writeJson(histFile(), box);
+  }
   return box;
+}
+
+function dataDirs() {
+  const dirs = [path.join(__dirname, 'data')];
+  if (process.env.ARPOS_DATA_DIR) {
+    dirs.push(path.resolve(process.env.ARPOS_DATA_DIR));
+  }
+  const local = process.env.LOCALAPPDATA || process.env.LOCAL_APPDATA;
+  if (local) {
+    dirs.push(path.join(local, 'Arpos Restoran', 'data'));
+  }
+  const uniq = [];
+  dirs.forEach(function (dir) {
+    const full = path.resolve(dir);
+    if (uniq.indexOf(full) >= 0) {
+      return;
+    }
+    uniq.push(full);
+  });
+  return uniq;
+}
+
+function ensureAll() {
+  const prev = process.env.ARPOS_DATA_DIR;
+  dataDirs().forEach(function (dir) {
+    if (!fs.existsSync(dir)) {
+      return;
+    }
+    process.env.ARPOS_DATA_DIR = dir;
+    ensure();
+  });
+  if (prev) {
+    process.env.ARPOS_DATA_DIR = prev;
+  } else {
+    delete process.env.ARPOS_DATA_DIR;
+  }
+  return ensure();
 }
 
 module.exports = {
   current: current,
   readHistory: readHistory,
   record: record,
-  ensure: ensure
+  ensure: ensure,
+  ensureAll: ensureAll
 };

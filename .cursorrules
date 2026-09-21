@@ -11,7 +11,7 @@
 # EXE — məcburi
 - Müştəriyə gedən hər dəyişiklik `dist/ArposRestoran-Setup.exe` içində olmalıdır.
 - Kod dəyişəndən sonra `scripts/build-setup.ps1` işlədilir. Köhnə Setup göndərilməz.
-- `package.json` versiyası dəyişəndə: VERSIONS.md, Setup pəncərəsi, launcher, GitHub release tag eyni nömrədir.
+- `package.json` versiyası dəyişəndə yalnız `npm run bump -- x.y.z` (`scripts/bump-version.ps1`). `versions.json` current əl ilə yazılmaz.
 - Versiya yazılmadan EXE buraxılmaz.
 
 # Ehtiyat
@@ -35,10 +35,13 @@
 - Hər müştəriyə gedən Setup/hotfix = mütləq yeni semver (patch+1). Eyni versiya nömrəsi ilə yeniləmə/Setup GÖNDƏRİLMƏZ (updater eyni tag-i «artıq var» sanır).
 - Bir buraxılışda eyni nömrə: package.json = VERSIONS.md = launcher = GitHub release tag.
 - Hər relizdə SHA256SUMS.txt olmalıdır; yoxdursa yeniləmə rədd olunur.
-- Checklist sırası: versiya bump → npm test → scripts/build-setup.ps1 → SHA → GitHub release. Addım atlanırsa EXE göndərilməz.
+- Checklist sırası: `npm run bump -- x.y.z` → npm test → scripts/build-setup.ps1 → SHA → GitHub release. Addım atlanırsa EXE göndərilməz.
 - VERSIONS.md-ə 1–2 sətir: nə dəyişdi (hotfix/özellik).
 
 # UI sabitlik (sifariş/kassa)
+- Kassa/ofisiant **order-wizard**-dır: addım-addım (masalar → qruplar/məhsul → çek). Köhnə üç sütun QADAĞANDIR: solda masalar + ortada məhsullar + sağda səbət/ödəniş eyni vaxtda.
+- `orders.html`-dən `order-wizard` silinməz; kassa üçün wizard söndürülməz. `waiter-mode` yalnız ofisiant (`?mode=waiter`).
+- «Telefon kimi görünür» deyə üç sütuna qayıtma. 1366×768-də wizard saxla, sıxlığı CSS-lə düzəlt.
 - public/orders-ui.js monolitdir: kiçik JS xətası (SyntaxError / null.textContent) bütün PIN+sifariş ekranını öldürür. Dəyişəndə ehtiyatlı ol.
 - DOM yazıları: mümkün qədər PosDom.el / setText / setVal. getElementById(x).textContent = ... birbaşa YAZMA (element yoxdursa runtime xəta).
 - Yeni HTML id silinəndə və ya ad dəyişəndə: eyni PR-də bütün JS istinadlarını yoxla (xüsusilə pay-* , pin-*, modal).
@@ -54,3 +57,10 @@
 - node --check dəyişən JS fayllarına.
 - npm test keçməlidir.
 - Əl: PIN giriş → Qəbul → Ödəniş modal → (əgər toxunulubsa) Endirim/Z/Porsiya.
+
+# Əlavə qadağanlar
+-İcazəsiz heç nə etmə
+-Özündən ideya vermə.
+-Hər reliz və exedən əvvəl github backup et.
+-Kod dəyişəndə tam ehtiyyatla hərəkər et. Digər yerlərə xətər toxunmasın.
+

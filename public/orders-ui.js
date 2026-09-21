@@ -3592,7 +3592,7 @@
       clearPendingGuests(tableId);
       var warns = (body.data && body.data.warnings) || [];
       var base = warns.length ? warns.join(' ') : 'Sifariş qəbul olundu.';
-      say(base + ' Kağız çıxmasa Çap — Qəbulü təkrarlama.');
+      say(base + ' Kağız çıxmasa Çap — Təkrar qəbul etmə.');
       function afterAcceptUi() {
         if (isWaiterMode() || !can('payments.take')) {
           pending = [];
