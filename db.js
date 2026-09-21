@@ -26,6 +26,7 @@ const JSON_FILES = [
   'layout.json', 'catalog.json', 'orders.json', 'users.json', 'printers.json',
   'reservations.json', 'settings.json', 'tables.json', 'terminals.json',
   'stock.json', 'fiscal-queue.json', 'shifts.json', 'gifts.json', 'waitlist.json',
+  'guest.json',
   'print-queue.json', 'pin-lock.json', 'customers.json'
 ];
 const MOVE_FILES = ['catalog.json', 'orders.json', 'stock.json'];

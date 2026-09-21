@@ -25,6 +25,7 @@ const FILES = [
   'customers.json',
   'clock.json',
   'waitlist.json',
+  'guest.json',
   'pin-lock.json',
   'sessions.json',
   'session.key',

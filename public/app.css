@@ -145,9 +145,23 @@ body {
   margin-bottom: 22px;
 }
 
-.panel h2 {
-  font-size: 0.95rem;
-  margin-bottom: 8px;
+.qr-preview {
+  margin-top: 10px;
+  background: #fbf6ec;
+  padding: 8px;
+  display: inline-block;
+  line-height: 0;
+  border: 1px solid #c9842a;
+}
+
+.qr-preview[hidden] {
+  display: none !important;
+}
+
+.qr-preview img {
+  width: 220px;
+  height: auto;
+  background: #fbf6ec;
 }
 
 .row {
@@ -223,6 +237,11 @@ label {
   min-height: 1.2em;
   color: #a33;
   font-weight: 700;
+}
+
+.guest-http-warn {
+  color: #b42318;
+  font-weight: 800;
 }
 
 #message {
@@ -470,6 +489,11 @@ body.has-banner {
 
 .table.round {
   border-radius: 50%;
+}
+
+.table.picked {
+  outline: 3px solid #e2b65a;
+  outline-offset: 2px;
 }
 
 .table small {

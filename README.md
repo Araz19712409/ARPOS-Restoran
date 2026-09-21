@@ -16,6 +16,10 @@ Açılışda lisenziya kodu istənilir. Maşın kodunu bizə göndərin, kodu `s
 
 Ayarlarda «Şəbəkədə aç» olanda planşet `https://IP:3443` açır. Sertifikat öz-imzalıdır: brauzerdə xəbərdarlığı bir dəfə qəbul edin. Bu kompüter həmişə `http://127.0.0.1:3004`. Şəbəkəni yandırıb-söndürəndən sonra serveri yenidən başladın.
 
+### Qonaq menyü (QR)
+
+Qonaq səhifəsi `http://LAN-IP:3005/guest.html?table=ID` — yalnız menyü. **3004 LAN-a açılmır.** Guest/QR dəyişəndən sonra **prosesi yenidən açın** (köhnə node 3005 dinləmir). QR yalnız 3005 həqiqətən açıq olanda aktivdir. Telefonda açılmırsa Windows Firewall-da inbound TCP 3005 (Private) açın.
+
 ### Ofisiant telefon (PWA Faza 1)
 
 Kassada LAN HTTPS açıq olsun. Telefonda:

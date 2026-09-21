@@ -229,6 +229,7 @@
   var pendingCourier = '';
   var waitlist = [];
   var seatedWait = [];
+  var guestInbox = { requests: [], calls: [] };
   var optionProduct = null;
   var optionPortionId = 0;
   var optionExtraIds = [];
@@ -1131,7 +1132,8 @@
   }
 
   function applySeat(id) {
-    tableId = id;
+    var n = Number(id);
+    tableId = Number.isFinite(n) ? n : 0;
     pending = [];
     var existing = openOrder();
     pendingGuests = existing ? Number(existing.guests) || 0 : (id > 0 ? readPendingGuests(id) : 0);
@@ -1298,7 +1300,8 @@
       api('/api/layout'),
       api('/api/catalog'),
       api('/api/orders'),
-      api('/api/waitlist').catch(function () { return { data: { items: [] } }; })
+      api('/api/waitlist').catch(function () { return { data: { items: [] } }; }),
+      api('/api/guest/inbox').catch(function () { return { data: { requests: [], calls: [] } }; })
     ]).then(function (parts) {
       floors = parts[0].data.floors || [];
       rooms = parts[0].data.rooms || [];
@@ -1312,6 +1315,7 @@
       locks = parts[2].data.locks || [];
       waitlist = (parts[3] && parts[3].data && parts[3].data.items) || [];
       seatedWait = (parts[3] && parts[3].data && parts[3].data.seated) || [];
+      applyGuestInbox(parts[4] && parts[4].data);
       syncPermissions(parts[2].data.permissions);
       if (typeof ctx.syncReceiptCopiesHint === 'function') {
         ctx.syncReceiptCopiesHint();
@@ -1452,13 +1456,15 @@
     ordersLightBusy = true;
     return Promise.all([
       api('/api/orders'),
-      api('/api/waitlist').catch(function () { return { data: { items: [] } }; })
+      api('/api/waitlist').catch(function () { return { data: { items: [] } }; }),
+      api('/api/guest/inbox').catch(function () { return { data: { requests: [], calls: [] } }; })
     ]).then(function (parts) {
       var data = (parts[0] && parts[0].data) || {};
       var prevFloor = floorBusyFootprint();
       var prevCheck = orderFootprint(openOrder());
       waitlist = (parts[1] && parts[1].data && parts[1].data.items) || [];
       seatedWait = (parts[1] && parts[1].data && parts[1].data.seated) || [];
+      applyGuestInbox(parts[2] && parts[2].data);
       var permsChanged = syncPermissions(data.permissions);
       applyOrdersPayload(data);
       var low = data.lowStock || [];
@@ -1488,6 +1494,224 @@
         ordersPollWanted = false;
         return refreshOrdersLight();
       }
+    });
+  }
+
+  function guestClock(at) {
+    var s = String(at || '');
+    var t = s.indexOf('T') >= 0 ? (s.split('T')[1] || '') : '';
+    return t.slice(0, 5) || s.slice(11, 16);
+  }
+
+  function applyGuestInbox(data) {
+    guestInbox = {
+      requests: (data && data.requests) || [],
+      calls: (data && data.calls) || []
+    };
+    renderGuestInbox();
+  }
+
+  function markGuestSeen(row, quiet) {
+    if (!row || !row.id) {
+      return Promise.resolve();
+    }
+    return api('/api/guest/seen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: row.kind, id: row.id })
+    }).then(function (body) {
+      applyGuestInbox(body.data && body.data.inbox);
+      if (!quiet) {
+        say('İmtina: ' + (row.table || ''));
+      }
+    }).catch(function (error) {
+      say(error.message, 'err');
+    });
+  }
+
+  function renderGuestInbox() {
+    var box = el('guest-inbox');
+    var list = el('guest-inbox-list');
+    if (!box || !list) {
+      return;
+    }
+    list.innerHTML = '';
+    var rows = [];
+    (guestInbox.calls || []).forEach(function (row) {
+      rows.push({
+        kind: 'call',
+        id: row.id,
+        label: 'Çağırış',
+        table: row.tableName,
+        tableId: row.tableId,
+        at: row.at,
+        items: null,
+        total: null
+      });
+    });
+    (guestInbox.requests || []).forEach(function (row) {
+      rows.push({
+        kind: 'request',
+        id: row.id,
+        label: 'Qonaq sifarişi',
+        table: row.tableName,
+        tableId: row.tableId,
+        at: row.at,
+        items: row.items || [],
+        total: row.total
+      });
+    });
+    if (!rows.length) {
+      box.hidden = true;
+      box.classList.add('hidden');
+      return;
+    }
+    box.hidden = false;
+    box.classList.remove('hidden');
+    setText('guest-inbox-title', 'Qonaq · ' + rows.length);
+    rows.forEach(function (row) {
+      var card = document.createElement('div');
+      card.className = 'guest-inbox-item';
+      var head = document.createElement('p');
+      head.className = 'guest-inbox-head';
+      head.textContent = row.label + ' · ' + (row.table || '') +
+        (guestClock(row.at) ? (' · ' + guestClock(row.at)) : '');
+      card.appendChild(head);
+      if (row.items && row.items.length) {
+        var ul = document.createElement('ul');
+        ul.className = 'guest-inbox-lines';
+        row.items.forEach(function (item) {
+          var li = document.createElement('li');
+          var qty = Number(item.qty) || 0;
+          var price = Number(item.price) || 0;
+          li.textContent = (item.name || '') + ' × ' + qty +
+            (price ? (' · ' + (price * qty).toFixed(2) + ' AZN') : '');
+          ul.appendChild(li);
+        });
+        card.appendChild(ul);
+        if (row.total != null) {
+          var tot = document.createElement('p');
+          tot.className = 'guest-inbox-total';
+          tot.textContent = 'Cəm: ' + Number(row.total).toFixed(2) + ' AZN';
+          card.appendChild(tot);
+        }
+      }
+      var actions = document.createElement('div');
+      actions.className = 'guest-inbox-actions';
+      if (row.kind === 'request' && row.items && row.items.length) {
+        var add = document.createElement('button');
+        add.type = 'button';
+        add.textContent = 'Səbətə əlavə et';
+        add.addEventListener('click', function () {
+          addGuestRequestToCart(row);
+        });
+        actions.appendChild(add);
+      }
+      var go = document.createElement('button');
+      go.type = 'button';
+      go.textContent = 'Masaya keç';
+      go.addEventListener('click', function () {
+        goGuestTable(row);
+      });
+      actions.appendChild(go);
+      var deny = document.createElement('button');
+      deny.type = 'button';
+      deny.textContent = 'İmtina';
+      deny.addEventListener('click', function () {
+        markGuestSeen(row, false);
+      });
+      actions.appendChild(deny);
+      card.appendChild(actions);
+      list.appendChild(card);
+    });
+  }
+
+  function addGuestLine(item) {
+    var pid = Number(item && item.productId) || Number(item && item.id) || 0;
+    var qty = Math.max(1, Math.round(Number(item && item.qty) || 0));
+    var prod = products.find(function (p) { return Number(p.id) === pid; });
+    if (prod) {
+      var n = 0;
+      for (n = 0; n < qty; n += 1) {
+        pushPending(prod, livePrice(prod), 0, [], '');
+      }
+      return;
+    }
+    var name = String((item && item.name) || '');
+    var price = Number(item && item.price) || 0;
+    var key = choiceKey(0, [], '');
+    var row = pending.find(function (p) {
+      return p.productId === pid && p.choiceKey === key;
+    });
+    if (row) {
+      row.qty += qty;
+      return;
+    }
+    pending.push({
+      productId: pid,
+      name: name,
+      qty: qty,
+      salePrice: price,
+      basePrice: price,
+      stationId: 0,
+      note: '',
+      portionId: 0,
+      extraIds: [],
+      choiceKey: key,
+      complimentary: false,
+      course: 1,
+      modifiers: []
+    });
+  }
+
+  function goGuestTable(row) {
+    var tid = Number(row && row.tableId);
+    if (!tid) {
+      return;
+    }
+    selectSeat(tid);
+  }
+
+  function addGuestRequestToCart(row) {
+    if (!row || !row.tableId || !(row.items && row.items.length)) {
+      return;
+    }
+    if (row._adding) {
+      return;
+    }
+    if (!can('orders.create')) {
+      say('Sifariş yazmağa icazəniz yoxdur.', 'err');
+      return;
+    }
+    var tid = Number(row.tableId);
+    if (!tid) {
+      return;
+    }
+    var open = openOrderForTable(tid);
+    if (isForeignOpen(open) && !canTakeOverTable()) {
+      say('Sizin buna icazəniz yoxdur.', 'err');
+      return;
+    }
+    var lines = (row.items || []).slice();
+    row._adding = true;
+    if (Number(tableId) !== tid) {
+      applySeat(tid);
+      claimTable(tid).catch(function () {
+        return null;
+      });
+    } else if (isOrderWizard() && currentOrderZone() === 'floor') {
+      setOrderZone('groups');
+    }
+    lines.forEach(function (item) {
+      addGuestLine(item);
+    });
+    if (typeof ctx.syncPrebillBtn === 'function') {
+      ctx.syncPrebillBtn();
+    }
+    renderCheck();
+    say('Səbətə əlavə olundu. Qəbul sizin əlinizdədir.');
+    markGuestSeen(row, true).then(function () {
+      row._adding = false;
     });
   }
 

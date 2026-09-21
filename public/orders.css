@@ -260,6 +260,77 @@
   flex: 0 0 auto;
 }
 
+.guest-inbox {
+  width: 100%;
+  max-height: 168px;
+  overflow: auto;
+  background: #2b241c;
+  border: 1px solid #c9842a;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.guest-inbox.hidden,
+.guest-inbox[hidden] {
+  display: none !important;
+}
+
+.guest-inbox-title {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #e2b65a;
+}
+
+.guest-inbox-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-top: 6px;
+  padding: 6px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #f6efe4;
+  background: #3d3428;
+  border: 1px solid #5a4c3a;
+  border-radius: 6px;
+}
+
+.guest-inbox-head {
+  margin: 0;
+  color: #e2b65a;
+}
+
+.guest-inbox-lines {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  color: #f6efe4;
+  font-weight: 600;
+}
+
+.guest-inbox-total {
+  margin: 4px 0 0;
+  color: #e2b65a;
+}
+
+.guest-inbox-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.guest-inbox-actions button {
+  min-height: 28px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #1b140c;
+  background: #c9842a;
+  border: 0;
+  border-radius: 6px;
+}
+
 .floor-col h2 {
   font-size: 0.95rem;
   margin: 0;
@@ -2861,6 +2932,7 @@ html.waiter-mode .more-nav,
   gap: 6px;
   margin-bottom: 4px;
   min-height: 0;
+  flex-wrap: wrap;
 }
 
 .order-wizard .floor-bar h2 {

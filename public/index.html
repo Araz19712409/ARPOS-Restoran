@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin — Restoran çertyojı</title>
-  <link rel="stylesheet" href="app.css?v=25">
+  <link rel="stylesheet" href="app.css?v=29">
 </head>
 <body data-need="layout.edit">
   <header class="top">
@@ -78,6 +78,24 @@
       <button id="add-table" class="primary" type="button">Masa yarat</button>
     </section>
 
+    <section>
+      <h2>Masa QR</h2>
+      <p id="qr-table-label" class="hint">Çertyojda masa seçin.</p>
+      <p id="qr-id-hint" class="hint"></p>
+      <p class="hint">Eyni Wi‑Fi. QR avtomatik LAN IP, HTTP 3005 — telefonda sertifikat yox. HTTPS 3443 üçün əvvəl brauzerdə açın: «Təhlükəlidir / Advanced / Davam», sonra QR. 127.0.0.1 yazılmır.</p>
+      <p id="guest-http-warn" class="guest-http-warn" hidden></p>
+      <label>Masa
+        <select id="qr-table-pick">
+          <option value="">Masa seçin</option>
+        </select>
+      </label>
+      <div class="row">
+        <button id="qr-copy" type="button" disabled>Linki kopyala</button>
+        <button id="qr-download" class="primary" type="button" disabled>QR yüklə</button>
+      </div>
+      <div id="qr-preview" class="qr-preview" hidden></div>
+    </section>
+
     <p id="message" class="message"></p>
     <p class="hint">Otaq və masa xanalara yapışır. Otağı başlıqdan sürükləyin, küncdən ölçün. Ad üçün «Ad» basın.</p>
   </aside>
@@ -91,6 +109,7 @@
   <script src="offline.js"></script>
   <script src="dom.js"></script>
   <script src="nav.js?v=6"></script>
-  <script src="app.js?v=1"></script>
+  <script src="qrcode.min.js"></script>
+  <script src="app.js?v=17"></script>
 </body>
 </html>

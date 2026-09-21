@@ -33,6 +33,7 @@ const version = require('./version');
 const books = require('./books');
 const db = require('./db');
 const totp = require('./totp');
+const guest = require('./guest');
 
 db.open();
 db.migrateJson();
@@ -41,14 +42,54 @@ version.ensure();
 const app = express();
 const PORT = 3004;
 const LIVE_HOST = settings.listenHost();
+const GUEST_HTTP_PORT = settings.guestHttpPort();
+let guestHttpUp = false;
+const GUEST_HTTP_DOWN = 'Qonaq HTTP 3005 açıq deyil — serveri yenidən aç';
+
 function layoutFile() {
   return db.dataFile('layout.json');
+}
+
+function guestQrOrigins() {
+  if (!guestHttpUp) {
+    return [];
+  }
+  return settings.guestLanOrigins();
+}
+
+function guestQrOrigin() {
+  return guestQrOrigins()[0] || '';
+}
+
+function guestPublic(req) {
+  const raw = String(req.originalUrl || req.url || req.path || '');
+  if (req.method === 'GET' && raw.indexOf('/guest/menu') >= 0) {
+    return true;
+  }
+  if (req.method === 'POST' && (raw.indexOf('/guest/order-request') >= 0 || raw.indexOf('/guest/call-waiter') >= 0)) {
+    return true;
+  }
+  return false;
+}
+
+function guestHttpStatic(req) {
+  const p = String(req.path || '').split('?')[0];
+  return req.method === 'GET' && (p === '/guest.html' || p === '/guest.css' || p === '/guest-ui.js');
 }
 
 app.use(express.json({ limit: '6mb' }));
 app.use(function (req, res, next) {
   res.setHeader('Cache-Control', 'no-store');
   next();
+});
+app.use(function (req, res, next) {
+  if (!req.arposGuestHttp) {
+    return next();
+  }
+  if (guestHttpStatic(req) || guestPublic(req)) {
+    return next();
+  }
+  res.status(403).json({ success: false, message: 'Yalnız qonaq menyü.' });
 });
 app.use(function (req, res, next) {
   const sendJson = res.json.bind(res);
@@ -108,6 +149,9 @@ function needStockMode(req, res) {
 }
 
 app.use('/api', function (req, res, next) {
+  if (guestPublic(req)) {
+    return next();
+  }
   if (req.path === '/license/status' || req.path === '/license/activate') {
     return next();
   }
@@ -118,6 +162,9 @@ app.use('/api', function (req, res, next) {
       needLicense: true
     });
     return;
+  }
+  if (guestPublic(req)) {
+    return next();
   }
   if (req.method === 'POST' && (req.path === '/login' || req.path === '/login/totp' || req.path === '/logs')) {
     return next();
@@ -524,6 +571,119 @@ app.get('/api/catalog', function (req, res) {
   } catch (error) {
     res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
   }
+});
+
+app.get('/api/guest/link-base', function (req, res) {
+  if (!req.staff) {
+    res.status(401).json({ success: false, message: 'PIN ilə daxil olun.' });
+    return;
+  }
+  try {
+    const origins = guestQrOrigins();
+    const httpsUrls = settings.lanUrls(PORT).filter(function (u) {
+      return String(u).indexOf('127.0.0.1') < 0 && String(u).toLowerCase().indexOf('localhost') < 0;
+    });
+    res.json({
+      success: true,
+      data: {
+        origin: origins[0] || '',
+        origins: origins,
+        httpsOrigin: httpsUrls[0] || '',
+        primaryIp: settings.preferredLanIp() || '',
+        listening: guestHttpUp === true,
+        lanOn: LIVE_HOST === '0.0.0.0',
+        branchName: (function () {
+          const row = settings.readSettings();
+          const br = String(row.branchName || '').trim();
+          const title = String((row.receipt && row.receipt.title) || '').trim();
+          const header = row.receipt && Array.isArray(row.receipt.headerLines)
+            ? String(row.receipt.headerLines[0] || '').trim() : '';
+          const code = String(row.branchCode || '').trim();
+          return br || title || header || code;
+        }())
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
+app.get('/api/guest/tables', function (req, res) {
+  try {
+    res.json({ success: true, data: { tables: guest.tablesForGuest(readLayout()) } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
+app.get('/api/guest/menu', function (req, res) {
+  try {
+    const out = guest.menuForTable(readLayout(), req.query.table || req.query.tableId);
+    if (out.error) {
+      res.status(400).json({ success: false, message: out.error });
+      return;
+    }
+    res.json({ success: true, data: out });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
+app.post('/api/guest/order-request', function (req, res) {
+  lock.withLock('write', function () {
+    return guest.addRequest(readLayout(), req.body || {}, req);
+  }).then(function (out) {
+    if (out.error) {
+      res.status(out.status || 400).json({ success: false, message: out.error });
+      return;
+    }
+    res.status(201).json({ success: true, data: out });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.post('/api/guest/call-waiter', function (req, res) {
+  lock.withLock('write', function () {
+    return guest.addCall(readLayout(), req.body || {}, req);
+  }).then(function (out) {
+    if (out.error) {
+      res.status(out.status || 400).json({ success: false, message: out.error });
+      return;
+    }
+    res.status(201).json({ success: true, data: out });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
+});
+
+app.get('/api/guest/inbox', function (req, res) {
+  if (!needPerm(req, res, 'orders.create')) {
+    return;
+  }
+  try {
+    res.json({ success: true, data: guest.inbox() });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Xəta: ' + error.message });
+  }
+});
+
+app.post('/api/guest/seen', function (req, res) {
+  if (!needPerm(req, res, 'orders.create')) {
+    return;
+  }
+  lock.withLock('write', function () {
+    const body = req.body || {};
+    return guest.markSeen(body.kind, body.id);
+  }).then(function (out) {
+    if (out.error) {
+      res.status(400).json({ success: false, message: out.error });
+      return;
+    }
+    res.json({ success: true, data: out });
+  }).catch(function (error) {
+    sendFail(res, error);
+  });
 });
 
 app.get('/api/catalog/manage', function (req, res) {
@@ -2125,7 +2285,11 @@ app.get('/api/settings', function (req, res) {
         version: updater.version(),
         lan: {
           live: LIVE_HOST,
-          urls: settings.lanUrls(PORT)
+          urls: settings.lanUrls(PORT),
+          primaryIp: settings.preferredLanIp() || '',
+          guestOrigin: guestQrOrigin(),
+          guestOrigins: guestQrOrigins(),
+          guestHttpUp: guestHttpUp === true
         },
         terminals: terminals.listAll(),
         roles: users.readStore().roles,
@@ -5983,6 +6147,21 @@ httpServer.listen(PORT, '127.0.0.1', function () {
       console.log('TLS açılmadı: ' + error.message);
       console.log('Şəbəkə bağlı qaldı (yalnız http://127.0.0.1:' + PORT + ').');
     }
+    const guestHttp = http.createServer(function (req, res) {
+      req.arposGuestHttp = true;
+      app(req, res);
+    });
+    guestHttp.on('error', function (error) {
+      guestHttpUp = false;
+      console.log(GUEST_HTTP_DOWN);
+      console.log('Qonaq HTTP (' + GUEST_HTTP_PORT + ') açılmadı: ' + error.message);
+    });
+    guestHttp.listen(GUEST_HTTP_PORT, '0.0.0.0', function () {
+      guestHttpUp = true;
+      const g = guestQrOrigin();
+      console.log('Qonaq menyü (HTTP): ' + (g || ('http://<LAN>:' + GUEST_HTTP_PORT)));
+      console.log('Firewall 3005 bağlıdırsa LAN telefon görməz.');
+    });
   } else {
     console.log('Şəbəkə bağlıdır (yalnız bu kompüter).');
   }

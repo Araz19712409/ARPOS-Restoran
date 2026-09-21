@@ -843,17 +843,203 @@ function ensureTls() {
   };
 }
 
-function lanAddresses() {
+function guestHttpPort() {
+  return 3005;
+}
+
+function isLoopbackIp(ip) {
+  const s = String(ip || '');
+  return s === '::1' || s.indexOf('127.') === 0;
+}
+
+function isApipaIp(ip) {
+  return String(ip || '').indexOf('169.254.') === 0;
+}
+
+function isRfc1918Ip(ip) {
+  const p = String(ip || '').split('.').map(Number);
+  if (p.length !== 4 || p.some(function (n) {
+    return !Number.isFinite(n);
+  })) {
+    return false;
+  }
+  if (p[0] === 10) {
+    return true;
+  }
+  if (p[0] === 192 && p[1] === 168) {
+    return true;
+  }
+  return p[0] === 172 && p[1] >= 16 && p[1] <= 31;
+}
+
+function virtualIfaceName(name) {
+  const n = String(name || '').toLowerCase();
+  return /wsl|hyper-v|vethernet|virtualbox|vbox|vmware|docker|radmin|hamachi|zerotier|vpn|tap|tun\b|loopback|teredo|isatap|bluetooth/.test(n);
+}
+
+function rfc1918Rank(ip) {
+  const s = String(ip || '');
+  if (s.indexOf('192.168.') === 0) {
+    return 1;
+  }
+  if (s.indexOf('10.') === 0) {
+    return 2;
+  }
+  if (isRfc1918Ip(s)) {
+    return 3;
+  }
+  return 9;
+}
+
+function listLanIfaces() {
   const os = require('os');
   const nets = os.networkInterfaces();
   const out = [];
   Object.keys(nets || {}).forEach(function (name) {
     (nets[name] || []).forEach(function (row) {
       const v4 = row.family === 'IPv4' || row.family === 4;
-      if (v4 && !row.internal && row.address) {
-        out.push(row.address);
+      if (!v4 || row.internal || !row.address) {
+        return;
       }
+      if (isLoopbackIp(row.address) || isApipaIp(row.address)) {
+        return;
+      }
+      out.push({
+        name: name,
+        address: row.address,
+        virtual: virtualIfaceName(name)
+      });
     });
+  });
+  return out;
+}
+
+function pickPreferredLanIp(rows, gatewayIp) {
+  const list = (rows || []).filter(function (row) {
+    const ip = row && row.address;
+    return ip && !isLoopbackIp(ip) && !isApipaIp(ip);
+  }).map(function (row) {
+    return {
+      name: row.name,
+      address: row.address,
+      virtual: row.virtual === true || virtualIfaceName(row.name)
+    };
+  });
+  const gw = String(gatewayIp || '');
+  if (gw) {
+    const byGw = list.filter(function (row) {
+      return row.address === gw && !row.virtual;
+    });
+    if (byGw[0]) {
+      return byGw[0].address;
+    }
+  }
+  const realRfc = list.filter(function (row) {
+    return !row.virtual && isRfc1918Ip(row.address);
+  }).sort(function (a, b) {
+    return rfc1918Rank(a.address) - rfc1918Rank(b.address);
+  });
+  if (realRfc[0]) {
+    return realRfc[0].address;
+  }
+  const real = list.filter(function (row) {
+    return !row.virtual;
+  });
+  if (real[0]) {
+    return real[0].address;
+  }
+  return '';
+}
+
+let gwIfaceCache = { at: 0, ip: '' };
+
+function defaultGatewayIfaceIp() {
+  if (Date.now() - gwIfaceCache.at < 20000) {
+    return gwIfaceCache.ip;
+  }
+  let ip = '';
+  try {
+    if (process.platform === 'win32') {
+      const out = require('child_process').execSync('route print -4', {
+        encoding: 'utf8',
+        timeout: 4000,
+        windowsHide: true
+      });
+      let bestMetric = 1e9;
+      String(out || '').split(/\r?\n/).forEach(function (line) {
+        const m = String(line || '').trim().match(/^0\.0\.0\.0\s+0\.0\.0\.0\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+)/);
+        if (!m) {
+          return;
+        }
+        const iface = m[2];
+        const metric = Number(m[3]);
+        if (isLoopbackIp(iface) || isApipaIp(iface) || !Number.isFinite(metric)) {
+          return;
+        }
+        if (metric < bestMetric) {
+          bestMetric = metric;
+          ip = iface;
+        }
+      });
+    } else if (fs.existsSync('/proc/net/route')) {
+      const raw = fs.readFileSync('/proc/net/route', 'utf8');
+      String(raw || '').split('\n').slice(1).some(function (line) {
+        const cols = String(line || '').trim().split(/\s+/);
+        if (cols.length < 2 || cols[1] !== '00000000') {
+          return false;
+        }
+        const found = listLanIfaces().find(function (row) {
+          return row.name === cols[0] && !row.virtual;
+        }) || listLanIfaces().find(function (row) {
+          return row.name === cols[0];
+        });
+        if (found) {
+          ip = found.address;
+        }
+        return true;
+      });
+    }
+  } catch (e) {
+    ip = '';
+  }
+  gwIfaceCache = { at: Date.now(), ip: ip };
+  return ip;
+}
+
+function lanAddresses() {
+  return listLanIfaces().map(function (row) {
+    return row.address;
+  });
+}
+
+function preferredLanIp() {
+  return pickPreferredLanIp(listLanIfaces(), defaultGatewayIfaceIp());
+}
+
+function lanCandidateIps() {
+  const ifaces = listLanIfaces();
+  const primary = pickPreferredLanIp(ifaces, defaultGatewayIfaceIp());
+  const seen = {};
+  const out = [];
+  function push(ip) {
+    if (!ip || seen[ip]) {
+      return;
+    }
+    seen[ip] = true;
+    out.push(ip);
+  }
+  push(primary);
+  ifaces.filter(function (row) {
+    return !row.virtual && isRfc1918Ip(row.address);
+  }).sort(function (a, b) {
+    return rfc1918Rank(a.address) - rfc1918Rank(b.address);
+  }).forEach(function (row) {
+    push(row.address);
+  });
+  ifaces.filter(function (row) {
+    return !row.virtual;
+  }).forEach(function (row) {
+    push(row.address);
   });
   return out;
 }
@@ -863,9 +1049,22 @@ function lanUrls(port, cfg) {
   const useHttps = cleanListenLan(store.listenLan);
   const p = useHttps ? httpsPort(store) : (Number(port) || 3004);
   const scheme = useHttps ? 'https' : 'http';
-  return lanAddresses().map(function (ip) {
+  return lanCandidateIps().map(function (ip) {
     return scheme + '://' + ip + ':' + p;
   });
+}
+
+function guestLanOrigins(cfg) {
+  if (!cleanListenLan((cfg || readSettings()).listenLan)) {
+    return [];
+  }
+  return lanCandidateIps().map(function (ip) {
+    return 'http://' + ip + ':' + guestHttpPort();
+  });
+}
+
+function guestLanOrigin(cfg) {
+  return guestLanOrigins(cfg)[0] || '';
 }
 
 function cleanOpsMode(value) {
@@ -1058,8 +1257,14 @@ module.exports = {
   isStockMode: isStockMode,
   listenHost: listenHost,
   httpsPort: httpsPort,
+  guestHttpPort: guestHttpPort,
   ensureTls: ensureTls,
   lanUrls: lanUrls,
+  preferredLanIp: preferredLanIp,
+  pickPreferredLanIp: pickPreferredLanIp,
+  lanCandidateIps: lanCandidateIps,
+  guestLanOrigin: guestLanOrigin,
+  guestLanOrigins: guestLanOrigins,
   branchStamp: branchStamp,
   matchesBranch: matchesBranch,
   collectBranches: collectBranches,

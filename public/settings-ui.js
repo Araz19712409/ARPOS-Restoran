@@ -316,6 +316,16 @@
     if (wantLan !== liveLan) {
       box.textContent += ' Saxlandıqdan sonra serveri yeniləyin.';
     }
+    var warn = document.getElementById('guest-http-warn');
+    if (warn) {
+      if (liveLan && lanInfo.guestHttpUp !== true) {
+        warn.hidden = false;
+        warn.textContent = 'Qonaq HTTP 3005 açıq deyil — serveri yenidən aç';
+      } else {
+        warn.hidden = true;
+        warn.textContent = '';
+      }
+    }
   }
 
   function branchNameValue() {

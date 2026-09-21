@@ -84,6 +84,151 @@ test('rezerv pəncərə: 20:00 gündüz tutulmur', function () {
   assert.ok(resv.blockingForTable(book, 7, eve));
 });
 
+test('qonaq menyü: təklif və çağırış, ödəniş/mətbəx yox', function () {
+  const guestMod = require('./guest');
+  const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  const guestChunk = src.slice(src.indexOf("app.get('/api/guest/menu'"), src.indexOf("app.get('/api/catalog/manage'"));
+  assert.ok(guestChunk.indexOf('/api/guest/order-request') >= 0);
+  assert.ok(guestChunk.indexOf('/api/orders/accept') < 0);
+  assert.ok(guestChunk.indexOf('dispatchTickets') < 0);
+  assert.ok(src.indexOf("app.get('/api/guest/link-base'") >= 0);
+  assert.ok(src.indexOf('guestPublic(req)') >= 0);
+  const gp = src.slice(src.indexOf('function guestPublic'), src.indexOf('function guestHttpStatic'));
+  assert.ok(gp.indexOf('/guest/menu') >= 0);
+  assert.ok(gp.indexOf('/guest/tables') < 0);
+  assert.ok(src.indexOf("app.get('/api/guest/tables'") >= 0);
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'guest.html'), 'utf8');
+  assert.ok(html.indexOf('Göndər') >= 0);
+  assert.ok(html.indexOf('Ofisiant çağır') >= 0);
+  assert.ok(html.indexOf('id="g-table-pick"') < 0);
+  assert.ok(html.indexOf('<select') < 0);
+  assert.ok(html.indexOf('nağd') < 0);
+  assert.ok(html.indexOf('kart') < 0);
+  assert.ok(html.indexOf('guest-ui.js?v=9') >= 0);
+  assert.ok(html.indexOf('guest.css?v=6') >= 0);
+  const gjs = fs.readFileSync(path.join(__dirname, 'public', 'guest-ui.js'), 'utf8');
+  assert.ok(gjs.indexOf('/api/guest/order-request') >= 0);
+  assert.ok(gjs.indexOf('/api/guest/call-waiter') >= 0);
+  assert.ok(gjs.indexOf('/api/guest/tables') < 0);
+  assert.ok(gjs.indexOf("'Masa ' + tableId") < 0);
+  assert.ok(gjs.indexOf('data.table.name') >= 0);
+  assert.ok(gjs.indexOf('/api/orders/accept') < 0);
+  const ordersHtml = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
+  assert.ok(ordersHtml.indexOf('order-wizard') >= 0);
+  assert.ok(ordersHtml.indexOf('id="guest-inbox"') >= 0);
+  const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
+  assert.ok(ui.indexOf('function renderGuestInbox') >= 0);
+  assert.ok(ui.indexOf('guest-inbox-lines') >= 0);
+  assert.ok(ui.indexOf('Masaya keç') >= 0);
+  assert.ok(ui.indexOf('function goGuestTable') >= 0);
+  const goFn = ui.slice(ui.indexOf('function goGuestTable'), ui.indexOf('function addGuestRequestToCart'));
+  assert.ok(goFn.indexOf('selectSeat') >= 0);
+  assert.ok(goFn.indexOf('applySeat') < 0);
+  assert.ok(ui.indexOf('Görüldü') < 0);
+  assert.ok(ui.indexOf('Səbətə əlavə et') >= 0);
+  assert.ok(ui.indexOf('İmtina') >= 0);
+  assert.ok(ui.indexOf('markGuestSeen') >= 0);
+  assert.ok(ui.indexOf('function addGuestRequestToCart') >= 0);
+  const addFn = ui.slice(ui.indexOf('function addGuestRequestToCart'), ui.indexOf('function reservationFor'));
+  assert.ok(addFn.indexOf('/api/orders/accept') < 0);
+  assert.ok(addFn.indexOf('dispatchTickets') < 0);
+  assert.ok(addFn.indexOf('applySeat') >= 0);
+  const plan = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+  assert.ok(plan.indexOf('QR yüklə') >= 0);
+  assert.ok(plan.indexOf('Linki kopyala') >= 0);
+  assert.ok(plan.indexOf('qrcode.min.js') >= 0);
+  assert.ok(plan.indexOf('127.0.0.1') >= 0);
+  assert.ok(plan.indexOf('Advanced') >= 0);
+  assert.ok(plan.indexOf('HTTP 3005') >= 0);
+  assert.ok(plan.indexOf('id="qr-origin"') < 0);
+  assert.ok(plan.indexOf('Digər IP') < 0);
+  assert.ok(plan.indexOf('id="guest-http-warn"') >= 0);
+  assert.ok(plan.indexOf('id="qr-table-pick"') >= 0);
+  assert.ok(plan.indexOf('app.js?v=17') >= 0);
+  assert.ok(plan.indexOf('id="qr-preview"') >= 0);
+  assert.ok(plan.indexOf('app.css?v=29') >= 0);
+  assert.ok(plan.indexOf('id="qr-id-hint"') >= 0);
+  const appJs = fs.readFileSync(path.join(__dirname, 'public', 'app.js'), 'utf8');
+  assert.ok(appJs.indexOf("colorDark: '#000000'") >= 0);
+  assert.ok(appJs.indexOf("colorLight: '#ffffff'") >= 0);
+  assert.ok(appJs.indexOf('function makeQrPng') >= 0);
+  assert.ok(appJs.indexOf('function qrBrandText') >= 0);
+  assert.ok(appJs.indexOf('toDataURL') < 0);
+  assert.ok(src.indexOf('row.branchName') >= 0);
+  assert.ok(src.indexOf("app.get('/api/guest/link-base'") >= 0);
+  assert.ok(appJs.indexOf('guest.html?table=') >= 0);
+  assert.ok(appJs.indexOf("'masa-' + pickedTableId") < 0);
+  assert.ok(appJs.indexOf('safe + \'-qr.png\'') >= 0);
+  assert.ok(appJs.indexOf('isLoopbackOrigin') >= 0);
+  assert.ok(appJs.indexOf('fillQrOrigins') < 0);
+  assert.ok(appJs.indexOf('data.listening') >= 0);
+  assert.ok(src.indexOf("httpServer.listen(PORT, '127.0.0.1'") >= 0);
+  assert.ok(src.indexOf("httpServer.listen(PORT, '0.0.0.0'") < 0);
+  assert.ok(src.indexOf('req.arposGuestHttp') >= 0);
+  assert.ok(src.indexOf('guestHttp.listen(GUEST_HTTP_PORT, \'0.0.0.0\'') >= 0);
+  assert.ok(src.indexOf('Yalnız qonaq menyü') >= 0);
+  assert.ok(src.indexOf('Qonaq HTTP 3005 açıq deyil — serveri yenidən aç') >= 0);
+  assert.ok(src.indexOf('guestHttpUp') >= 0);
+  assert.ok(src.indexOf('listening: guestHttpUp') >= 0);
+  assert.ok(fs.existsSync(path.join(__dirname, 'public', 'qrcode.min.js')));
+  withTempDb(function () {
+    const layout = { tables: [{ id: 5, name: 'Masa 5', number: 5 }, { id: 7, name: 'Masa 7', number: 7 }] };
+    const listed = guestMod.tablesForGuest(layout);
+    assert.strictEqual(listed.length, 2);
+    assert.ok(listed.some(function (row) { return row.id === 7; }));
+    assert.ok(guestMod.menuForTable(layout, 99).error);
+    assert.strictEqual(guestMod.menuForTable(layout, 5).table.id, 5);
+    const layoutA = { tables: [{ id: 28, number: 5, name: 'qü' }] };
+    const menuNum = guestMod.menuForTable(layoutA, 5);
+    assert.strictEqual(menuNum.table.id, 28);
+    assert.strictEqual(menuNum.table.number, 5);
+    assert.strictEqual(menuNum.table.name, 'qü');
+    assert.strictEqual(guestMod.menuForTable(layoutA, 28).table.id, 28);
+    const callByNum = guestMod.addCall(layoutA, { tableId: 5 }, { ip: '3.3.3.3' });
+    assert.strictEqual(callByNum.item.tableId, 28);
+    const clash = { tables: [{ id: 5, number: 9, name: 'A' }, { id: 28, number: 5, name: 'B' }] };
+    assert.strictEqual(guestMod.menuForTable(clash, 5).table.id, 5);
+    assert.ok(guestMod.menuForTable(clash, 99).error);
+    const call = guestMod.addCall(layout, { tableId: 5 }, { ip: '9.9.9.9' });
+    assert.ok(call.item && call.item.kind === 'call-waiter');
+    const again = guestMod.addCall(layout, { tableId: 5 }, { ip: '9.9.9.9' });
+    assert.strictEqual(again.status, 429);
+    const empty = guestMod.addRequest(layout, { tableId: 5, items: [] }, { ip: '8.8.8.8' });
+    assert.ok(empty.error);
+    const inbox = guestMod.inbox();
+    assert.ok(inbox.calls.length);
+    const seen = guestMod.markSeen('call', call.item.id);
+    assert.strictEqual(seen.item.status, 'seen');
+  });
+});
+
+test('preferred LAN IP: Wi‑Fi 192.168, WSL/Radmin/APIPA yox', function () {
+  const rows = [
+    { name: 'vEthernet (WSL)', address: '172.31.80.1' },
+    { name: 'Radmin VPN', address: '26.12.3.4' },
+    { name: 'Ethernet', address: '169.254.10.2' },
+    { name: 'Wi-Fi', address: '192.168.1.67' },
+    { name: 'Loopback', address: '127.0.0.1' }
+  ];
+  assert.strictEqual(settings.pickPreferredLanIp(rows, '192.168.1.67'), '192.168.1.67');
+  assert.strictEqual(settings.pickPreferredLanIp(rows, '172.31.80.1'), '192.168.1.67');
+  assert.strictEqual(settings.pickPreferredLanIp(rows, null), '192.168.1.67');
+  assert.strictEqual(settings.guestHttpPort(), 3005);
+  const live = settings.preferredLanIp();
+  if (live) {
+    assert.ok(live.indexOf('127.') !== 0);
+    assert.ok(live.indexOf('169.254.') !== 0);
+  }
+  const setHtml = fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8');
+  assert.ok(setHtml.indexOf('id="guest-http-warn"') >= 0);
+  assert.ok(setHtml.indexOf('settings-ui.js?v=19') >= 0);
+  const setUi = fs.readFileSync(path.join(__dirname, 'public', 'settings-ui.js'), 'utf8');
+  assert.ok(setUi.indexOf('guestHttpUp') >= 0);
+  const readme = fs.readFileSync(path.join(__dirname, 'README.md'), 'utf8');
+  assert.ok(readme.indexOf('3005') >= 0);
+  assert.ok(readme.indexOf('prosesi yenidən açın') >= 0);
+});
+
 test('hesab: endirim, xidmət, bonus', function () {
   const parts = settings.billParts(100, 1, {
     serviceChargePercent: 10,
@@ -2161,6 +2306,7 @@ test('katalog maya strip; void/endirim payments blok', function () {
   const ui = fs.readFileSync(path.join(__dirname, 'public', 'orders-ui.js'), 'utf8');
   assert.ok(ui.indexOf("can('orders.void')") >= 0);
   assert.ok(ui.indexOf("Sizin buna icazəniz yoxdur.") >= 0);
+  assert.ok(ui.indexOf('function renderGuestInbox') >= 0);
   assert.ok(ui.indexOf('function isReserveOwner') >= 0);
   assert.ok(ui.indexOf('function reservationBlocking') >= 0);
   assert.ok(ui.indexOf('function reserveNotice') >= 0);
@@ -3295,7 +3441,7 @@ test('sprint E: plan ölçü toast + pending ± hüquq', function () {
   assert.ok(ui.indexOf('Yalnız admin azalda bilər') >= 0);
   assert.ok(ui.indexOf("can('orders.create')") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=83') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=91') >= 0);
   assert.ok(html.indexOf('dates.css?v=2') >= 0);
   const datesCss = fs.readFileSync(path.join(__dirname, 'public', 'dates.css'), 'utf8');
   const dateZ = datesCss.slice(datesCss.indexOf('#pos-date-modal'), datesCss.indexOf('#pos-date-modal .modal-card'));
@@ -3347,7 +3493,7 @@ test('admin sent qty cut + mətbəx AZALDILDI', function () {
   assert.ok(ui.indexOf('stopPropagation') >= 0);
   assert.ok(ui.indexOf('Miqdar azaldıldı.') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=83') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=91') >= 0);
 });
 
 test('Qəbul et: double-click kilidi busy+disabled', function () {
@@ -3388,7 +3534,7 @@ test('admin PIN unlock: sessiya ofisiant qalır', function () {
   const sess = fs.readFileSync(path.join(__dirname, 'sessions.js'), 'utf8');
   assert.ok(sess.indexOf('function grantPayUnlock') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=83') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=91') >= 0);
   assert.ok(html.indexOf('orders-pay.js?v=16') >= 0);
 });
 
