@@ -6,6 +6,7 @@
   var groupId = 0;
   var cart = [];
   var busy = false;
+  var msgTimer = 0;
 
   function el(id) {
     return document.getElementById(id);
@@ -24,6 +25,21 @@
     if (n) {
       n.textContent = text == null ? '' : String(text);
     }
+  }
+
+  function flashMsg(text) {
+    if (msgTimer) {
+      window.clearTimeout(msgTimer);
+      msgTimer = 0;
+    }
+    setText('g-msg', text || '');
+    if (!text) {
+      return;
+    }
+    msgTimer = window.setTimeout(function () {
+      msgTimer = 0;
+      setText('g-msg', '');
+    }, 3000);
   }
 
   function money(n) {
@@ -201,7 +217,7 @@
     if (send) {
       bindTap(send, function () {
         if (busy || !cart.length) {
-          setText('g-msg', cart.length ? '' : 'Səbət boşdur.');
+          flashMsg(cart.length ? '' : 'Səbət boşdur.');
           return;
         }
         busy = true;
@@ -217,9 +233,9 @@
         }).then(function () {
           cart = [];
           drawCart();
-          setText('g-msg', 'Göndərildi.');
+          flashMsg('Göndərildi.');
         }).catch(function (err) {
-          setText('g-msg', err.message);
+          flashMsg(err.message);
         }).then(function () {
           busy = false;
         });
@@ -236,9 +252,9 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tableId: tableId })
         }).then(function () {
-          setText('g-msg', 'Ofisiant çağırıldı.');
+          flashMsg('Ofisiant çağırıldı.');
         }).catch(function (err) {
-          setText('g-msg', err.message);
+          flashMsg(err.message);
         }).then(function () {
           busy = false;
         });

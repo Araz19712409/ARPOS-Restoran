@@ -230,6 +230,11 @@
   var waitlist = [];
   var seatedWait = [];
   var guestInbox = { requests: [], calls: [] };
+  var guestSoundUnlocked = false;
+  var guestHeardIds = { request: {}, call: {} };
+  var guestInboxPrimed = false;
+  var guestAudioCtx = null;
+  var GUEST_SOUND_KEY = 'arpos.guestSound';
   var optionProduct = null;
   var optionPortionId = 0;
   var optionExtraIds = [];
@@ -1131,10 +1136,12 @@
     });
   }
 
-  function applySeat(id) {
+  function applySeat(id, opts) {
     var n = Number(id);
     tableId = Number.isFinite(n) ? n : 0;
-    pending = [];
+    if (!(opts && opts.keepPending)) {
+      pending = [];
+    }
     var existing = openOrder();
     pendingGuests = existing ? Number(existing.guests) || 0 : (id > 0 ? readPendingGuests(id) : 0);
     pendingGuestName = existing ? (existing.guestName || '') : '';
@@ -1142,8 +1149,15 @@
     pendingGuestAddress = existing ? (existing.guestAddress || '') : '';
     pendingCourier = existing ? (existing.courierName || '') : '';
     say('');
+    if (opts && opts.skipRender) {
+      return;
+    }
     if (id && isOrderWizard()) {
-      setOrderZone('groups');
+      if (opts && opts.zone) {
+        setOrderZone(opts.zone);
+      } else {
+        setOrderZone('groups');
+      }
     } else if (id && (window.matchMedia && window.matchMedia('(max-width: 980px)').matches)) {
       setOrderZone('menu');
     }
@@ -1503,11 +1517,126 @@
     return t.slice(0, 5) || s.slice(11, 16);
   }
 
+  function guestSoundOn() {
+    try {
+      return window.localStorage.getItem(GUEST_SOUND_KEY) !== '0';
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function syncGuestSoundBtn() {
+    var btn = el('guest-sound-btn');
+    if (!btn) {
+      return;
+    }
+    var on = guestSoundOn();
+    btn.textContent = on ? '🔊' : '🔇';
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.title = on ? 'Qonaq səsi açıq' : 'Qonaq səsi bağlı';
+  }
+
+  function unlockGuestSound() {
+    if (guestSoundUnlocked) {
+      return;
+    }
+    guestSoundUnlocked = true;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) {
+        return;
+      }
+      if (!guestAudioCtx) {
+        guestAudioCtx = new AC();
+      }
+      if (guestAudioCtx.state === 'suspended' && guestAudioCtx.resume) {
+        guestAudioCtx.resume();
+      }
+    } catch (e) {}
+  }
+
+  function playGuestBeep(kind) {
+    if (!guestSoundOn()) {
+      return;
+    }
+    try {
+      unlockGuestSound();
+      if (!guestAudioCtx) {
+        return;
+      }
+      if (guestAudioCtx.state === 'suspended' && guestAudioCtx.resume) {
+        guestAudioCtx.resume();
+      }
+      var t = guestAudioCtx.currentTime;
+      function beepOnce(freq, dur, when, wave, peak) {
+        var osc = guestAudioCtx.createOscillator();
+        var gain = guestAudioCtx.createGain();
+        osc.type = wave || 'square';
+        osc.frequency.setValueAtTime(freq, when);
+        gain.gain.setValueAtTime(0.0001, when);
+        gain.gain.exponentialRampToValueAtTime(peak || 0.28, when + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+        osc.connect(gain);
+        gain.connect(guestAudioCtx.destination);
+        osc.start(when);
+        osc.stop(when + dur + 0.02);
+      }
+      if (kind === 'call') {
+        [0, 0.36, 0.72].forEach(function (off) {
+          beepOnce(1240, 0.14, t + off, 'square', 0.32);
+          beepOnce(880, 0.14, t + off + 0.16, 'square', 0.32);
+        });
+      } else {
+        beepOnce(784, 0.16, t, 'triangle', 0.3);
+        beepOnce(988, 0.2, t + 0.18, 'triangle', 0.3);
+        beepOnce(1175, 0.28, t + 0.4, 'triangle', 0.26);
+      }
+    } catch (e) {}
+  }
+
+  function guestInboxIsOpen(row) {
+    return !row || !row.status || row.status === 'open';
+  }
+
   function applyGuestInbox(data) {
-    guestInbox = {
-      requests: (data && data.requests) || [],
-      calls: (data && data.calls) || []
-    };
+    var newCalls = (data && data.calls) || [];
+    var newReqs = (data && data.requests) || [];
+    var playCall = false;
+    var playReq = false;
+    if (!guestInboxPrimed) {
+      newCalls.forEach(function (row) {
+        if (row && row.id && guestInboxIsOpen(row)) {
+          guestHeardIds.call[String(row.id)] = true;
+        }
+      });
+      newReqs.forEach(function (row) {
+        if (row && row.id && guestInboxIsOpen(row)) {
+          guestHeardIds.request[String(row.id)] = true;
+        }
+      });
+      guestInboxPrimed = true;
+    } else {
+      newCalls.forEach(function (row) {
+        var id = row && row.id ? String(row.id) : '';
+        if (id && guestInboxIsOpen(row) && !guestHeardIds.call[id]) {
+          guestHeardIds.call[id] = true;
+          playCall = true;
+        }
+      });
+      newReqs.forEach(function (row) {
+        var id = row && row.id ? String(row.id) : '';
+        if (id && guestInboxIsOpen(row) && !guestHeardIds.request[id]) {
+          guestHeardIds.request[id] = true;
+          playReq = true;
+        }
+      });
+      if (playCall) {
+        playGuestBeep('call');
+      } else if (playReq) {
+        playGuestBeep('request');
+      }
+    }
+    guestInbox = { requests: newReqs, calls: newCalls };
     renderGuestInbox();
   }
 
@@ -1598,11 +1727,18 @@
       }
       var actions = document.createElement('div');
       actions.className = 'guest-inbox-actions';
+      actions.addEventListener('pointerdown', function (ev) {
+        ev.stopPropagation();
+      });
+      actions.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+      });
       if (row.kind === 'request' && row.items && row.items.length) {
         var add = document.createElement('button');
         add.type = 'button';
         add.textContent = 'Səbətə əlavə et';
-        add.addEventListener('click', function () {
+        add.addEventListener('click', function (ev) {
+          ev.stopPropagation();
           addGuestRequestToCart(row);
         });
         actions.appendChild(add);
@@ -1610,14 +1746,16 @@
       var go = document.createElement('button');
       go.type = 'button';
       go.textContent = 'Masaya keç';
-      go.addEventListener('click', function () {
+      go.addEventListener('click', function (ev) {
+        ev.stopPropagation();
         goGuestTable(row);
       });
       actions.appendChild(go);
       var deny = document.createElement('button');
       deny.type = 'button';
       deny.textContent = 'İmtina';
-      deny.addEventListener('click', function () {
+      deny.addEventListener('click', function (ev) {
+        ev.stopPropagation();
         markGuestSeen(row, false);
       });
       actions.appendChild(deny);
@@ -1695,20 +1833,22 @@
     var lines = (row.items || []).slice();
     row._adding = true;
     if (Number(tableId) !== tid) {
-      applySeat(tid);
+      applySeat(tid, { skipRender: true });
       claimTable(tid).catch(function () {
         return null;
       });
-    } else if (isOrderWizard() && currentOrderZone() === 'floor') {
-      setOrderZone('groups');
     }
     lines.forEach(function (item) {
       addGuestLine(item);
     });
+    if (isOrderWizard()) {
+      setOrderZone('check');
+    }
+    drawWaiterLine();
     if (typeof ctx.syncPrebillBtn === 'function') {
       ctx.syncPrebillBtn();
     }
-    renderCheck();
+    render();
     say('Səbətə əlavə olundu. Qəbul sizin əlinizdədir.');
     markGuestSeen(row, true).then(function () {
       row._adding = false;
@@ -3614,6 +3754,7 @@
       body.data.fromLogin = true;
       afterAdminUnlock = null;
       setWaiter(body.data);
+      unlockGuestSound();
       finishSwitch();
       pinBuffer = '';
       drawPin();
@@ -3657,6 +3798,18 @@
     switching = false;
     setWaiter(null);
   });
+
+  onTap('guest-sound-btn', function () {
+    try {
+      window.localStorage.setItem(GUEST_SOUND_KEY, guestSoundOn() ? '0' : '1');
+    } catch (e) {}
+    syncGuestSoundBtn();
+    unlockGuestSound();
+  });
+  document.addEventListener('pointerdown', function () {
+    unlockGuestSound();
+  }, { once: true, capture: true });
+  syncGuestSoundBtn();
 
   onTap('switch-waiter', startSwitch);
   onTap('pin-switch-back', cancelSwitch);
