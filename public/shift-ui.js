@@ -175,7 +175,37 @@
       cells[4].textContent = money(row.expectedCash != null ? row.expectedCash : snap.expectedCash);
       cells[5].textContent = money(row.shift.countedCash);
       cells[6].textContent = money(row.difference != null ? row.difference : snap.difference);
-      box.appendChild(tr);
+        box.appendChild(tr);
+      if (Array.isArray(row.byStation) && row.byStation.length) {
+        var extra = document.createElement('tr');
+        extra.className = 'shift-hist-stations-row';
+        var cell = document.createElement('td');
+        cell.colSpan = 7;
+        var wrap = document.createElement('div');
+        wrap.className = 'z-sum-stations';
+        var tbl = document.createElement('table');
+        row.byStation.forEach(function (st) {
+          var hr = document.createElement('tr');
+          hr.className = 'z-st-head';
+          hr.innerHTML = '<td></td><td class="num"></td><td class="num"></td>';
+          hr.children[0].textContent = st.stationName || 'Stansiyasız';
+          hr.children[1].textContent = money(st.qty);
+          hr.children[2].textContent = money(st.sum);
+          tbl.appendChild(hr);
+          (st.items || []).forEach(function (item) {
+            var ir = document.createElement('tr');
+            ir.innerHTML = '<td></td><td class="num"></td><td class="num"></td>';
+            ir.children[0].textContent = item.name || '';
+            ir.children[1].textContent = money(item.qty);
+            ir.children[2].textContent = money(item.sum);
+            tbl.appendChild(ir);
+          });
+        });
+        wrap.appendChild(tbl);
+        cell.appendChild(wrap);
+        extra.appendChild(cell);
+        box.appendChild(extra);
+      }
     });
   }
 

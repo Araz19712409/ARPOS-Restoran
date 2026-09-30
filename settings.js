@@ -74,6 +74,8 @@ function emptyShift() {
   return {
     autoOpenOnSale: true,
     autoPrintZ: true,
+    zPrintItems: true,
+    zPrintByStation: true,
     showCashOnOrders: true,
     carryCountedCash: true,
     defaultStartingCash: 0
@@ -86,6 +88,8 @@ function cleanShift(raw) {
   return {
     autoOpenOnSale: src.autoOpenOnSale !== false,
     autoPrintZ: shiftFlagOn(src, 'autoPrintZ'),
+    zPrintItems: shiftFlagOn(src, 'zPrintItems'),
+    zPrintByStation: shiftFlagOn(src, 'zPrintByStation'),
     showCashOnOrders: shiftFlagOn(src, 'showCashOnOrders'),
     carryCountedCash: shiftFlagOn(src, 'carryCountedCash'),
     defaultStartingCash: Number.isFinite(cash) && cash >= 0 ? Number(cash.toFixed(2)) : 0
@@ -457,6 +461,8 @@ function forOffice(cfg) {
     shift: {
       autoOpenOnSale: shift.autoOpenOnSale !== false,
       autoPrintZ: shift.autoPrintZ !== false,
+      zPrintItems: shift.zPrintItems !== false,
+      zPrintByStation: shift.zPrintByStation !== false,
       showCashOnOrders: shift.showCashOnOrders !== false,
       carryCountedCash: shift.carryCountedCash !== false,
       defaultStartingCash: Number.isFinite(cash) && cash >= 0 ? Number(cash.toFixed(2)) : 0
@@ -465,8 +471,8 @@ function forOffice(cfg) {
     opsMode: row.opsMode === 'sales' ? 'sales' : 'full',
     listenLan: row.listenLan !== false,
     httpsPort: Number(row.httpsPort) || 3443,
-    branchName: String(row.branchName || '').slice(0, 80),
-    branchCode: String(row.branchCode || '').slice(0, 12),
+    branchName: cleanBranch(row.branchName),
+    branchCode: cleanBranchCode(row.branchCode),
     sms: officeSms(row),
     update: officeUpdate(row),
     backupGithub: officeBackupGithub(row),
@@ -490,6 +496,8 @@ function forPos(cfg) {
     shift: {
       autoOpenOnSale: shift.autoOpenOnSale !== false,
       autoPrintZ: shift.autoPrintZ !== false,
+      zPrintItems: shift.zPrintItems !== false,
+      zPrintByStation: shift.zPrintByStation !== false,
       showCashOnOrders: shift.showCashOnOrders !== false,
       carryCountedCash: shift.carryCountedCash !== false,
       defaultStartingCash: Number.isFinite(cash) && cash >= 0 ? Number(cash.toFixed(2)) : 0
@@ -499,8 +507,8 @@ function forPos(cfg) {
       blockSaleIfShort: stock.blockSaleIfShort !== false
     },
     opsMode: row.opsMode === 'sales' ? 'sales' : 'full',
-    branchName: String(row.branchName || '').slice(0, 80),
-    branchCode: String(row.branchCode || '').slice(0, 12),
+    branchName: cleanBranch(row.branchName),
+    branchCode: cleanBranchCode(row.branchCode),
     orderCardScale: clampScale(row.orderCardScale),
     vatPercent: Number(row.vatPercent) || 0,
     tillLocked: row.tillLocked === true,
@@ -610,7 +618,11 @@ function cleanUpdate(raw, prev) {
 }
 
 function cleanBranch(value) {
-  return String(value || '').replace(/<[^>]*>/g, '').trim().slice(0, 60);
+  return String(value || '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80);
 }
 
 function cleanBranchCode(value) {

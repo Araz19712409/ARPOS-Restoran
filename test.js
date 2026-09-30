@@ -104,8 +104,8 @@ test('qonaq menyü: təklif və çağırış, ödəniş/mətbəx yox', function 
   assert.ok(html.indexOf('<select') < 0);
   assert.ok(html.indexOf('nağd') < 0);
   assert.ok(html.indexOf('kart') < 0);
-  assert.ok(html.indexOf('guest-ui.js?v=9') >= 0);
-  assert.ok(html.indexOf('guest.css?v=6') >= 0);
+  assert.ok(html.indexOf('guest-ui.js?v=10') >= 0);
+  assert.ok(html.indexOf('guest.css?v=7') >= 0);
   const gjs = fs.readFileSync(path.join(__dirname, 'public', 'guest-ui.js'), 'utf8');
   assert.ok(gjs.indexOf('/api/guest/order-request') >= 0);
   assert.ok(gjs.indexOf('/api/guest/call-waiter') >= 0);
@@ -113,6 +113,8 @@ test('qonaq menyü: təklif və çağırış, ödəniş/mətbəx yox', function 
   assert.ok(gjs.indexOf("'Masa ' + tableId") < 0);
   assert.ok(gjs.indexOf('data.table.name') >= 0);
   assert.ok(gjs.indexOf('/api/orders/accept') < 0);
+  assert.ok(gjs.indexOf('function flashMsg') >= 0);
+  assert.ok(gjs.indexOf('3000') >= 0);
   const ordersHtml = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
   assert.ok(ordersHtml.indexOf('order-wizard') >= 0);
   assert.ok(ordersHtml.indexOf('id="guest-inbox"') >= 0);
@@ -127,12 +129,18 @@ test('qonaq menyü: təklif və çağırış, ödəniş/mətbəx yox', function 
   assert.ok(ui.indexOf('Görüldü') < 0);
   assert.ok(ui.indexOf('Səbətə əlavə et') >= 0);
   assert.ok(ui.indexOf('İmtina') >= 0);
+  assert.ok(ui.indexOf('function playGuestBeep') >= 0);
+  assert.ok(ui.indexOf('guestHeardIds') >= 0);
+  assert.ok(ui.indexOf('unlockGuestSound') >= 0);
+  assert.ok(ui.indexOf('arpos.guestSound') >= 0);
   assert.ok(ui.indexOf('markGuestSeen') >= 0);
   assert.ok(ui.indexOf('function addGuestRequestToCart') >= 0);
   const addFn = ui.slice(ui.indexOf('function addGuestRequestToCart'), ui.indexOf('function reservationFor'));
   assert.ok(addFn.indexOf('/api/orders/accept') < 0);
   assert.ok(addFn.indexOf('dispatchTickets') < 0);
   assert.ok(addFn.indexOf('applySeat') >= 0);
+  assert.ok(addFn.indexOf('skipRender') >= 0);
+  assert.ok(addFn.indexOf("setOrderZone('check')") >= 0);
   const plan = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
   assert.ok(plan.indexOf('QR yüklə') >= 0);
   assert.ok(plan.indexOf('Linki kopyala') >= 0);
@@ -221,7 +229,9 @@ test('preferred LAN IP: Wi‑Fi 192.168, WSL/Radmin/APIPA yox', function () {
   }
   const setHtml = fs.readFileSync(path.join(__dirname, 'public', 'settings.html'), 'utf8');
   assert.ok(setHtml.indexOf('id="guest-http-warn"') >= 0);
-  assert.ok(setHtml.indexOf('settings-ui.js?v=19') >= 0);
+  assert.ok(setHtml.indexOf('settings-ui.js?v=21') >= 0);
+  assert.ok(setHtml.indexOf('shift-z-print-items') >= 0);
+  assert.ok(setHtml.indexOf('shift-z-print-stations') >= 0);
   const setUi = fs.readFileSync(path.join(__dirname, 'public', 'settings-ui.js'), 'utf8');
   assert.ok(setUi.indexOf('guestHttpUp') >= 0);
   const readme = fs.readFileSync(path.join(__dirname, 'README.md'), 'utf8');
@@ -928,6 +938,13 @@ test('sifariş kart ölçüsü 1–5 saxlanır', function () {
 });
 
 test('ayarlarda filial və sms sahəsi var', function () {
+  const prevName = settings.readSettings().branchName;
+  const savedName = settings.writeSettings({ branchName: 'Tuson   Ka  Pub' });
+  assert.strictEqual(savedName.branchName, 'Tuson Ka Pub');
+  assert.strictEqual(settings.readSettings().branchName, 'Tuson Ka Pub');
+  assert.strictEqual(settings.forOffice().branchName, 'Tuson Ka Pub');
+  assert.strictEqual(settings.forPos().branchName, 'Tuson Ka Pub');
+  settings.writeSettings({ branchName: prevName || '' });
   const cfg = settings.readSettings();
   assert.strictEqual(typeof cfg.branchName, 'string');
   assert.ok(cfg.sms);
@@ -2978,6 +2995,92 @@ test('Z: autoPrintZ; queue z; receipt brand; açıq masa blok', function () {
   assert.ok(bannerBlock.indexOf('z-index: 45') < 0);
 });
 
+test('Z byStation: mallar, stansiyasız, köhnə snapshot, ayar OFF', function () {
+  const at = '2026-09-13T12:00:00';
+  const cat = {
+    stations: [{ id: 1, name: 'Mətbəx' }, { id: 3, name: 'Bar' }],
+    products: [
+      { id: 10, name: 'Kababl', stationId: 1 },
+      { id: 11, name: 'Cola', stationId: 3 },
+      { id: 12, name: 'Cay', stationId: 0 }
+    ]
+  };
+  const list = [
+    {
+      status: 'paid',
+      terminalId: 1,
+      payment: { at: at, cashAmount: 18, cardAmount: 0, prepaid: 0, total: 18 },
+      items: [
+        { productId: 10, name: 'Kababl', qty: 2, salePrice: 5, stationId: 1, voided: false },
+        { productId: 11, name: 'Cola', qty: 1, salePrice: 3, complimentary: false },
+        { productId: 12, name: 'Cay', qty: 2, salePrice: 2.5, voided: false },
+        { productId: 10, name: 'Kababl', qty: 1, salePrice: 5, stationId: 1, voided: true }
+      ]
+    }
+  ];
+  const tot = shifts.totals(list, '2026-09-13T00:00:00', '2026-09-13T23:59:59', 1);
+  const by = shifts.salesByStation(list, '2026-09-13T00:00:00', '2026-09-13T23:59:59', 1, cat);
+  assert.strictEqual(shifts.byStationSum(by), tot.total);
+  const kit = by.find(function (row) { return row.stationId === 1; });
+  const bar = by.find(function (row) { return row.stationId === 3; });
+  const none = by.find(function (row) { return !row.stationId; });
+  assert.ok(kit && kit.stationName === 'Mətbəx');
+  assert.strictEqual(kit.sum, 10);
+  assert.strictEqual(kit.qty, 2);
+  assert.ok(bar && bar.stationName === 'Bar');
+  assert.strictEqual(bar.sum, 3);
+  assert.ok(none && none.stationName === 'Stansiyasız');
+  assert.strictEqual(none.sum, 5);
+  const packed = {
+    shift: { openedAt: at, closedAt: at, closedByName: 'Ali', startingCash: 0, countedCash: 18, drops: [] },
+    totals: tot,
+    drops: [],
+    expectedCash: 18,
+    difference: 0,
+    byStation: by,
+    terminalName: 'K1'
+  };
+  const on = printers.buildZTicket({ paperWidth: 80, charsPerLine: 48, font: 'A' }, packed).toString('ascii');
+  assert.ok(on.indexOf('Metbex') >= 0);
+  assert.ok(on.indexOf('Kababl') >= 0);
+  assert.ok(on.indexOf('Cola') >= 0);
+  assert.ok(on.indexOf('Stansiyasiz') >= 0);
+  const off = printers.buildZTicket({ paperWidth: 80, charsPerLine: 48, font: 'A' }, Object.assign({}, packed, {
+    zPrintItems: false,
+    zPrintByStation: false
+  })).toString('ascii');
+  assert.ok(off.indexOf('Metbex') < 0);
+  assert.ok(off.indexOf('Kababl') < 0);
+  const oldSnap = {
+    status: 'closed',
+    terminalId: 1,
+    openedAt: at,
+    closedAt: at,
+    startingCash: 0,
+    countedCash: 18,
+    snapshot: { totals: tot, expectedCash: 18, difference: 0, drops: [] }
+  };
+  const fromOld = shifts.packedFromSnapshot(oldSnap);
+  assert.ok(!fromOld.byStation);
+  printers.buildZTicket({ paperWidth: 80, charsPerLine: 48, font: 'A' }, fromOld);
+  withTempDb(function () {
+    assert.strictEqual(settings.readSettings().shift.zPrintItems, true);
+    assert.strictEqual(settings.readSettings().shift.zPrintByStation, true);
+    settings.writeSettings({ shift: { autoPrintZ: true } });
+    assert.strictEqual(settings.readSettings().shift.zPrintItems, true);
+  });
+  const serverSrc = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  const close = serverSrc.slice(
+    serverSrc.indexOf("app.post('/api/shifts/close'"),
+    serverSrc.indexOf("app.post('/api/shifts/print-z'")
+  );
+  assert.ok(close.indexOf('byStation') >= 0);
+  const zView = fs.readFileSync(path.join(__dirname, 'public', 'shift-z-view.js'), 'utf8');
+  assert.ok(zView.indexOf('z-sum-stations') >= 0);
+  assert.ok(fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8').indexOf('id="z-sum-stations"') >= 0);
+  assert.ok(fs.readFileSync(path.join(__dirname, 'public', 'shift.html'), 'utf8').indexOf('id="z-sum-stations"') >= 0);
+});
+
 test('Ofis more-nav: kənar klik + Esc bağlanır', function () {
   const nav = fs.readFileSync(path.join(__dirname, 'public', 'nav.js'), 'utf8');
   assert.ok(nav.indexOf('function closeMoreNav') >= 0);
@@ -3441,7 +3544,7 @@ test('sprint E: plan ölçü toast + pending ± hüquq', function () {
   assert.ok(ui.indexOf('Yalnız admin azalda bilər') >= 0);
   assert.ok(ui.indexOf("can('orders.create')") >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=91') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=94') >= 0);
   assert.ok(html.indexOf('dates.css?v=2') >= 0);
   const datesCss = fs.readFileSync(path.join(__dirname, 'public', 'dates.css'), 'utf8');
   const dateZ = datesCss.slice(datesCss.indexOf('#pos-date-modal'), datesCss.indexOf('#pos-date-modal .modal-card'));
@@ -3493,7 +3596,7 @@ test('admin sent qty cut + mətbəx AZALDILDI', function () {
   assert.ok(ui.indexOf('stopPropagation') >= 0);
   assert.ok(ui.indexOf('Miqdar azaldıldı.') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=91') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=94') >= 0);
 });
 
 test('Qəbul et: double-click kilidi busy+disabled', function () {
@@ -3534,7 +3637,7 @@ test('admin PIN unlock: sessiya ofisiant qalır', function () {
   const sess = fs.readFileSync(path.join(__dirname, 'sessions.js'), 'utf8');
   assert.ok(sess.indexOf('function grantPayUnlock') >= 0);
   const html = fs.readFileSync(path.join(__dirname, 'public', 'orders.html'), 'utf8');
-  assert.ok(html.indexOf('orders-ui.js?v=91') >= 0);
+  assert.ok(html.indexOf('orders-ui.js?v=94') >= 0);
   assert.ok(html.indexOf('orders-pay.js?v=16') >= 0);
 });
 

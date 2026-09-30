@@ -50,6 +50,61 @@
       }).join('; ')
       : '—';
     setText('z-sum-drops', dropTxt);
+    fillStations(packed);
+  }
+
+  function fillStations(packed) {
+    var box = el('z-sum-stations');
+    if (!box) {
+      return;
+    }
+    box.innerHTML = '';
+    var groups = packed && Array.isArray(packed.byStation) ? packed.byStation : [];
+    if (!groups.length) {
+      box.hidden = true;
+      box.classList.add('hidden');
+      return;
+    }
+    box.hidden = false;
+    box.classList.remove('hidden');
+    var table = document.createElement('table');
+    var thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Mal</th><th class="num">Miqdar</th><th class="num">Məbləğ</th></tr>';
+    table.appendChild(thead);
+    var tb = document.createElement('tbody');
+    groups.forEach(function (st) {
+      var hr = document.createElement('tr');
+      hr.className = 'z-st-head';
+      var h1 = document.createElement('td');
+      h1.textContent = st.stationName || 'Stansiyasız';
+      var h2 = document.createElement('td');
+      h2.className = 'num';
+      h2.textContent = money(st.qty);
+      var h3 = document.createElement('td');
+      h3.className = 'num';
+      h3.textContent = money(st.sum);
+      hr.appendChild(h1);
+      hr.appendChild(h2);
+      hr.appendChild(h3);
+      tb.appendChild(hr);
+      (st.items || []).forEach(function (item) {
+        var tr = document.createElement('tr');
+        var c1 = document.createElement('td');
+        c1.textContent = item.name || '';
+        var c2 = document.createElement('td');
+        c2.className = 'num';
+        c2.textContent = money(item.qty);
+        var c3 = document.createElement('td');
+        c3.className = 'num';
+        c3.textContent = money(item.sum);
+        tr.appendChild(c1);
+        tr.appendChild(c2);
+        tr.appendChild(c3);
+        tb.appendChild(tr);
+      });
+    });
+    table.appendChild(tb);
+    box.appendChild(table);
   }
 
   function show(packed, opts) {
@@ -97,7 +152,13 @@
       'body{font-family:"Courier New",Consolas,monospace;font-size:14px;line-height:1.35}' +
       'h1{font-size:18px;font-weight:800;text-align:center;margin:0 0 8px}' +
       'p{margin:0 0 4px}' +
-      '</style></head><body><h1>Z-hesabat</h1>' + grid.innerHTML + '</body></html>'
+      'table{width:100%;border-collapse:collapse;font-size:12px}' +
+      'th,td{text-align:left;padding:2px 0;border-bottom:1px solid #ccc}' +
+      'td.num,th.num{text-align:right}' +
+      'tr.z-st-head td{font-weight:700}' +
+      '</style></head><body><h1>Z-hesabat</h1>' + grid.innerHTML +
+      ((el('z-sum-stations') && !el('z-sum-stations').hidden) ? el('z-sum-stations').innerHTML : '') +
+      '</body></html>'
     );
     doc.close();
     setTimeout(function () {

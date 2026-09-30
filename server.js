@@ -5872,7 +5872,8 @@ app.post('/api/shifts/close', function (req, res) {
       totals: packed.totals,
       expectedCash: packed.expectedCash,
       difference: packed.difference,
-      drops: (packed.drops || row.drops || []).slice()
+      drops: (packed.drops || row.drops || []).slice(),
+      byStation: packed.byStation || []
     };
     if (removeCash && row.countedCash > 0) {
       if (!row.drops) {
@@ -5899,6 +5900,8 @@ app.post('/api/shifts/close', function (req, res) {
     packed.terminalName = result.terminalName;
     packed.branchName = cfg.branchName || '';
     packed.receipt = cfg.receipt || {};
+    packed.zPrintItems = !(cfg.shift && cfg.shift.zPrintItems === false);
+    packed.zPrintByStation = !(cfg.shift && cfg.shift.zPrintByStation === false);
     const autoPrintZ = !(cfg.shift && cfg.shift.autoPrintZ === false);
 
     function finish(print) {
@@ -5960,6 +5963,8 @@ app.post('/api/shifts/print-z', function (req, res) {
   packed.terminalName = terminal.name;
   packed.branchName = cfg.branchName || '';
   packed.receipt = cfg.receipt || {};
+  packed.zPrintItems = !(cfg.shift && cfg.shift.zPrintItems === false);
+  packed.zPrintByStation = !(cfg.shift && cfg.shift.zPrintByStation === false);
   printers.sendZTickets(packed).then(function (print) {
     res.json({
       success: true,

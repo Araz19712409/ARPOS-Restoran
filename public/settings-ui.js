@@ -329,8 +329,18 @@
   }
 
   function branchNameValue() {
-    var el = document.getElementById('branch-name');
-    return el ? el.value.trim() : '';
+    var nameEl = document.getElementById('branch-name');
+    var name = nameEl ? String(nameEl.value || '') : '';
+    name = name.replace(/\s+/g, ' ').trim();
+    if (name) {
+      return name;
+    }
+    var codeEl = document.getElementById('branch-code');
+    var rawCode = codeEl ? String(codeEl.value || '').replace(/\s+/g, ' ').trim() : '';
+    if (rawCode.indexOf(' ') >= 0) {
+      return rawCode.slice(0, 80);
+    }
+    return '';
   }
 
   function smsPayload() {
@@ -559,6 +569,10 @@
             !document.getElementById('shift-auto-open').checked),
           autoPrintZ: !(document.getElementById('shift-auto-print-z') &&
             !document.getElementById('shift-auto-print-z').checked),
+          zPrintItems: !(document.getElementById('shift-z-print-items') &&
+            !document.getElementById('shift-z-print-items').checked),
+          zPrintByStation: !(document.getElementById('shift-z-print-stations') &&
+            !document.getElementById('shift-z-print-stations').checked),
           showCashOnOrders: !(document.getElementById('shift-show-cash') &&
             !document.getElementById('shift-show-cash').checked),
           carryCountedCash: !(document.getElementById('shift-carry-counted') &&
@@ -586,6 +600,9 @@
       })
     }).then(function (body) {
       current = body.data || current;
+      if (current.branchName != null) {
+        fillBranch();
+      }
       var wantLan = listenLanValue();
       var extra = wantLan !== (lanInfo.live === '0.0.0.0')
         ? ' Serveri yeniləyin ki, şəbəkə dəyişsin.'
@@ -690,6 +707,8 @@
     setChecked('till-locked', current.tillLocked === true);
     setChecked('shift-auto-open', !(current.shift && current.shift.autoOpenOnSale === false));
     setChecked('shift-auto-print-z', !(current.shift && current.shift.autoPrintZ === false));
+    setChecked('shift-z-print-items', !(current.shift && current.shift.zPrintItems === false));
+    setChecked('shift-z-print-stations', !(current.shift && current.shift.zPrintByStation === false));
     setChecked('shift-show-cash', !(current.shift && current.shift.showCashOnOrders === false));
     setChecked('shift-carry-counted', !(current.shift && current.shift.carryCountedCash === false));
     setVal('shift-start-default', String((current.shift && current.shift.defaultStartingCash) || 0));

@@ -1109,8 +1109,53 @@ function buildZTicket(printer, packed) {
   lines.push(line(width, 'Sayilan', Number(row.countedCash || 0).toFixed(2)));
   lines.push(line(width, 'Ferq', Number(packed.difference || 0).toFixed(2)));
   lines.push(eq(width));
+  appendZSales(lines, width, packed);
   appendReceiptFooter(lines, packed);
   return ticketBytes(Object.assign({}, printer, { openDrawer: false }), 'Z', lines);
+}
+
+function appendZSales(lines, width, packed) {
+  const printItems = packed && packed.zPrintItems !== false;
+  const printSt = packed && packed.zPrintByStation !== false;
+  if (!printItems && !printSt) {
+    return;
+  }
+  const groups = Array.isArray(packed && packed.byStation) ? packed.byStation : [];
+  if (!groups.length) {
+    return;
+  }
+  lines.push(dash(width));
+  if (printSt) {
+    groups.forEach(function (st) {
+      const headLeft = String((st && st.stationName) || 'Stansiyasiz');
+      const headQty = Number(st && st.qty) || 0;
+      const headSum = Number(st && st.sum) || 0;
+      receiptNamePrice(width, headLeft + ' x' + headQty, Number(headSum).toFixed(2)).forEach(function (row) {
+        lines.push(row);
+      });
+      if (printItems) {
+        (st.items || []).forEach(function (item) {
+          const nm = String((item && item.name) || '');
+          const q = Number(item && item.qty) || 0;
+          const sm = Number(item && item.sum) || 0;
+          receiptNamePrice(width, ' ' + nm + ' x' + q, Number(sm).toFixed(2)).forEach(function (row) {
+            lines.push(row);
+          });
+        });
+      }
+    });
+    return;
+  }
+  groups.forEach(function (st) {
+    (st.items || []).forEach(function (item) {
+      const nm = String((item && item.name) || '');
+      const q = Number(item && item.qty) || 0;
+      const sm = Number(item && item.sum) || 0;
+      receiptNamePrice(width, nm + ' x' + q, Number(sm).toFixed(2)).forEach(function (row) {
+        lines.push(row);
+      });
+    });
+  });
 }
 
 async function deliverZ(packed) {

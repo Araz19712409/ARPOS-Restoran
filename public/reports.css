@@ -285,6 +285,45 @@
   color: #f6efe4;
 }
 
+.z-sum-stations {
+  margin: 8px 0 4px;
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid #3d3428;
+  border-radius: 8px;
+  background: #241e18;
+}
+
+.z-sum-stations table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #f6efe4;
+  font-size: 0.85rem;
+}
+
+.z-sum-stations th,
+.z-sum-stations td {
+  padding: 4px 8px;
+  text-align: left;
+  border-bottom: 1px solid #3d3428;
+}
+
+.z-sum-stations th {
+  color: #c4a574;
+  font-weight: 700;
+}
+
+.z-sum-stations td.num,
+.z-sum-stations th.num {
+  text-align: right;
+}
+
+.z-sum-stations .z-st-head td {
+  font-weight: 700;
+  color: #e2b65a;
+  background: #1c1813;
+}
+
 .report-table tbody tr:last-child td {
   border-bottom: 0;
 }

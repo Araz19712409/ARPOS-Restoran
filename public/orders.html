@@ -13,7 +13,7 @@
   <title>Sifariş</title>
   <link rel="stylesheet" href="app.css?v=25">
   <link rel="stylesheet" href="products.css">
-  <link rel="stylesheet" href="orders.css?v=64">
+  <link rel="stylesheet" href="orders.css?v=65">
   <link rel="stylesheet" href="dates.css?v=2">
 </head>
 <body class="order-page order-wizard" data-zone="floor">
@@ -74,6 +74,7 @@
       <button id="shift-z-open" type="button" style="display:none">Növbə / Z</button>
       <span id="shift-cash" class="shift-cash" style="display:none">Kassa 0.00</span>
       <button id="switch-terminal" type="button">Terminal</button>
+      <button id="guest-sound-btn" class="gold" type="button" title="Qonaq səsi">🔊</button>
       <button id="logout" type="button">Çıxış</button>
     </nav>
   </header>
@@ -565,6 +566,7 @@
         <p class="hint">Fərq: <strong id="z-sum-diff">0.00 AZN</strong></p>
         <p class="hint">Çıxarış: <strong id="z-sum-drops">—</strong></p>
       </div>
+      <div id="z-sum-stations" class="z-sum-stations hidden" hidden></div>
       <div class="modal-actions">
         <button id="z-sum-close" type="button">Bağla</button>
         <button id="z-sum-print" class="gold" type="button">Çap et</button>
@@ -604,13 +606,13 @@
   <script src="dom.js?v=22"></script>
   <script src="nav.js?v=6"></script>
   <script src="receipt-view.js?v=3"></script>
-  <script src="shift-z-view.js?v=6"></script>
+  <script src="shift-z-view.js?v=7"></script>
   <script src="dates.js"></script>
   <script src="group-icons.js?v=3"></script>
   <script src="money.js?v=1"></script>
   <script src="orders-zones.js?v=4"></script>
   <script src="orders-shift.js?v=5"></script>
   <script src="orders-pay.js?v=16"></script>
-  <script src="orders-ui.js?v=91"></script>
+  <script src="orders-ui.js?v=94"></script>
 </body>
 </html>

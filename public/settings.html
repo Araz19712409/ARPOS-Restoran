@@ -167,6 +167,14 @@
             Növbə bağlananda Z çap et
           </label>
           <label class="ops-choice">
+            <input id="shift-z-print-items" type="checkbox" checked>
+            Z-də mal adları
+          </label>
+          <label class="ops-choice">
+            <input id="shift-z-print-stations" type="checkbox" checked>
+            Stansiyalara görə bölgü
+          </label>
+          <label class="ops-choice">
             <input id="shift-show-cash" type="checkbox" checked>
             Sifarişdə kassa qalığı
           </label>
@@ -298,8 +306,8 @@
           <label>Kod
             <input id="branch-code" type="text" maxlength="12" placeholder="M1" autocomplete="off">
           </label>
-          <label>Ad
-            <input id="branch-name" type="text" maxlength="60" placeholder="Mərkəz">
+          <label>Müəssisənin adı
+            <input id="branch-name" type="text" maxlength="80" placeholder="məs. Tuson Ka Pub" autocomplete="organization">
           </label>
           <div class="side-actions">
             <button id="prices-export" type="button">Qiyməti çıxar</button>
@@ -569,6 +577,6 @@
   <script src="offline.js"></script>
   <script src="dom.js"></script>
   <script src="nav.js?v=6"></script>
-  <script src="settings-ui.js?v=19"></script>
+  <script src="settings-ui.js?v=21"></script>
 </body>
 </html>

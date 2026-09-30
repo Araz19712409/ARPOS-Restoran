@@ -1,4 +1,5 @@
 const db = require('./db');
+const num = require('./num');
 
 function money(value) {
   return Number((Number(value) || 0).toFixed(2));
@@ -90,6 +91,118 @@ function totals(orderList, fromIso, toIso, terminalId) {
   };
 }
 
+function lineQty(item) {
+  return Number(item && item.qty) || 0;
+}
+
+function lineAmt(item) {
+  if (!item || item.voided || item.comboOf || item.complimentary) {
+    return 0;
+  }
+  return num.fromMinor(num.mulQty(num.toMinor(item.salePrice), item.qty));
+}
+
+function salesByStation(orderList, fromIso, toIso, terminalId, catalog) {
+  const fromMs = new Date(fromIso).getTime();
+  const toMs = toIso ? new Date(toIso).getTime() : Date.now();
+  const cat = catalog || require('./catalog').readCatalog();
+  const products = (cat && cat.products) || [];
+  const stations = (cat && cat.stations) || [];
+  const productOf = {};
+  products.forEach(function (row) {
+    productOf[Number(row.id)] = row;
+  });
+  const stationName = {};
+  stations.forEach(function (row) {
+    stationName[Number(row.id)] = String(row.name || '').trim();
+  });
+  const groups = {};
+  function bump(sid, name, qty, sum) {
+    const key = String(Number(sid) || 0);
+    if (!groups[key]) {
+      groups[key] = {
+        stationId: Number(sid) || 0,
+        stationName: Number(sid) > 0 ? (stationName[Number(sid)] || ('Stansiya ' + sid)) : 'Stansiyasız',
+        items: {},
+        qty: 0,
+        sum: 0
+      };
+    }
+    const g = groups[key];
+    const itemKey = String(name || '');
+    if (!g.items[itemKey]) {
+      g.items[itemKey] = { name: itemKey, qty: 0, sum: 0 };
+    }
+    g.items[itemKey].qty = money(g.items[itemKey].qty + qty);
+    g.items[itemKey].sum = money(g.items[itemKey].sum + sum);
+    g.qty = money(g.qty + qty);
+    g.sum = money(g.sum + sum);
+  }
+  (orderList || []).forEach(function (order) {
+    if (terminalId && Number(order.terminalId) !== Number(terminalId)) {
+      return;
+    }
+    const pay = order.payment;
+    if (!pay) {
+      return;
+    }
+    if (!((order.status === 'paid' || order.status === 'refunded') &&
+        stampIn(pay.at || order.updatedAt, fromMs, toMs))) {
+      return;
+    }
+    (order.items || []).forEach(function (item) {
+      if (!item || item.voided || item.comboOf) {
+        return;
+      }
+      const qty = lineQty(item);
+      if (!(qty > 0)) {
+        return;
+      }
+      const prod = productOf[Number(item.productId) || 0];
+      let sid = Number(item.stationId);
+      if (!(sid > 0) && prod) {
+        sid = Number(prod.stationId) || 0;
+      }
+      if (!(sid > 0)) {
+        sid = 0;
+      }
+      const name = String((item && item.name) || (prod && prod.name) || '').trim() ||
+        ('#' + (Number(item.productId) || 0));
+      bump(sid, name, qty, lineAmt(item));
+    });
+  });
+  return Object.keys(groups).map(function (key) {
+    const g = groups[key];
+    const items = Object.keys(g.items).map(function (ik) {
+      const it = g.items[ik];
+      return { name: it.name, qty: money(it.qty), sum: money(it.sum) };
+    }).sort(function (a, b) {
+      return String(a.name).localeCompare(String(b.name), 'az');
+    });
+    return {
+      stationId: g.stationId,
+      stationName: g.stationName,
+      items: items,
+      qty: money(g.qty),
+      sum: money(g.sum)
+    };
+  }).sort(function (a, b) {
+    if (!a.stationId && b.stationId) {
+      return 1;
+    }
+    if (a.stationId && !b.stationId) {
+      return -1;
+    }
+    return String(a.stationName).localeCompare(String(b.stationName), 'az');
+  });
+}
+
+function byStationSum(rows) {
+  return money((rows || []).reduce(function (acc, row) {
+    return acc + (Number(row && row.sum) || 0);
+  }, 0));
+}
+
 function openTableNames(orderList, terminalId) {
   return (orderList || []).filter(function (order) {
     if (order.status !== 'open') {
@@ -112,13 +225,17 @@ function currentFor(store, terminalId) {
 
 function packedFromSnapshot(row) {
   const snap = row && row.snapshot ? row.snapshot : {};
-  return {
+  const packed = {
     shift: row,
     totals: snap.totals,
     drops: snap.drops || (row && row.drops) || [],
     expectedCash: snap.expectedCash,
     difference: snap.difference
   };
+  if (Array.isArray(snap.byStation)) {
+    packed.byStation = snap.byStation;
+  }
+  return packed;
 }
 
 function packedForPrint(row, orderList, book) {
@@ -157,7 +274,8 @@ function withExpected(row, orderList, book) {
     totals: parts,
     drops: row.drops || [],
     expectedCash: expectedCash,
-    difference: counted == null ? null : money(counted - expectedCash)
+    difference: counted == null ? null : money(counted - expectedCash),
+    byStation: salesByStation(orderList, row.openedAt, row.closedAt || null, row.terminalId)
   };
 }
 
@@ -283,5 +401,7 @@ module.exports = {
   nextStartingCash: nextStartingCash,
   maybeAutoOpen: maybeAutoOpen,
   ensureOpen: ensureOpen,
-  addCashDrop: addCashDrop
+  addCashDrop: addCashDrop,
+  salesByStation: salesByStation,
+  byStationSum: byStationSum
 };
